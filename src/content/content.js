@@ -4,6 +4,7 @@
   const core = globalThis.RosewashCore;
   const engine = core.createEngine({ document, window });
   const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  let applyFrame = 0;
 
   function readSettings(callback) {
     chrome.storage.sync.get(core.DEFAULT_SETTINGS, callback);
@@ -12,6 +13,17 @@
   function applyStoredSettings() {
     readSettings((settings) => {
       engine.apply(settings);
+    });
+  }
+
+  function scheduleApplyStoredSettings() {
+    if (applyFrame) {
+      window.cancelAnimationFrame(applyFrame);
+    }
+
+    applyFrame = window.requestAnimationFrame(() => {
+      applyFrame = 0;
+      applyStoredSettings();
     });
   }
 
@@ -35,7 +47,13 @@
     return true;
   });
 
-  darkQuery.addEventListener("change", applyStoredSettings);
+  darkQuery.addEventListener("change", scheduleApplyStoredSettings);
+  window.addEventListener("pageshow", scheduleApplyStoredSettings);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      scheduleApplyStoredSettings();
+    }
+  });
+
   applyStoredSettings();
 })();
-

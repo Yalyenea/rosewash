@@ -24,7 +24,9 @@ changes.
 
 - Reads settings from `chrome.storage.sync`.
 - Re-applies on storage changes.
-- Re-applies when system dark mode changes in Auto mode.
+- Re-applies one animation frame after system dark mode changes in Auto mode,
+  so page media-query recalculation and Rosewash tinting do not race.
+- Re-checks settings when a page becomes visible again.
 - Accepts popup refresh messages.
 
 ## UI
@@ -43,7 +45,7 @@ the block list. Both are plain HTML/CSS/JS and share the same storage schema:
 ## Performance Boundary
 
 The MVP scans the existing DOM once on load, then only scans newly added nodes.
-If the resolved theme changes, already-tinted elements are restored before the
-next scan so Auto dark and manual Moon use the same color path. It does not walk
-every element on each mutation and does not call `getComputedStyle()` inside a
-continuous loop.
+If the resolved theme or raw mode changes, already-tinted elements are restored
+before the next scan so Auto dark and manual Moon use the same color path. It
+does not walk every element on each mutation and does not call
+`getComputedStyle()` inside a continuous loop.

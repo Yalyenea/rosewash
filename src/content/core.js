@@ -234,6 +234,7 @@
     let observer = null;
     let pendingRoots = new Set();
     let pendingTimer = null;
+    let activeMode = null;
     let activeTheme = null;
 
     function remember(element) {
@@ -391,6 +392,7 @@
     function clear() {
       disconnectObserver();
       restoreTintedElements();
+      activeMode = null;
       activeTheme = null;
       document.documentElement.removeAttribute(THEME_ATTRIBUTE);
     }
@@ -405,10 +407,11 @@
 
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       const theme = resolveThemeMode(normalized.mode, prefersDark);
-      if (activeTheme && activeTheme !== theme) {
+      if (activeTheme && (activeTheme !== theme || activeMode !== normalized.mode)) {
         restoreTintedElements();
       }
 
+      activeMode = normalized.mode;
       activeTheme = theme;
       document.documentElement.setAttribute(THEME_ATTRIBUTE, theme);
       setStyle(document.documentElement, "color-scheme", theme === "moon" ? "dark" : "light");
@@ -419,7 +422,7 @@
     }
 
     function stats() {
-      return { theme: activeTheme, tinted: tintedElements.size };
+      return { mode: activeMode, theme: activeTheme, tinted: tintedElements.size };
     }
 
     return { apply, clear, stats, disconnect: disconnectObserver };

@@ -15,6 +15,7 @@ quiet. The MVP focuses on white-surface tinting instead of full page recoloring.
 - [x] Browser fixture verification.
 - [x] Theme-switch restoration so Auto dark and manual Moon share one path.
 - [x] Moon text tinting for explicit black/dark neutral text.
+- [x] Runtime fixture for Auto system-theme change handling.
 
 ## Implementation Rules
 

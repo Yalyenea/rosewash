@@ -13,3 +13,7 @@
   restored tint path.
 - Fixed Moon mode so explicit black and dark neutral text turns into Rose Pine
   Moon text.
+- Fixed Auto system-theme changes by reapplying after the media-query change
+  settles and by restoring when the raw mode changes.
+- Added a runtime fixture that exercises Auto light-to-dark changes through the
+  content script path.
