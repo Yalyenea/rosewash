@@ -1,0 +1,147 @@
+:root {
+  color-scheme: light;
+  --base: #faf4ed;
+  --surface: #fffaf3;
+  --overlay: #f2e9de;
+  --text: #575279;
+  --muted: #9893a5;
+  --accent: #286983;
+  --love: #b4637a;
+  --shadow: rgba(87, 82, 121, 0.16);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  width: 292px;
+  margin: 0;
+  background: var(--base);
+  color: var(--text);
+  font: 13px/1.4 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button {
+  border: 0;
+  border-radius: 7px;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+}
+
+.shell {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+}
+
+.topline,
+.site,
+footer {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+h1 {
+  font-size: 16px;
+  line-height: 1.1;
+  margin: 0;
+}
+
+p {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 2px 0 0;
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.switch input {
+  position: absolute;
+  opacity: 0;
+}
+
+.switch span {
+  background: var(--overlay);
+  border: 1px solid rgba(152, 147, 165, 0.35);
+  border-radius: 999px;
+  display: block;
+  height: 24px;
+  position: relative;
+  width: 42px;
+}
+
+.switch span::after {
+  background: var(--surface);
+  border-radius: 50%;
+  box-shadow: 0 2px 6px var(--shadow);
+  content: "";
+  height: 18px;
+  left: 2px;
+  position: absolute;
+  top: 2px;
+  transition: transform 120ms ease;
+  width: 18px;
+}
+
+.switch input:checked + span {
+  background: var(--love);
+}
+
+.switch input:checked + span::after {
+  transform: translateX(18px);
+}
+
+.modes {
+  background: var(--overlay);
+  border-radius: 8px;
+  display: grid;
+  gap: 2px;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 2px;
+}
+
+.modes button {
+  background: transparent;
+  min-height: 30px;
+}
+
+.modes button[aria-pressed="true"] {
+  background: var(--surface);
+  box-shadow: 0 1px 4px var(--shadow);
+}
+
+.site {
+  background: var(--surface);
+  border: 1px solid rgba(152, 147, 165, 0.22);
+  border-radius: 8px;
+  min-height: 38px;
+  padding: 0 8px 0 10px;
+}
+
+#site-toggle {
+  background: var(--overlay);
+  color: var(--accent);
+  min-height: 26px;
+  padding: 0 10px;
+}
+
+footer {
+  gap: 8px;
+}
+
+footer button {
+  background: transparent;
+  color: var(--muted);
+  min-height: 28px;
+  padding: 0 8px;
+}
+
+footer button:last-child {
+  color: var(--accent);
+}
+

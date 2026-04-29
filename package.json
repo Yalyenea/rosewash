@@ -1,0 +1,15 @@
+{
+  "name": "rosewash",
+  "version": "0.1.0",
+  "description": "A lightweight Rose Pine page tint extension for harsh white web pages.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "validate": "node scripts/validate.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT"
+}
+

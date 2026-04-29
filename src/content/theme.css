@@ -1,0 +1,29 @@
+html[data-rosewash-theme="dawn"] {
+  --rosewash-base: #faf4ed;
+  --rosewash-surface: #fffaf3;
+  --rosewash-overlay: #f2e9de;
+  --rosewash-muted: #9893a5;
+  --rosewash-text: #575279;
+  --rosewash-link: #286983;
+  color-scheme: light;
+}
+
+html[data-rosewash-theme="moon"] {
+  --rosewash-base: #232136;
+  --rosewash-surface: #2a273f;
+  --rosewash-overlay: #393552;
+  --rosewash-muted: #6e6a86;
+  --rosewash-text: #e0def4;
+  --rosewash-link: #9ccfd8;
+  color-scheme: dark;
+}
+
+html[data-rosewash-theme] ::selection {
+  background: var(--rosewash-overlay);
+  color: var(--rosewash-text);
+}
+
+html[data-rosewash-theme] a:not([data-rosewash-ignore]) {
+  color: var(--rosewash-link);
+}
+

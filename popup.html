@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rosewash</title>
+    <link rel="stylesheet" href="src/popup/popup.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topline">
+        <div>
+          <h1>Rosewash</h1>
+          <p id="host">current site</p>
+        </div>
+        <label class="switch" aria-label="Enable Rosewash">
+          <input id="enabled" type="checkbox">
+          <span></span>
+        </label>
+      </header>
+
+      <section class="modes" aria-label="Theme mode">
+        <button type="button" data-mode="auto">Auto</button>
+        <button type="button" data-mode="dawn">Dawn</button>
+        <button type="button" data-mode="moon">Moon</button>
+      </section>
+
+      <section class="site">
+        <span>Site</span>
+        <button id="site-toggle" type="button">Allowed</button>
+      </section>
+
+      <footer>
+        <button id="options" type="button">Sites</button>
+        <button id="refresh" type="button">Refresh</button>
+      </footer>
+    </main>
+    <script src="src/popup/popup.js"></script>
+  </body>
+</html>
+

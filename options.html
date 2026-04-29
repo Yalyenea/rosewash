@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rosewash Settings</title>
+    <link rel="stylesheet" href="src/options/options.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Rosewash</h1>
+        <label>
+          <input id="enabled" type="checkbox">
+          Enabled
+        </label>
+      </header>
+
+      <section>
+        <h2>Mode</h2>
+        <div class="modes">
+          <label><input name="mode" type="radio" value="auto"> Auto</label>
+          <label><input name="mode" type="radio" value="dawn"> Dawn</label>
+          <label><input name="mode" type="radio" value="moon"> Moon</label>
+        </div>
+      </section>
+
+      <section>
+        <h2>Blocked Sites</h2>
+        <textarea id="disabled-hosts" spellcheck="false" placeholder="example.com"></textarea>
+      </section>
+
+      <footer>
+        <button id="save" type="button">Save</button>
+        <button id="reset" type="button">Reset</button>
+        <span id="status" role="status"></span>
+      </footer>
+    </main>
+    <script src="src/options/options.js"></script>
+  </body>
+</html>
+
