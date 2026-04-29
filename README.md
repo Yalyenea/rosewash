@@ -37,6 +37,12 @@ just package
 
 `just package` writes `.tmp/rosewash.zip`.
 
+After reloading the unpacked extension in `chrome://extensions`, reload any
+already-open test tabs once. Chrome leaves old content scripts in existing page
+contexts after extension reloads; Rosewash guards new scripts against that state
+and clears stale Rosewash inline styles when the new script starts, but old
+injected scripts cannot be patched in place.
+
 ## Palette
 
 | Token | Dawn | Moon |

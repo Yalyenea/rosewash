@@ -17,3 +17,10 @@
   settles and by restoring when the raw mode changes.
 - Added a runtime fixture that exercises Auto light-to-dark changes through the
   content script path.
+- Reworked the content runtime around a settings cache so Auto theme changes do
+  not call `chrome.storage` from old page contexts.
+- Added an invalidated-context fixture for orphaned content scripts after
+  extension reloads.
+- Stopped applying default settings before stored settings load.
+- Added stale Rosewash inline-style cleanup for extension reloads.
+- Added explicit `<all_urls>` host permission for page tinting.

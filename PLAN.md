@@ -16,6 +16,10 @@ quiet. The MVP focuses on white-surface tinting instead of full page recoloring.
 - [x] Theme-switch restoration so Auto dark and manual Moon share one path.
 - [x] Moon text tinting for explicit black/dark neutral text.
 - [x] Runtime fixture for Auto system-theme change handling.
+- [x] Cache-driven content runtime to avoid storage reads during Auto switches.
+- [x] Invalidated-context fixture for orphaned content-script behavior.
+- [x] No default pre-apply before stored settings load.
+- [x] Stale Rosewash inline-style cleanup after extension reload.
 
 ## Implementation Rules
 

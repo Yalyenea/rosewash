@@ -34,6 +34,10 @@ if (!manifest.permissions.includes("storage")) {
   throw new Error("storage permission is required");
 }
 
+if (!manifest.host_permissions?.includes("<all_urls>")) {
+  throw new Error("<all_urls> host permission is required for page tinting");
+}
+
 const scriptFiles = [
   "src/content/core.js",
   "src/content/content.js",

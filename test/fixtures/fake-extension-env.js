@@ -3,6 +3,7 @@
 
   const params = new URLSearchParams(window.location.search);
   const initialSystem = params.get("system") || "light";
+  const storageDelayFrames = Number(params.get("storageDelayFrames") || "0");
   const settings = {
     enabled: true,
     mode: params.get("mode") || "auto",
@@ -43,6 +44,7 @@
 
   window.chrome = {
     runtime: {
+      id: "rosewash-test",
       onMessage: {
         addListener() {}
       }
@@ -53,12 +55,54 @@
       },
       sync: {
         get(defaults, callback) {
-          callback({ ...defaults, ...settings });
+          const result = { ...defaults, ...settings };
+          const resolve = () => {
+            if (callback) {
+              callback(result);
+              return undefined;
+            }
+
+            return result;
+          };
+
+          if (storageDelayFrames > 0) {
+            if (callback) {
+              waitFrames(storageDelayFrames, resolve);
+              return undefined;
+            }
+
+            return new Promise((resolvePromise) => {
+              waitFrames(storageDelayFrames, () => {
+                resolvePromise(resolve());
+              });
+            });
+          }
+
+          if (callback) {
+            resolve();
+            return undefined;
+          }
+
+          return Promise.resolve(resolve());
         }
       }
     }
   };
 
-  window.__rosewashMediaQuery = mediaQueryList;
-})();
+  function waitFrames(count, callback) {
+    if (count <= 0) {
+      callback();
+      return;
+    }
 
+    window.requestAnimationFrame(() => waitFrames(count - 1, callback));
+  }
+
+  window.__rosewashMediaQuery = mediaQueryList;
+  window.__rosewashInvalidateExtension = () => {
+    window.chrome.runtime.id = "";
+    window.chrome.storage.sync.get = () => {
+      throw new Error("Extension context invalidated.");
+    };
+  };
+})();
