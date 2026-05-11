@@ -1,0 +1,80 @@
+name: Release Zip
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to publish, for example v0.1.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish extension zip
+    runs-on: ubuntu-latest
+    env:
+      TAG_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install just
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl --proto '=https' --tlsv1.2 -LsSf https://just.systems/install.sh | bash -s -- --to "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/just" --version
+
+      - name: Build release zip
+        run: just package
+
+      - name: Name release asset
+        id: asset
+        run: |
+          case "$TAG_NAME" in
+            v*) ;;
+            *) echo "Release tags must start with v, got: $TAG_NAME" >&2; exit 1 ;;
+          esac
+
+          asset=".tmp/rosewash-${TAG_NAME}.zip"
+          cp .tmp/rosewash.zip "$asset"
+          echo "path=$asset" >> "$GITHUB_OUTPUT"
+
+      - name: Write release notes
+        id: notes
+        run: |
+          notes=".tmp/release-notes.md"
+          cat > "$notes" <<EOF
+          Rosewash ${TAG_NAME}
+
+          Download the zip asset, extract it, then load the extracted folder from
+          Chromium's extension developer mode.
+          EOF
+          echo "path=$notes" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+            gh release edit "$TAG_NAME" --title "Rosewash ${TAG_NAME}" --notes-file "${{ steps.notes.outputs.path }}"
+            gh release upload "$TAG_NAME" "${{ steps.asset.outputs.path }}" --clobber
+          else
+            gh release create "$TAG_NAME" "${{ steps.asset.outputs.path }}" \
+              --title "Rosewash ${TAG_NAME}" \
+              --notes-file "${{ steps.notes.outputs.path }}" \
+              --verify-tag
+          fi

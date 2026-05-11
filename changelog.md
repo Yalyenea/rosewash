@@ -8,6 +8,8 @@
   non-Rose-Pine palettes without spreading theme-specific branches through the
   content engine.
 - Added the MIT license file for public repository publishing.
+- Added a GitHub Actions release workflow that builds and uploads the extension
+  zip for version tags.
 
 ## 0.1.0 - 2026-04-29
 
