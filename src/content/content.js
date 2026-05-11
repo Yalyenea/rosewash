@@ -4,38 +4,102 @@
   const core = globalThis.RosewashCore;
   const engine = core.createEngine({ document, window });
   const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  let settingsCache = core.DEFAULT_SETTINGS;
+  let disposed = false;
 
-  function readSettings(callback) {
-    chrome.storage.sync.get(core.DEFAULT_SETTINGS, callback);
+  function hasExtensionContext() {
+    try {
+      return Boolean(globalThis.chrome && chrome.runtime && chrome.runtime.id);
+    } catch {
+      return false;
+    }
   }
 
-  function applyStoredSettings() {
-    readSettings((settings) => {
-      engine.apply(settings);
-    });
+  function dispose() {
+    disposed = true;
+    darkQuery.removeEventListener("change", applyCachedSettings);
+    window.removeEventListener("pageshow", applyCachedSettings);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+    engine.disconnect();
   }
 
-  chrome.storage.onChanged.addListener((changes, areaName) => {
+  function applyCachedSettings() {
+    if (disposed) {
+      return;
+    }
+
+    engine.apply(settingsCache);
+  }
+
+  async function loadSettings() {
+    if (!hasExtensionContext()) {
+      dispose();
+      return;
+    }
+
+    try {
+      settingsCache = await chrome.storage.sync.get(core.DEFAULT_SETTINGS);
+      applyCachedSettings();
+    } catch {
+      dispose();
+    }
+  }
+
+  function handleStorageChanged(changes, areaName) {
     if (areaName !== "sync") {
       return;
     }
 
-    if (changes.enabled || changes.mode || changes.disabledHosts) {
-      applyStoredSettings();
+    const nextSettings = { ...settingsCache };
+    let shouldApply = false;
+    for (const key of ["enabled", "mode", "disabledHosts"]) {
+      if (changes[key]) {
+        nextSettings[key] = changes[key].newValue;
+        shouldApply = true;
+      }
     }
-  });
 
-  chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (shouldApply) {
+      settingsCache = core.normalizeSettings(nextSettings);
+      applyCachedSettings();
+    }
+  }
+
+  function handleMessage(message, _sender, sendResponse) {
     if (!message || message.type !== "rosewash:settings-updated") {
       return false;
     }
 
-    engine.apply(message.settings);
+    settingsCache = core.normalizeSettings(message.settings);
+    engine.apply(settingsCache);
     sendResponse({ ok: true, stats: engine.stats() });
     return true;
-  });
+  }
 
-  darkQuery.addEventListener("change", applyStoredSettings);
-  applyStoredSettings();
+  function handleVisibilityChange() {
+    if (!document.hidden) {
+      applyCachedSettings();
+    }
+  }
+
+  function start() {
+    if (!hasExtensionContext()) {
+      dispose();
+      return;
+    }
+
+    darkQuery.addEventListener("change", applyCachedSettings);
+    window.addEventListener("pageshow", applyCachedSettings);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    try {
+      chrome.storage.onChanged.addListener(handleStorageChanged);
+      chrome.runtime.onMessage.addListener(handleMessage);
+      loadSettings();
+    } catch {
+      dispose();
+    }
+  }
+
+  start();
 })();
-

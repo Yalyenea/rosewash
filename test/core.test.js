@@ -61,6 +61,14 @@ test("uses the same moon theme for auto dark and manual moon", async () => {
   assert.equal(autoDarkTheme, manualMoonTheme);
 });
 
+test("uses the same dawn theme for auto light and manual dawn", async () => {
+  const core = await loadCore();
+  const autoLightTheme = core.resolveThemeMode("auto", false);
+  const manualDawnTheme = core.resolveThemeMode("dawn", true);
+  assert.equal(autoLightTheme, "dawn");
+  assert.equal(autoLightTheme, manualDawnTheme);
+});
+
 test("turns dark neutral text light in moon mode", async () => {
   const core = await loadCore();
   assert.equal(core.shouldTintTextColor("moon", core.parseColor("rgb(17, 17, 17)"), false), true);

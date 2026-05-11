@@ -3,6 +3,8 @@
 
   const THEME_ATTRIBUTE = "data-rosewash-theme";
   const TINT_ATTRIBUTE = "data-rosewash-tinted";
+  const HAD_STYLE_ATTRIBUTE = "data-rosewash-had-style";
+  const ORIGINAL_STYLE_ATTRIBUTE = "data-rosewash-original-style";
 
   const PALETTES = Object.freeze({
     dawn: Object.freeze({
@@ -234,11 +236,18 @@
     let observer = null;
     let pendingRoots = new Set();
     let pendingTimer = null;
+    let activeMode = null;
     let activeTheme = null;
 
     function remember(element) {
       if (originalStyles.has(element)) {
         return;
+      }
+
+      if (!element.hasAttribute(ORIGINAL_STYLE_ATTRIBUTE)) {
+        const originalStyle = element.getAttribute("style");
+        element.setAttribute(HAD_STYLE_ATTRIBUTE, originalStyle === null ? "false" : "true");
+        element.setAttribute(ORIGINAL_STYLE_ATTRIBUTE, originalStyle || "");
       }
 
       const styles = {};
@@ -274,6 +283,8 @@
       }
 
       element.removeAttribute(TINT_ATTRIBUTE);
+      element.removeAttribute(HAD_STYLE_ATTRIBUTE);
+      element.removeAttribute(ORIGINAL_STYLE_ATTRIBUTE);
     }
 
     function restoreTintedElements() {
@@ -281,6 +292,24 @@
         restoreElement(element);
       }
       tintedElements.clear();
+    }
+
+    function restoreStaleTintedElements() {
+      const selector = `[${TINT_ATTRIBUTE}][${HAD_STYLE_ATTRIBUTE}][${ORIGINAL_STYLE_ATTRIBUTE}]`;
+      const staleElements = [
+        ...(document.documentElement.matches(selector) ? [document.documentElement] : []),
+        ...document.querySelectorAll(selector)
+      ];
+      for (const element of staleElements) {
+        if (element.getAttribute(HAD_STYLE_ATTRIBUTE) === "true") {
+          element.setAttribute("style", element.getAttribute(ORIGINAL_STYLE_ATTRIBUTE) || "");
+        } else {
+          element.removeAttribute("style");
+        }
+        element.removeAttribute(TINT_ATTRIBUTE);
+        element.removeAttribute(HAD_STYLE_ATTRIBUTE);
+        element.removeAttribute(ORIGINAL_STYLE_ATTRIBUTE);
+      }
     }
 
     function tintBorders(element, computedStyle, palette) {
@@ -391,11 +420,16 @@
     function clear() {
       disconnectObserver();
       restoreTintedElements();
+      activeMode = null;
       activeTheme = null;
       document.documentElement.removeAttribute(THEME_ATTRIBUTE);
     }
 
     function apply(settings) {
+      if (!activeTheme) {
+        restoreStaleTintedElements();
+      }
+
       const normalized = normalizeSettings(settings);
       const host = hostFromUrl(document.location.href);
       if (!normalized.enabled || isHostDisabled(host, normalized.disabledHosts)) {
@@ -405,10 +439,11 @@
 
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       const theme = resolveThemeMode(normalized.mode, prefersDark);
-      if (activeTheme && activeTheme !== theme) {
+      if (activeTheme && (activeTheme !== theme || activeMode !== normalized.mode)) {
         restoreTintedElements();
       }
 
+      activeMode = normalized.mode;
       activeTheme = theme;
       document.documentElement.setAttribute(THEME_ATTRIBUTE, theme);
       setStyle(document.documentElement, "color-scheme", theme === "moon" ? "dark" : "light");
@@ -419,7 +454,7 @@
     }
 
     function stats() {
-      return { theme: activeTheme, tinted: tintedElements.size };
+      return { mode: activeMode, theme: activeTheme, tinted: tintedElements.size };
     }
 
     return { apply, clear, stats, disconnect: disconnectObserver };
