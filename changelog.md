@@ -10,6 +10,9 @@
 - Added the MIT license file for public repository publishing.
 - Added a GitHub Actions release workflow that builds and uploads the extension
   zip for version tags.
+- Added README screenshots for Dawn and Moon effects on public, account-free
+  pages.
+- Removed the local absolute install path from README.
 
 ## 0.1.0 - 2026-04-29
 
