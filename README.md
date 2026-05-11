@@ -1,7 +1,8 @@
 # Rosewash
 
 Rosewash is a lightweight Manifest V3 browser extension that tints harsh white
-web pages with a restrained Rose Pine Dawn or Moon palette.
+web pages with restrained, curated color palettes. The current MVP ships with
+Rose Pine Dawn and Moon.
 
 The first version is intentionally small: it does not try to become a full
 dynamic theme engine. It finds pure-white and near-white backgrounds, replaces
@@ -57,4 +58,10 @@ injected scripts cannot be patched in place.
 
 Rosewash only changes the parts of a page that are likely to be eye-straining
 white surfaces. Complex app-specific theme engines, filter inversion, and
-site-specific rule packs are left for later versions.
+site-specific rule packs are left for later versions. Future versions should add
+more theme presets through a shared palette registry instead of site-specific or
+theme-specific branches.
+
+## License
+
+MIT.

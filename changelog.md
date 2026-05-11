@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Planned the next roadmap around strength control, curated theme presets, and
+  target-specific Chromium, Firefox, and Safari packaging.
+- Documented the future `preset + appearance` settings direction for adding
+  non-Rose-Pine palettes without spreading theme-specific branches through the
+  content engine.
+- Added the MIT license file for public repository publishing.
+
 ## 0.1.0 - 2026-04-29
 
 - Added the initial Manifest V3 Rosewash extension.
@@ -24,3 +33,5 @@
 - Stopped applying default settings before stored settings load.
 - Added stale Rosewash inline-style cleanup for extension reloads.
 - Added explicit `<all_urls>` host permission for page tinting.
+- Switched content injection to `document_start` and removed the extra
+  animation-frame delay from Auto theme reapplication.

@@ -6,7 +6,6 @@
   const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
   let settingsCache = core.DEFAULT_SETTINGS;
   let disposed = false;
-  let applyFrame = 0;
 
   function hasExtensionContext() {
     try {
@@ -18,12 +17,8 @@
 
   function dispose() {
     disposed = true;
-    if (applyFrame) {
-      window.cancelAnimationFrame(applyFrame);
-      applyFrame = 0;
-    }
-    darkQuery.removeEventListener("change", scheduleApply);
-    window.removeEventListener("pageshow", scheduleApply);
+    darkQuery.removeEventListener("change", applyCachedSettings);
+    window.removeEventListener("pageshow", applyCachedSettings);
     document.removeEventListener("visibilitychange", handleVisibilityChange);
     engine.disconnect();
   }
@@ -48,21 +43,6 @@
     } catch {
       dispose();
     }
-  }
-
-  function scheduleApply() {
-    if (disposed) {
-      return;
-    }
-
-    if (applyFrame) {
-      window.cancelAnimationFrame(applyFrame);
-    }
-
-    applyFrame = window.requestAnimationFrame(() => {
-      applyFrame = 0;
-      applyCachedSettings();
-    });
   }
 
   function handleStorageChanged(changes, areaName) {
@@ -98,7 +78,7 @@
 
   function handleVisibilityChange() {
     if (!document.hidden) {
-      scheduleApply();
+      applyCachedSettings();
     }
   }
 
@@ -108,8 +88,8 @@
       return;
     }
 
-    darkQuery.addEventListener("change", scheduleApply);
-    window.addEventListener("pageshow", scheduleApply);
+    darkQuery.addEventListener("change", applyCachedSettings);
+    window.addEventListener("pageshow", applyCachedSettings);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     try {
