@@ -20,12 +20,24 @@ surfaces alone.
 - Media, canvas, SVG, inputs, editors, and code block protection.
 - No runtime dependencies or build step.
 
+## Screenshots
+
+These examples use public pages captured from a fresh browser profile with no
+personal account state.
+
+| Site | Dawn | Moon |
+| --- | --- | --- |
+| [Wikipedia](https://en.wikipedia.org/wiki/Web_browser) | ![Rosewash Dawn on Wikipedia](docs/assets/screenshots/wikipedia-dawn.png) | ![Rosewash Moon on Wikipedia](docs/assets/screenshots/wikipedia-moon.png) |
+| [GitHub Docs](https://docs.github.com/en/get-started/start-your-journey/hello-world) | ![Rosewash Dawn on GitHub Docs](docs/assets/screenshots/github-docs-dawn.png) | ![Rosewash Moon on GitHub Docs](docs/assets/screenshots/github-docs-moon.png) |
+| [Python Docs](https://docs.python.org/3/tutorial/index.html) | ![Rosewash Dawn on Python Docs](docs/assets/screenshots/python-docs-dawn.png) | ![Rosewash Moon on Python Docs](docs/assets/screenshots/python-docs-moon.png) |
+| [arXiv](https://arxiv.org/abs/1706.03762) | ![Rosewash Dawn on arXiv](docs/assets/screenshots/arxiv-dawn.png) | ![Rosewash Moon on arXiv](docs/assets/screenshots/arxiv-moon.png) |
+
 ## Install In Chromium
 
 1. Open `chrome://extensions`.
 2. Enable Developer mode.
 3. Load unpacked.
-4. Select this project folder: `/Users/yfff/Projects/tools/rosewash`.
+4. Select this project folder.
 
 ## Dev Loop
 
