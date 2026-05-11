@@ -38,6 +38,19 @@ just package
 
 `just package` writes `.tmp/rosewash.zip`.
 
+## GitHub Release
+
+GitHub Actions publishes a release zip whenever a version tag is pushed:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The workflow runs `just package`, then uploads `rosewash-v0.1.0.zip` to the
+matching GitHub Release. It can also be run manually against an existing tag
+from the Actions tab.
+
 After reloading the unpacked extension in `chrome://extensions`, reload any
 already-open test tabs once. Chrome leaves old content scripts in existing page
 contexts after extension reloads; Rosewash guards new scripts against that state
