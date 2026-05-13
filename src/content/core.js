@@ -34,6 +34,7 @@
   const VALID_MODES = new Set(["auto", "dawn", "moon"]);
   const RESTORED_PROPERTIES = [
     "background-color",
+    "background-image",
     "border-top-color",
     "border-right-color",
     "border-bottom-color",
@@ -156,6 +157,58 @@
       && channelSpread(color) <= 92;
   }
 
+  function isDarkSurfaceColor(color) {
+    return Boolean(color)
+      && color.alpha > 0.05
+      && luminance(color) <= 92
+      && channelSpread(color) <= 86;
+  }
+
+  function isLightNeutralColor(color) {
+    return Boolean(color)
+      && color.alpha > 0.05
+      && luminance(color) >= 150
+      && channelSpread(color) <= 100;
+  }
+
+  function classifyPageTone(samples) {
+    let darkSurfaces = 0;
+    let lightSurfaces = 0;
+    let lightText = 0;
+    let darkSignals = 0;
+
+    for (const sample of samples) {
+      const background = parseColor(sample.backgroundColor);
+      const color = parseColor(sample.color);
+      if (isDarkSurfaceColor(background)) {
+        darkSurfaces += 1;
+      }
+      if (isNearWhiteColor(background)) {
+        lightSurfaces += 1;
+      }
+      if (isLightNeutralColor(color)) {
+        lightText += 1;
+      }
+      if (sample.darkSignal === true) {
+        darkSignals += 1;
+      }
+    }
+
+    if (darkSurfaces >= 1 && darkSignals >= 1 && lightSurfaces === 0) {
+      return "dark-only";
+    }
+
+    if (darkSurfaces >= 2 && lightText >= 1 && lightSurfaces === 0) {
+      return "dark-only";
+    }
+
+    if (lightSurfaces > 0) {
+      return "light-page";
+    }
+
+    return "mixed";
+  }
+
   function normalizeHost(host) {
     return String(host || "")
       .trim()
@@ -214,6 +267,19 @@
     return theme === "moon" || surfaceTinted;
   }
 
+  function isGeneratedBackgroundImage(value) {
+    return typeof value === "string" && /\b(?:linear|radial|conic|repeating-linear|repeating-radial|repeating-conic)-gradient\(/.test(value);
+  }
+
+  function generatedBackgroundHasDarkSurface(value) {
+    if (!isGeneratedBackgroundImage(value)) {
+      return false;
+    }
+
+    const colors = value.match(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)/g) || [];
+    return colors.some((color) => isDarkSurfaceColor(parseColor(color)));
+  }
+
   function isElementNode(node) {
     return node && node.nodeType === 1;
   }
@@ -238,6 +304,7 @@
     let pendingTimer = null;
     let activeMode = null;
     let activeTheme = null;
+    let activePageTone = "mixed";
 
     function remember(element) {
       if (originalStyles.has(element)) {
@@ -327,10 +394,50 @@
       }
     }
 
+    function lightenDarkBorders(element, computedStyle, palette) {
+      const borderPairs = [
+        ["border-top-color", computedStyle.borderTopColor],
+        ["border-right-color", computedStyle.borderRightColor],
+        ["border-bottom-color", computedStyle.borderBottomColor],
+        ["border-left-color", computedStyle.borderLeftColor]
+      ];
+
+      for (const [property, value] of borderPairs) {
+        const color = parseColor(value);
+        if (isDarkSurfaceColor(color) || isLightNeutralColor(color)) {
+          setStyle(element, property, palette.overlay);
+        }
+      }
+    }
+
     function tintText(element, computedStyle, palette, surfaceTinted) {
       if (shouldTintTextColor(activeTheme, parseColor(computedStyle.color), surfaceTinted)) {
         setStyle(element, "color", palette.text);
       }
+    }
+
+    function lightenDarkText(element, computedStyle, palette) {
+      if (isLightNeutralColor(parseColor(computedStyle.color))) {
+        setStyle(element, "color", palette.text);
+      }
+    }
+
+    function detectPageTone() {
+      const candidates = [
+        document.documentElement,
+        document.body,
+        ...document.querySelectorAll("main, article, section, header, footer, nav, aside")
+      ].filter(Boolean).slice(0, 32);
+
+      return classifyPageTone(candidates.map((element) => {
+        const computedStyle = window.getComputedStyle(element);
+        return {
+          backgroundColor: computedStyle.backgroundColor,
+          color: computedStyle.color,
+          darkSignal: element.classList.contains("dark")
+            || computedStyle.colorScheme.split(/\s+/).includes("dark")
+        };
+      }));
     }
 
     function processElement(element, theme) {
@@ -343,6 +450,22 @@
       const background = parseColor(computedStyle.backgroundColor);
       const hasBackgroundImage = computedStyle.backgroundImage && computedStyle.backgroundImage !== "none";
       const pageElement = isPageElement(element, document);
+
+      if (theme === "dawn" && activePageTone === "dark-only") {
+        const generatedBackground = isGeneratedBackgroundImage(computedStyle.backgroundImage);
+        const darkSurfaceTinted = (!hasBackgroundImage && isDarkSurfaceColor(background))
+          || generatedBackgroundHasDarkSurface(computedStyle.backgroundImage);
+        if (darkSurfaceTinted) {
+          if (generatedBackground) {
+            setStyle(element, "background-image", "none");
+          }
+          setStyle(element, "background-color", pageElement ? palette.base : palette.surface);
+        }
+
+        lightenDarkText(element, computedStyle, palette);
+        lightenDarkBorders(element, computedStyle, palette);
+        return;
+      }
 
       const surfaceTinted = !hasBackgroundImage && isNearWhiteColor(background);
       if (surfaceTinted) {
@@ -422,6 +545,7 @@
       restoreTintedElements();
       activeMode = null;
       activeTheme = null;
+      activePageTone = "mixed";
       document.documentElement.removeAttribute(THEME_ATTRIBUTE);
     }
 
@@ -439,12 +563,15 @@
 
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       const theme = resolveThemeMode(normalized.mode, prefersDark);
-      if (activeTheme && (activeTheme !== theme || activeMode !== normalized.mode)) {
+      const themeChanged = activeTheme && (activeTheme !== theme || activeMode !== normalized.mode);
+      if (themeChanged) {
         restoreTintedElements();
       }
 
+      const pageTone = activeTheme && !themeChanged ? activePageTone : detectPageTone();
       activeMode = normalized.mode;
       activeTheme = theme;
+      activePageTone = pageTone;
       document.documentElement.setAttribute(THEME_ATTRIBUTE, theme);
       setStyle(document.documentElement, "color-scheme", theme === "moon" ? "dark" : "light");
       setStyle(document.documentElement, "scrollbar-color", `${PALETTES[theme].muted} ${PALETTES[theme].base}`);
@@ -454,7 +581,7 @@
     }
 
     function stats() {
-      return { mode: activeMode, theme: activeTheme, tinted: tintedElements.size };
+      return { mode: activeMode, theme: activeTheme, pageTone: activePageTone, tinted: tintedElements.size };
     }
 
     return { apply, clear, stats, disconnect: disconnectObserver };
@@ -464,9 +591,14 @@
     DEFAULT_SETTINGS,
     PALETTES,
     createEngine,
+    classifyPageTone,
     hostFromUrl,
     isDarkNeutralColor,
+    isDarkSurfaceColor,
+    generatedBackgroundHasDarkSurface,
     isHostDisabled,
+    isLightNeutralColor,
+    isGeneratedBackgroundImage,
     isNearWhiteColor,
     luminance,
     normalizeSettings,

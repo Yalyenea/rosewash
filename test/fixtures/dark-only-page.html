@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en" class="dark" style="background-color: #080b0a">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rosewash Dark-Only Fixture</title>
+    <style>
+      :root {
+        --background: #080b0a;
+        --foreground: #e5dbc0;
+        --panel-bg: rgba(5, 8, 6, 0.64);
+        --panel-border: rgba(201, 181, 142, 0.14);
+      }
+
+      body {
+        background: var(--background);
+        color: var(--foreground);
+        font: 16px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+        margin: 0;
+      }
+
+      main {
+        background: var(--background);
+        margin: 32px auto;
+        max-width: 760px;
+        padding: 32px;
+      }
+
+      section {
+        background: var(--panel-bg);
+        border: 1px solid var(--panel-border);
+        margin-top: 18px;
+        padding: 18px;
+      }
+
+      .paper-card {
+        background: linear-gradient(180deg, #d1bd95, #b39769);
+        color: #18150f;
+        margin-top: 18px;
+        padding: 18px;
+      }
+
+      img {
+        display: block;
+        height: 24px;
+        width: 24px;
+      }
+    </style>
+  </head>
+  <body style="background-color: #080b0a">
+    <main>
+      <h1>Dark-only fixture ready</h1>
+      <section>
+        <p>A dark-only panel should become a Dawn surface.</p>
+      </section>
+      <div class="paper-card">Already-light document cards should keep their own ink.</div>
+      <img alt="" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">
+    </main>
+    <script src="../../src/content/core.js"></script>
+    <script src="fixture-runner.js"></script>
+  </body>
+</html>

@@ -13,6 +13,8 @@
 - Added README screenshots for Dawn and Moon effects on public, account-free
   pages.
 - Removed the local absolute install path from README.
+- Added dark-only page detection so Dawn and Auto-light can adapt sites that do
+  not provide a native light appearance.
 
 ## 0.1.0 - 2026-04-29
 

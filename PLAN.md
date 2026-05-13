@@ -22,6 +22,8 @@ then grows into a small set of curated theme presets.
 - [x] No default pre-apply before stored settings load.
 - [x] Stale Rosewash inline-style cleanup after extension reload.
 - [x] Early `document_start` injection and immediate Auto theme reapply.
+- [x] Dark-only page detection and Dawn adaptation for sites without a light
+  appearance.
 
 ## Implementation Rules
 
@@ -30,6 +32,8 @@ then grows into a small set of curated theme presets.
 - Preserve media, canvas, SVG, editors, form controls, and code blocks.
 - Store user state in `chrome.storage.sync`.
 - Avoid site-specific rules until the generic behavior proves insufficient.
+- Keep dark-only adaptation generic: detect page tone first, then reuse the
+  active light palette instead of adding URL rules.
 - Add theme presets through a shared palette registry, not scattered conditionals.
 - Keep every preset small: base, surface, overlay, muted, text, and link tokens.
 

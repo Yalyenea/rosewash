@@ -45,6 +45,38 @@ test("detects harsh near-white backgrounds", async () => {
   assert.equal(core.isNearWhiteColor(core.parseColor("rgba(255, 255, 255, 0)")), false);
 });
 
+test("detects dark-only page tone from root surfaces and theme signals", async () => {
+  const core = await loadCore();
+  assert.equal(core.isDarkSurfaceColor(core.parseColor("#080b0a")), true);
+  assert.equal(core.isLightNeutralColor(core.parseColor("rgba(224, 214, 189, 0.72)")), true);
+  assert.equal(core.classifyPageTone([
+    { backgroundColor: "rgb(8, 11, 10)", color: "rgb(0, 0, 0)", darkSignal: true },
+    { backgroundColor: "rgb(8, 11, 10)", color: "rgba(224, 214, 189, 0.72)" }
+  ]), "dark-only");
+});
+
+test("keeps normal light and mixed pages out of dark-only adaptation", async () => {
+  const core = await loadCore();
+  assert.equal(core.classifyPageTone([
+    { backgroundColor: "rgb(255, 255, 255)", color: "rgb(17, 17, 17)" },
+    { backgroundColor: "rgb(250, 250, 250)", color: "rgb(17, 17, 17)" }
+  ]), "light-page");
+  assert.equal(core.classifyPageTone([
+    { backgroundColor: "rgb(8, 11, 10)", color: "rgb(229, 219, 192)" },
+    { backgroundColor: "rgb(255, 250, 243)", color: "rgb(87, 82, 121)" }
+  ]), "light-page");
+});
+
+test("detects generated CSS gradients without treating image urls as safe backgrounds", async () => {
+  const core = await loadCore();
+  assert.equal(core.isGeneratedBackgroundImage("linear-gradient(rgb(8, 11, 10), transparent)"), true);
+  assert.equal(core.isGeneratedBackgroundImage("radial-gradient(circle, #111, #0000)"), true);
+  assert.equal(core.isGeneratedBackgroundImage("url(hero.png)"), false);
+  assert.equal(core.isGeneratedBackgroundImage("none"), false);
+  assert.equal(core.generatedBackgroundHasDarkSurface("linear-gradient(rgb(8, 11, 10), transparent)"), true);
+  assert.equal(core.generatedBackgroundHasDarkSurface("linear-gradient(#d1bd95, #b39769)"), false);
+});
+
 test("resolves auto mode from system preference", async () => {
   const core = await loadCore();
   assert.equal(core.resolveThemeMode("auto", false), "dawn");
