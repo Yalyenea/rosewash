@@ -22,9 +22,6 @@ surfaces alone.
 
 ## Screenshots
 
-These examples use public pages captured from a fresh browser profile with no
-personal account state.
-
 | Site | Dawn | Moon |
 | --- | --- | --- |
 | [Wikipedia](https://en.wikipedia.org/wiki/Web_browser) | ![Rosewash Dawn on Wikipedia](docs/assets/screenshots/wikipedia-dawn.png) | ![Rosewash Moon on Wikipedia](docs/assets/screenshots/wikipedia-moon.png) |
