@@ -17,6 +17,8 @@ surfaces alone.
 - Near-white background and border tinting.
 - Dark-only page detection that adapts dark native sites to Dawn in Auto-light
   or manual Dawn mode.
+- CSS Color 4 tone detection for modern `lab()`, `oklab()`, `lch()`, and
+  `oklch()` authored pages.
 - Moon mode turns dark neutral text into Rose Pine Moon text, even when the
   text sits on a transparent child element.
 - Media, canvas, SVG, inputs, editors, and code block protection.
@@ -82,10 +84,11 @@ injected scripts cannot be patched in place.
 
 Rosewash only changes the parts of a page that are likely to be eye-straining
 white surfaces, plus dark-only pages that expose no light appearance for
-Auto-light or Dawn users. Complex app-specific theme engines, filter inversion,
-and site-specific rule packs are left for later versions. Future versions should
-add more theme presets through a shared palette registry instead of
-site-specific or theme-specific branches.
+Auto-light or Dawn users. It samples common document roots and SPA app roots so
+Tailwind-style pages can be classified without URL-specific rules. Complex
+app-specific theme engines, filter inversion, and site-specific rule packs are
+left for later versions. Future versions should add more theme presets through a
+shared palette registry instead of site-specific or theme-specific branches.
 
 ## License
 

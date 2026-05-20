@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rosewash OKLCH Fixture</title>
+    <style>
+      html,
+      body {
+        background: oklch(0.09 0.025 45);
+        color: oklch(0.922 0 0);
+        margin: 0;
+      }
+
+      #root > div {
+        background: #050505;
+        color: oklch(0.922 0 0);
+        min-height: 100vh;
+        padding: 32px;
+      }
+
+      main {
+        background: transparent;
+        color: inherit;
+      }
+
+      article {
+        background: rgb(10, 10, 10);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        margin-top: 18px;
+        padding: 18px;
+      }
+
+      h1 {
+        background-image: linear-gradient(180deg, #fff, #89827a);
+        background-clip: text;
+        color: transparent;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <div>
+        <main>
+          <h1>OKLCH dark-only fixture</h1>
+          <article>Dark cards should adapt to Dawn.</article>
+        </main>
+      </div>
+    </div>
+    <script src="../../src/content/core.js"></script>
+    <script src="fixture-runner.js"></script>
+  </body>
+</html>

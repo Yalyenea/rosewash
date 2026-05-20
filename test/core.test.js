@@ -37,6 +37,16 @@ test("parses rgb, rgba, and hex colors", async () => {
   });
 });
 
+test("parses modern CSS color functions enough for tone detection", async () => {
+  const core = await loadCore();
+  assert.equal(core.isDarkSurfaceColor(core.parseColor("lab(0.0177803 0 0)")), true);
+  assert.equal(core.isLightNeutralColor(core.parseColor("lab(93.736 0 0)")), true);
+  assert.equal(core.isDarkSurfaceColor(core.parseColor("oklch(0.09 0.025 45)")), true);
+  assert.equal(core.isDarkSurfaceColor(core.parseColor("oklab(0.144788 7.45058e-9 7.45058e-9 / 0.8)")), true);
+  assert.equal(core.isLightNeutralColor(core.parseColor("oklch(0.922 0 0)")), true);
+  assert.equal(core.isLightNeutralColor(core.parseColor("oklch(70.5% .213 47.604)")), false);
+});
+
 test("detects harsh near-white backgrounds", async () => {
   const core = await loadCore();
   assert.equal(core.isNearWhiteColor(core.parseColor("rgb(255, 255, 255)")), true);
@@ -52,6 +62,14 @@ test("detects dark-only page tone from root surfaces and theme signals", async (
   assert.equal(core.classifyPageTone([
     { backgroundColor: "rgb(8, 11, 10)", color: "rgb(0, 0, 0)", darkSignal: true },
     { backgroundColor: "rgb(8, 11, 10)", color: "rgba(224, 214, 189, 0.72)" }
+  ]), "dark-only");
+  assert.equal(core.classifyPageTone([
+    { backgroundColor: "rgba(0, 0, 0, 0)", color: "rgb(0, 0, 0)", darkSignal: true },
+    { backgroundColor: "lab(0.0177803 0 0)", color: "lab(93.736 0 0)" }
+  ]), "dark-only");
+  assert.equal(core.classifyPageTone([
+    { backgroundColor: "oklch(0.09 0.025 45)", color: "rgb(0, 0, 0)" },
+    { backgroundColor: "rgb(5, 5, 5)", color: "oklch(0.922 0 0)" }
   ]), "dark-only");
 });
 

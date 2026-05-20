@@ -92,6 +92,74 @@
     return null;
   }
 
+  function parseColorAlpha(value) {
+    if (!value) {
+      return 1;
+    }
+
+    const number = parseFloat(value);
+    if (!Number.isFinite(number)) {
+      return 1;
+    }
+
+    return Math.max(0, Math.min(1, value.endsWith("%") ? number / 100 : number));
+  }
+
+  function colorFromLightness(lightness, chroma) {
+    const base = clamp255(lightness * 255);
+    const spread = clamp255(chroma);
+    return {
+      red: clamp255(base + (spread * 0.55)),
+      green: clamp255(base - (spread * 0.25)),
+      blue: clamp255(base - (spread * 0.3)),
+      alpha: 1
+    };
+  }
+
+  function parseCssColor4(value) {
+    const match = value.match(/^(oklab|oklch|lab|lch)\((.*)\)$/);
+    if (!match) {
+      return null;
+    }
+
+    const fn = match[1];
+    const [body, alphaBody] = match[2].split("/");
+    const parts = body.match(/[-+]?(?:\d*\.)?\d+(?:e[-+]?\d+)?%?/g);
+    if (!parts || parts.length < 3) {
+      return null;
+    }
+
+    const rawLightness = parseFloat(parts[0]);
+    if (!Number.isFinite(rawLightness)) {
+      return null;
+    }
+
+    const lightness = parts[0].endsWith("%")
+      ? rawLightness / 100
+      : (fn.startsWith("ok") ? rawLightness : rawLightness / 100);
+    let chroma = 0;
+
+    if (fn === "lab" || fn === "oklab") {
+      const a = parseFloat(parts[1]);
+      const b = parseFloat(parts[2]);
+      if (!Number.isFinite(a) || !Number.isFinite(b)) {
+        return null;
+      }
+      chroma = Math.sqrt((a * a) + (b * b));
+    } else {
+      chroma = parseFloat(parts[1]);
+      if (!Number.isFinite(chroma)) {
+        return null;
+      }
+    }
+
+    const normalizedChroma = fn.startsWith("ok") ? chroma * 600 : chroma * 2;
+    return {
+      ...colorFromLightness(Math.max(0, Math.min(1, lightness)), normalizedChroma),
+      alpha: parseColorAlpha((alphaBody || "").trim())
+    };
+  }
+
   function parseColor(value) {
     if (!value || typeof value !== "string") {
       return null;
@@ -104,6 +172,11 @@
 
     if (trimmed.startsWith("#")) {
       return parseHexColor(trimmed);
+    }
+
+    const cssColor4 = parseCssColor4(trimmed);
+    if (cssColor4) {
+      return cssColor4;
     }
 
     if (!trimmed.startsWith("rgb")) {
@@ -124,7 +197,7 @@
 
     let alpha = 1;
     if (parts[3] !== undefined) {
-      alpha = parts[3].endsWith("%") ? parseFloat(parts[3]) / 100 : parseFloat(parts[3]);
+      alpha = parseColorAlpha(parts[3]);
     }
 
     return {
@@ -426,10 +499,15 @@
       const candidates = [
         document.documentElement,
         document.body,
+        document.querySelector("#root"),
+        ...(document.body ? Array.from(document.body.children) : []),
+        ...document.querySelectorAll("#root > *"),
         ...document.querySelectorAll("main, article, section, header, footer, nav, aside")
-      ].filter(Boolean).slice(0, 32);
+      ].filter(Boolean);
 
-      return classifyPageTone(candidates.map((element) => {
+      const uniqueCandidates = Array.from(new Set(candidates)).slice(0, 48);
+
+      return classifyPageTone(uniqueCandidates.map((element) => {
         const computedStyle = window.getComputedStyle(element);
         return {
           backgroundColor: computedStyle.backgroundColor,
@@ -453,7 +531,7 @@
 
       if (theme === "dawn" && activePageTone === "dark-only") {
         const generatedBackground = isGeneratedBackgroundImage(computedStyle.backgroundImage);
-        const darkSurfaceTinted = (!hasBackgroundImage && isDarkSurfaceColor(background))
+        const darkSurfaceTinted = isDarkSurfaceColor(background)
           || generatedBackgroundHasDarkSurface(computedStyle.backgroundImage);
         if (darkSurfaceTinted) {
           if (generatedBackground) {

@@ -7,7 +7,8 @@ Rosewash has three small layers.
 `src/content/core.js` is the testable engine. It owns:
 
 - Rose Pine Dawn and Moon tokens.
-- Color parsing and near-white detection.
+- Color parsing and near-white detection, including the CSS Color 4 `lab()`,
+  `oklab()`, `lch()`, and `oklch()` forms used by modern Tailwind output.
 - Dark-only page tone detection for Dawn light adaptation.
 - Site block matching.
 - DOM tinting and restoration.
@@ -19,11 +20,12 @@ text in Moon mode, or dark-only page surfaces in Dawn mode. Original inline
 values are recorded and restored when the extension is disabled, the current
 host is blocked, or the active theme changes.
 
-Before scanning, the engine samples root and major layout elements to classify
-the page as `light-page`, `dark-only`, or `mixed`. Dark-only adaptation runs only
-when the resolved theme is Dawn; it changes dark neutral surfaces and dark CSS
-gradients to Dawn paper tones, and light neutral text to Dawn text, while
-continuing to skip media, SVG, iframes, inputs, editors, and code.
+Before scanning, the engine samples root, SPA app roots such as `#root > *`, and
+major layout elements to classify the page as `light-page`, `dark-only`, or
+`mixed`. Dark-only adaptation runs only when the resolved theme is Dawn; it
+changes dark neutral surfaces and dark CSS gradients to Dawn paper tones, and
+light neutral text to Dawn text, while continuing to skip media, SVG, iframes,
+inputs, editors, and code.
 
 Original inline style snapshots are also mirrored onto `data-rosewash-*`
 attributes. This lets a new content-script instance clean up stale inline styles

@@ -24,6 +24,7 @@ then grows into a small set of curated theme presets.
 - [x] Early `document_start` injection and immediate Auto theme reapply.
 - [x] Dark-only page detection and Dawn adaptation for sites without a light
   appearance.
+- [x] CSS Color 4 and SPA app-root sampling for modern dark-only pages.
 
 ## Implementation Rules
 
@@ -34,6 +35,8 @@ then grows into a small set of curated theme presets.
 - Avoid site-specific rules until the generic behavior proves insufficient.
 - Keep dark-only adaptation generic: detect page tone first, then reuse the
   active light palette instead of adding URL rules.
+- Include modern CSS color functions in tone detection before considering
+  site-specific presets.
 - Add theme presets through a shared palette registry, not scattered conditionals.
 - Keep every preset small: base, surface, overlay, muted, text, and link tokens.
 

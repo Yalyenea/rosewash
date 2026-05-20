@@ -15,6 +15,9 @@
 - Removed the local absolute install path from README.
 - Added dark-only page detection so Dawn and Auto-light can adapt sites that do
   not provide a native light appearance.
+- Fixed dark-only detection for modern CSS Color 4 pages that expose colors as
+  `lab()`, `oklab()`, `lch()`, or `oklch()` and for SPA roots outside semantic
+  layout elements.
 
 ## 0.1.0 - 2026-04-29
 
