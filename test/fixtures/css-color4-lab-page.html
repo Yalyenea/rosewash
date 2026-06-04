@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rosewash LAB Fixture</title>
+    <style>
+      body {
+        background: lab(0.0177803 0 0);
+        color: lab(93.736 0 0);
+        font: 16px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+        margin: 0;
+      }
+
+      header,
+      footer {
+        background: lab(0.0177803 0 0);
+        padding: 20px 32px;
+      }
+
+      main {
+        background: transparent;
+        min-height: 80vh;
+        padding: 32px;
+      }
+
+      .skill-card {
+        background: lab(4 0 0);
+        border: 1px solid color-mix(in lab, white 10%, transparent);
+        padding: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>Skills Directory</header>
+    <main>
+      <div class="skill-card">LAB dark-only fixture</div>
+    </main>
+    <footer>Footer</footer>
+    <script src="../../src/content/core.js"></script>
+    <script src="fixture-runner.js"></script>
+  </body>
+</html>

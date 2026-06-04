@@ -13,6 +13,13 @@
 - Added README screenshots for Dawn and Moon effects on public, account-free
   pages.
 - Removed the local absolute install path from README.
+- Added dark-only page detection so Dawn and Auto-light can adapt sites that do
+  not provide a native light appearance.
+- Fixed dark-only detection for modern CSS Color 4 pages that expose colors as
+  `lab()`, `oklab()`, `lch()`, or `oklch()` and for SPA roots outside semantic
+  layout elements.
+- Fixed document-start dark-only pages so Dawn/Auto-light re-detects them after
+  the page body loads instead of requiring the popup switch to be toggled.
 
 ## 0.1.0 - 2026-04-29
 

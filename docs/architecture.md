@@ -7,16 +7,30 @@ Rosewash has three small layers.
 `src/content/core.js` is the testable engine. It owns:
 
 - Rose Pine Dawn and Moon tokens.
-- Color parsing and near-white detection.
+- Color parsing and near-white detection, including the CSS Color 4 `lab()`,
+  `oklab()`, `lch()`, and `oklch()` forms used by modern Tailwind output.
+- Dark-only page tone detection for Dawn light adaptation.
 - Site block matching.
 - DOM tinting and restoration.
 - A throttled `MutationObserver` for newly inserted elements.
 
 The engine only writes inline styles to elements it has classified as needing a
-small accessibility tint: near-white surfaces, near-white borders, or dark
-neutral text in Moon mode. Original inline values are recorded and restored when
-the extension is disabled, the current host is blocked, or the active theme
-changes.
+small accessibility tint: near-white surfaces, near-white borders, dark neutral
+text in Moon mode, or dark-only page surfaces in Dawn mode. Original inline
+values are recorded and restored when the extension is disabled, the current
+host is blocked, or the active theme changes.
+
+Before scanning, the engine samples root, SPA app roots such as `#root > *`, and
+major layout elements to classify the page as `light-page`, `dark-only`, or
+`mixed`. Dark-only adaptation runs only when the resolved theme is Dawn; it
+changes dark neutral surfaces and dark CSS gradients to Dawn paper tones, and
+light neutral text to Dawn text, while continuing to skip media, SVG, iframes,
+inputs, editors, and code.
+
+If the first document-start pass can only classify the page as `mixed`, the
+next runtime re-apply restores Rosewash's own inline styles before sampling
+again. This keeps early `color-scheme: light` writes from masking a dark-only
+page once the body and app roots have rendered.
 
 Original inline style snapshots are also mirrored onto `data-rosewash-*`
 attributes. This lets a new content-script instance clean up stale inline styles
@@ -30,6 +44,8 @@ left by an older orphaned script after extension reload.
 - Keeps an in-page settings cache after the first storage read.
 - Does not apply the default settings before storage has returned.
 - Re-applies on storage changes.
+- Re-applies after `DOMContentLoaded` and `load` using the already-loaded
+  settings cache.
 - Re-applies from the cache immediately after system dark mode changes in Auto
   mode.
 - Re-checks settings when a page becomes visible again.
