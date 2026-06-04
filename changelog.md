@@ -18,6 +18,8 @@
 - Fixed dark-only detection for modern CSS Color 4 pages that expose colors as
   `lab()`, `oklab()`, `lch()`, or `oklch()` and for SPA roots outside semantic
   layout elements.
+- Fixed document-start dark-only pages so Dawn/Auto-light re-detects them after
+  the page body loads instead of requiring the popup switch to be toggled.
 
 ## 0.1.0 - 2026-04-29
 

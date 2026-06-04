@@ -5,6 +5,7 @@
   const engine = core.createEngine({ document, window });
   const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
   let settingsCache = core.DEFAULT_SETTINGS;
+  let settingsLoaded = false;
   let disposed = false;
 
   function hasExtensionContext() {
@@ -18,13 +19,15 @@
   function dispose() {
     disposed = true;
     darkQuery.removeEventListener("change", applyCachedSettings);
+    document.removeEventListener("DOMContentLoaded", applyCachedSettings);
+    window.removeEventListener("load", applyCachedSettings);
     window.removeEventListener("pageshow", applyCachedSettings);
     document.removeEventListener("visibilitychange", handleVisibilityChange);
     engine.disconnect();
   }
 
   function applyCachedSettings() {
-    if (disposed) {
+    if (disposed || !settingsLoaded) {
       return;
     }
 
@@ -38,7 +41,8 @@
     }
 
     try {
-      settingsCache = await chrome.storage.sync.get(core.DEFAULT_SETTINGS);
+      settingsCache = core.normalizeSettings(await chrome.storage.sync.get(core.DEFAULT_SETTINGS));
+      settingsLoaded = true;
       applyCachedSettings();
     } catch {
       dispose();
@@ -61,6 +65,7 @@
 
     if (shouldApply) {
       settingsCache = core.normalizeSettings(nextSettings);
+      settingsLoaded = true;
       applyCachedSettings();
     }
   }
@@ -71,6 +76,7 @@
     }
 
     settingsCache = core.normalizeSettings(message.settings);
+    settingsLoaded = true;
     engine.apply(settingsCache);
     sendResponse({ ok: true, stats: engine.stats() });
     return true;
@@ -89,6 +95,8 @@
     }
 
     darkQuery.addEventListener("change", applyCachedSettings);
+    document.addEventListener("DOMContentLoaded", applyCachedSettings);
+    window.addEventListener("load", applyCachedSettings);
     window.addEventListener("pageshow", applyCachedSettings);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 

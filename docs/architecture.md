@@ -27,6 +27,11 @@ changes dark neutral surfaces and dark CSS gradients to Dawn paper tones, and
 light neutral text to Dawn text, while continuing to skip media, SVG, iframes,
 inputs, editors, and code.
 
+If the first document-start pass can only classify the page as `mixed`, the
+next runtime re-apply restores Rosewash's own inline styles before sampling
+again. This keeps early `color-scheme: light` writes from masking a dark-only
+page once the body and app roots have rendered.
+
 Original inline style snapshots are also mirrored onto `data-rosewash-*`
 attributes. This lets a new content-script instance clean up stale inline styles
 left by an older orphaned script after extension reload.
@@ -39,6 +44,8 @@ left by an older orphaned script after extension reload.
 - Keeps an in-page settings cache after the first storage read.
 - Does not apply the default settings before storage has returned.
 - Re-applies on storage changes.
+- Re-applies after `DOMContentLoaded` and `load` using the already-loaded
+  settings cache.
 - Re-applies from the cache immediately after system dark mode changes in Auto
   mode.
 - Re-checks settings when a page becomes visible again.

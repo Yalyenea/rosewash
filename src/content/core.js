@@ -618,6 +618,12 @@
       pendingRoots = new Set();
     }
 
+    function applyRootTheme(theme) {
+      document.documentElement.setAttribute(THEME_ATTRIBUTE, theme);
+      setStyle(document.documentElement, "color-scheme", theme === "moon" ? "dark" : "light");
+      setStyle(document.documentElement, "scrollbar-color", `${PALETTES[theme].muted} ${PALETTES[theme].base}`);
+    }
+
     function clear() {
       disconnectObserver();
       restoreTintedElements();
@@ -642,17 +648,18 @@
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       const theme = resolveThemeMode(normalized.mode, prefersDark);
       const themeChanged = activeTheme && (activeTheme !== theme || activeMode !== normalized.mode);
-      if (themeChanged) {
+      const pageToneStale = activeTheme && !themeChanged && activePageTone === "mixed";
+      if (themeChanged || pageToneStale) {
         restoreTintedElements();
       }
 
-      const pageTone = activeTheme && !themeChanged ? activePageTone : detectPageTone();
+      const pageTone = activeTheme && !themeChanged && !pageToneStale
+        ? activePageTone
+        : detectPageTone();
       activeMode = normalized.mode;
       activeTheme = theme;
       activePageTone = pageTone;
-      document.documentElement.setAttribute(THEME_ATTRIBUTE, theme);
-      setStyle(document.documentElement, "color-scheme", theme === "moon" ? "dark" : "light");
-      setStyle(document.documentElement, "scrollbar-color", `${PALETTES[theme].muted} ${PALETTES[theme].base}`);
+      applyRootTheme(theme);
       scan(document.documentElement, theme);
       observe();
       return { enabled: true, theme, tinted: tintedElements.size };
