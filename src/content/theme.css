@@ -27,3 +27,24 @@ html[data-rosewash-theme] a:not([data-rosewash-ignore]) {
   color: var(--rosewash-link);
 }
 
+/* Site shells that paint top bars via CSS-in-JS (e.g. Zhihu AppHeader). */
+html[data-rosewash-theme] .AppHeader,
+html[data-rosewash-theme] .LeanAppHeaderBar,
+html[data-rosewash-theme] .MobileAppHeader {
+  background-color: var(--rosewash-base) !important;
+  background-image: none !important;
+  color: var(--rosewash-text) !important;
+}
+
+html[data-rosewash-theme] .AppHeader :not(svg):not(svg *),
+html[data-rosewash-theme] .LeanAppHeaderBar :not(svg):not(svg *),
+html[data-rosewash-theme] .MobileAppHeader :not(svg):not(svg *) {
+  color: var(--rosewash-text) !important;
+}
+
+html[data-rosewash-theme] .AppHeader a:not([data-rosewash-ignore]),
+html[data-rosewash-theme] .LeanAppHeaderBar a:not([data-rosewash-ignore]),
+html[data-rosewash-theme] .MobileAppHeader a:not([data-rosewash-ignore]) {
+  color: var(--rosewash-link) !important;
+}
+

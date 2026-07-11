@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rosewash default canvas fixture</title>
+    <style>
+      /* jmlr.org-style: no explicit white fill; rely on the browser canvas. */
+      body {
+        color: #000;
+        font: 16px/1.5 verdana, helvetica, sans-serif;
+        margin: 0;
+      }
+
+      a {
+        color: #3030a0;
+        text-decoration: none;
+      }
+
+      #fixed {
+        height: 100%;
+        left: 0;
+        position: fixed;
+        top: 0;
+        width: 8em;
+      }
+
+      #content {
+        margin: 1em 0.5em 1em 10em;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="fixed">
+      <p align="right"><a href="#content">Home</a></p>
+      <p align="right"><a href="#content">Papers</a></p>
+    </div>
+    <div id="content">
+      <h1>Default canvas journal page</h1>
+      <p>Transparent html/body should still receive the page base tint.</p>
+    </div>
+    <script src="../../src/content/core.js"></script>
+    <script src="fixture-runner.js"></script>
+  </body>
+</html>

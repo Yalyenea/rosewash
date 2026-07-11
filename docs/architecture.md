@@ -16,9 +16,21 @@ Rosewash has three small layers.
 
 The engine only writes inline styles to elements it has classified as needing a
 small accessibility tint: near-white surfaces, near-white borders, dark neutral
-text in Moon mode, or dark-only page surfaces in Dawn mode. Original inline
-values are recorded and restored when the extension is disabled, the current
-host is blocked, or the active theme changes.
+text in Moon mode, dark-only page surfaces in Dawn mode, or page-level chrome
+bars. Transparent `html`/`body` roots on non-dark-only pages are treated as the
+default white canvas (legacy sites such as jmlr.org never set an explicit white
+fill). Original inline values are recorded and restored when the extension is
+disabled, the current host is blocked, or the active theme changes.
+
+Page chrome is `header`, `[role=banner]`, top-level `nav`, and known app shells
+such as Zhihu's `.AppHeader` / `.LeanAppHeaderBar` / `.MobileAppHeader`, when
+they sit outside `main`/`article`. Opaque, gradient, or known transparent
+shells are filled with `palette.base` using `!important`, and descendant text
+is forced to `palette.text` with `!important` so branded top bars (arXiv red,
+Zhihu Emotion-styled white bars) blend into the page. `theme.css` also pins the
+known Zhihu shell selectors to `--rosewash-base` so CSS-in-JS layers cannot win
+the cascade. Chrome membership is rebuilt on every restore so disable/theme
+changes do not leave stale force-color tracking.
 
 Before scanning, the engine samples root, SPA app roots such as `#root > *`, and
 major layout elements to classify the page as `light-page`, `dark-only`, or

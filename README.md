@@ -14,7 +14,11 @@ surfaces alone.
 - Auto / Dawn / Moon mode.
 - Global enable switch.
 - Per-site block list.
-- Near-white background and border tinting.
+- Near-white background and border tinting, including default transparent
+  page canvases used by older sites such as jmlr.org.
+- Page-level headers and navigation bars blend into the active page base,
+  including colored top bars such as arXiv's and Zhihu `AppHeader` shells
+  (forced even when styled via CSS-in-JS).
 - Dark-only page detection that adapts dark native sites to Dawn in Auto-light
   or manual Dawn mode.
 - CSS Color 4 tone detection for modern `lab()`, `oklab()`, `lch()`, and

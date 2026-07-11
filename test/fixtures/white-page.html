@@ -12,6 +12,46 @@
         margin: 0;
       }
 
+      .site-header {
+        align-items: center;
+        background: #b31b1b;
+        color: #fff;
+        display: flex;
+        justify-content: space-between;
+        padding: 16px 24px;
+      }
+
+      .site-header a {
+        color: #fff;
+      }
+
+      .AppHeader {
+        align-items: center;
+        background: #ffffff;
+        border-bottom: 1px solid #ebebeb;
+        color: #121212;
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 24px;
+      }
+
+      .AppHeader .brand {
+        color: #1772f6;
+        font-weight: 600;
+      }
+
+      .LeanAppHeaderBar {
+        background: transparent;
+        border-bottom: 1px solid #ebebeb;
+        color: #121212;
+        padding: 12px 24px;
+      }
+
+      .LeanAppHeaderBar .fill {
+        background: #fff;
+        padding: 4px 0;
+      }
+
       main {
         background: #ffffff;
         border: 1px solid #f8f8f8;
@@ -39,12 +79,26 @@
     </style>
   </head>
   <body>
-    <main>
+    <header class="site-header">
+      <strong>Research Archive</strong>
+      <nav><a href="#content">Search</a></nav>
+    </header>
+    <div class="AppHeader">
+      <span class="brand">Zhihu-style bar</span>
+      <span>Home</span>
+    </div>
+    <header class="LeanAppHeaderBar" role="banner">
+      <div class="fill">LeanAppHeaderBar transparent shell</div>
+    </header>
+    <main id="content">
       <h1>Rosewash fixture ready</h1>
       <p>This page starts with pure white surfaces and dark neutral text.</p>
       <section>
         <h2>Article surface</h2>
         <p class="explicit-dark">A normal content block should become warm paper.</p>
+        <header class="inline-header" style="background:#0066cc;color:#fff;padding:8px 12px;">
+          In-article header should stay colored.
+        </header>
       </section>
       <pre><code>const preserved = "code block";</code></pre>
     </main>

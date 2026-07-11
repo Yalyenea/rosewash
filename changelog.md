@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Blended page-level headers and navigation bars into the page base, including
+  colored top bars on arXiv and similarly structured pages.
+- Included Zhihu-style `.AppHeader` shells in page-chrome tinting so white and
+  branded top bars map to the active page base.
+- Forced Zhihu top bars (`.AppHeader`, `.LeanAppHeaderBar`, `.MobileAppHeader`)
+  through extension CSS and `!important` inline fills so Emotion/CSS-in-JS
+  backgrounds cannot keep pure white chrome.
+- Fixed page-chrome restore tracking, near-white surface overwrites of chrome
+  base fills, and `tintText` stripping chrome `!important` text colors.
+- Tinted default transparent `html`/`body` canvases so legacy journal sites
+  such as jmlr.org (no explicit white background) receive the page base.
+- Planned companion Chromium theme packages that map Helium/Chrome chrome UI to
+  the same Rosewash base colors as the page canvas (official Rosé Pine themes
+  use overlay for the toolbar and look one step darker).
 - Planned the next roadmap around strength control, curated theme presets, and
   target-specific Chromium, Firefox, and Safari packaging.
 - Documented the future `preset + appearance` settings direction for adding

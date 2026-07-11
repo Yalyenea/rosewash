@@ -25,6 +25,9 @@ then grows into a small set of curated theme presets.
 - [x] Dark-only page detection and Dawn adaptation for sites without a light
   appearance.
 - [x] CSS Color 4 and SPA app-root sampling for modern dark-only pages.
+- [x] Page-chrome tinting for headers, banners, nav, and known shells
+  (arXiv-style bars, Zhihu `AppHeader` / `LeanAppHeaderBar` / `MobileAppHeader`).
+- [x] Transparent `html`/`body` canvas tinting for legacy sites such as jmlr.org.
 
 ## Implementation Rules
 
@@ -42,21 +45,27 @@ then grows into a small set of curated theme presets.
 
 ## Next Milestones
 
-1. Add a strength slider that blends original white with the selected preset's
+1. Ship companion Chromium theme packages (`themes/rosewash-dawn`,
+   `themes/rosewash-moon`) whose frame/toolbar colors use the same **base**
+   tokens as the content engine (`#faf4ed` / `#232136`), so Helium/Chrome UI
+   matches Rosewash page canvas. Official Rosé Pine themes map toolbar to
+   overlay and look one step darker than the page; document install steps for
+   Helium and note that the built-in color picker cannot take exact hex.
+2. Add a strength slider that blends original white with the selected preset's
    paper tones.
-2. Add a theme preset selector. Keep Rose Pine as the default, then add a small
+3. Add a theme preset selector. Keep Rose Pine as the default, then add a small
    curated set such as Catppuccin, Gruvbox, Nord, and Solarized.
-3. Refactor settings from `mode` alone to `preset + appearance` so Auto, light,
+4. Refactor settings from `mode` alone to `preset + appearance` so Auto, light,
    and dark variants work across all presets without duplicating UI logic.
-4. Add keyboard shortcuts for global toggle and site toggle.
-5. Split browser packaging into target-specific manifests and archives:
+5. Add keyboard shortcuts for global toggle and site toggle.
+6. Split browser packaging into target-specific manifests and archives:
    Chromium first, Firefox next, Safari after the WebExtension wrapper path is
    understood.
-6. Add Firefox packaging and validation:
+7. Add Firefox packaging and validation:
    `browser_specific_settings.gecko.id`, Firefox manifest checks, and a real
    temporary-load smoke test.
-7. Add Safari evaluation and packaging:
+8. Add Safari evaluation and packaging:
    Safari Web Extension conversion notes, Xcode wrapper output under `.tmp/`,
    and manual permission/storage/content-script smoke checks.
-8. Add optional site presets for complex pages such as GitHub, arXiv, Notion,
+9. Add optional site presets for complex pages such as GitHub, arXiv, Notion,
    Overleaf, and Google Docs.

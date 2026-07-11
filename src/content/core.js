@@ -216,11 +216,25 @@
     return Math.max(color.red, color.green, color.blue) - Math.min(color.red, color.green, color.blue);
   }
 
+  function isTransparentColor(color) {
+    return !color || color.alpha <= 0.05;
+  }
+
   function isNearWhiteColor(color) {
     return Boolean(color)
       && color.alpha > 0.05
       && luminance(color) >= 244
       && channelSpread(color) <= 22;
+  }
+
+  // Default document canvas is white when html/body leave background unset.
+  // Sites like jmlr.org rely on that and never set an explicit near-white fill.
+  function isSurfaceTintBackground(color, { pageElement = false, pageTone = "mixed" } = {}) {
+    if (isNearWhiteColor(color)) {
+      return true;
+    }
+
+    return pageElement && pageTone !== "dark-only" && isTransparentColor(color);
   }
 
   function isDarkNeutralColor(color) {
@@ -340,6 +354,31 @@
     return theme === "moon" || surfaceTinted;
   }
 
+  const PAGE_CHROME_CLASSES = new Set([
+    "AppHeader",
+    "LeanAppHeaderBar",
+    "MobileAppHeader"
+  ]);
+
+  function hasPageChromeClass(className) {
+    return String(className || "")
+      .split(/\s+/)
+      .some((token) => PAGE_CHROME_CLASSES.has(token));
+  }
+
+  function isPageChromeCandidate({ tagName, role, className, insideContent, insideChrome }) {
+    if (insideContent) {
+      return false;
+    }
+
+    const normalizedTag = String(tagName || "").toLowerCase();
+    const normalizedRole = String(role || "").toLowerCase();
+    return normalizedTag === "header"
+      || normalizedRole === "banner"
+      || hasPageChromeClass(className)
+      || (normalizedTag === "nav" && !insideChrome);
+  }
+
   function isGeneratedBackgroundImage(value) {
     return typeof value === "string" && /\b(?:linear|radial|conic|repeating-linear|repeating-radial|repeating-conic)-gradient\(/.test(value);
   }
@@ -372,6 +411,7 @@
   function createEngine({ document, window }) {
     const originalStyles = new WeakMap();
     const tintedElements = new Set();
+    let tintedPageChrome = new WeakSet();
     let observer = null;
     let pendingRoots = new Set();
     let pendingTimer = null;
@@ -400,10 +440,10 @@
       originalStyles.set(element, styles);
     }
 
-    function setStyle(element, property, value) {
+    function setStyle(element, property, value, priority = "") {
       remember(element);
       tintedElements.add(element);
-      element.style.setProperty(property, value);
+      element.style.setProperty(property, value, priority);
       element.setAttribute(TINT_ATTRIBUTE, activeTheme);
     }
 
@@ -432,6 +472,7 @@
         restoreElement(element);
       }
       tintedElements.clear();
+      tintedPageChrome = new WeakSet();
     }
 
     function restoreStaleTintedElements() {
@@ -487,6 +528,33 @@
       if (shouldTintTextColor(activeTheme, parseColor(computedStyle.color), surfaceTinted)) {
         setStyle(element, "color", palette.text);
       }
+    }
+
+    function elementClassName(element) {
+      return typeof element.className === "string"
+        ? element.className
+        : element.getAttribute("class") || "";
+    }
+
+    function isPageChromeElement(element) {
+      return isPageChromeCandidate({
+        tagName: element.tagName,
+        role: element.getAttribute("role"),
+        className: elementClassName(element),
+        insideContent: Boolean(element.closest("main, article")),
+        insideChrome: Boolean(element.parentElement?.closest(
+          "header, [role='banner'], .AppHeader, .LeanAppHeaderBar, .MobileAppHeader"
+        ))
+      });
+    }
+
+    function isInsideTintedPageChrome(element) {
+      for (let current = element; current; current = current.parentElement) {
+        if (tintedPageChrome.has(current)) {
+          return true;
+        }
+      }
+      return false;
     }
 
     function lightenDarkText(element, computedStyle, palette) {
@@ -545,15 +613,39 @@
         return;
       }
 
-      const surfaceTinted = !hasBackgroundImage && isNearWhiteColor(background);
-      if (surfaceTinted) {
+      const generatedBackground = isGeneratedBackgroundImage(computedStyle.backgroundImage);
+      const chromeCandidate = isPageChromeElement(element);
+      const knownChromeClass = hasPageChromeClass(elementClassName(element));
+      // Semantic headers / known site shells still paint when the root is
+      // transparent (background lives on a child or CSS-in-JS layer).
+      const pageChromeTinted = chromeCandidate
+        && (knownChromeClass || background?.alpha > 0.05 || generatedBackground)
+        && (knownChromeClass || !hasBackgroundImage || generatedBackground);
+      if (pageChromeTinted) {
+        if (generatedBackground || knownChromeClass || hasBackgroundImage) {
+          setStyle(element, "background-image", "none", "important");
+        }
+        setStyle(element, "background-color", palette.base, "important");
+        tintedPageChrome.add(element);
+      }
+
+      const insidePageChrome = isInsideTintedPageChrome(element);
+      if (insidePageChrome) {
+        setStyle(element, "color", palette.text, "important");
+      }
+
+      const surfaceTinted = !hasBackgroundImage
+        && isSurfaceTintBackground(background, { pageElement, pageTone: activePageTone });
+      if (surfaceTinted && !pageChromeTinted && !insidePageChrome) {
         const surface = element.tagName.toLowerCase() === "pre" && theme === "moon"
           ? palette.overlay
           : palette.surface;
         setStyle(element, "background-color", pageElement ? palette.base : surface);
       }
 
-      tintText(element, computedStyle, palette, surfaceTinted);
+      if (!insidePageChrome) {
+        tintText(element, computedStyle, palette, surfaceTinted);
+      }
       tintBorders(element, computedStyle, palette);
     }
 
@@ -685,6 +777,9 @@
     isLightNeutralColor,
     isGeneratedBackgroundImage,
     isNearWhiteColor,
+    isPageChromeCandidate,
+    isSurfaceTintBackground,
+    isTransparentColor,
     luminance,
     normalizeSettings,
     parseColor,
