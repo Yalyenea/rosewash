@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Expanded README install docs: Install From Release (download zip, extract,
+  load unpacked, update steps) and Install From Source for development.
 - Blended page-level headers and navigation bars into the page base, including
   colored top bars on arXiv and similarly structured pages.
 - Included Zhihu-style `.AppHeader` shells in page-chrome tinting so white and

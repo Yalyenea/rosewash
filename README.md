@@ -37,12 +37,45 @@ surfaces alone.
 | [Python Docs](https://docs.python.org/3/tutorial/index.html) | ![Rosewash Dawn on Python Docs](docs/assets/screenshots/python-docs-dawn.png) | ![Rosewash Moon on Python Docs](docs/assets/screenshots/python-docs-moon.png) |
 | [arXiv](https://arxiv.org/abs/1706.03762) | ![Rosewash Dawn on arXiv](docs/assets/screenshots/arxiv-dawn.png) | ![Rosewash Moon on arXiv](docs/assets/screenshots/arxiv-moon.png) |
 
-## Install In Chromium
+## Install From Release
 
-1. Open `chrome://extensions`.
-2. Enable Developer mode.
-3. Load unpacked.
-4. Select this project folder.
+Rosewash is not on the Chrome Web Store. Install from a [GitHub
+Release](https://github.com/Yalyenea/rosewash/releases) instead. Works in
+Chrome, Edge, Brave, Helium, and other Chromium browsers.
+
+1. Open the [latest release](https://github.com/Yalyenea/rosewash/releases/latest).
+2. Download `rosewash-vX.Y.Z.zip` (for example `rosewash-v0.1.0.zip`).
+3. Extract the zip to a stable folder you will keep (do not delete it later;
+   Chromium loads the extension from that path).
+4. Open the extensions page:
+   - Chrome / Brave / Helium: `chrome://extensions`
+   - Edge: `edge://extensions`
+5. Enable **Developer mode**.
+6. Click **Load unpacked** and select the **extracted folder** that contains
+   `manifest.json` (not the zip itself).
+
+To update later: download the newer release zip, replace the extracted folder
+contents, then click **Reload** on the extension card. Reload any already-open
+tabs once so pages pick up the new content script.
+
+Chrome may show a developer-mode warning on each browser restart. That is
+expected for sideloaded extensions and is safe to dismiss.
+
+## Install From Source
+
+For local development:
+
+1. Clone this repository.
+2. Open `chrome://extensions` (or the equivalent page above).
+3. Enable **Developer mode**.
+4. **Load unpacked** and select this project folder (the one that contains
+   `manifest.json`).
+
+After reloading the unpacked extension, reload any already-open test tabs once.
+Chrome leaves old content scripts in existing page contexts after extension
+reloads; Rosewash guards new scripts against that state and clears stale
+Rosewash inline styles when the new script starts, but old injected scripts
+cannot be patched in place.
 
 ## Dev Loop
 
@@ -55,7 +88,7 @@ just package
 
 `just package` writes `.tmp/rosewash.zip`.
 
-## GitHub Release
+## Publishing Releases
 
 GitHub Actions publishes a release zip whenever a version tag is pushed:
 
@@ -67,12 +100,6 @@ git push origin v0.1.0
 The workflow runs `just package`, then uploads `rosewash-v0.1.0.zip` to the
 matching GitHub Release. It can also be run manually against an existing tag
 from the Actions tab.
-
-After reloading the unpacked extension in `chrome://extensions`, reload any
-already-open test tabs once. Chrome leaves old content scripts in existing page
-contexts after extension reloads; Rosewash guards new scripts against that state
-and clears stale Rosewash inline styles when the new script starts, but old
-injected scripts cannot be patched in place.
 
 ## Palette
 
