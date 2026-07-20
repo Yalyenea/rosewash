@@ -36,6 +36,10 @@
   layout elements.
 - Fixed document-start dark-only pages so Dawn/Auto-light re-detects them after
   the page body loads instead of requiring the popup switch to be toggled.
+- Fixed dark-only detection for branded publication shells such as Substack
+  pages that paint a dark theme through nested `#entry` / `div#main` wrappers
+  and CSS variables (`--theme_bg_is_dark`, `--web_bg_color`) without a
+  semantic `<main>` or `prefers-color-scheme` signal.
 
 ## 0.1.0 - 2026-04-29
 

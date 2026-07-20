@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en" style="background-color: #171717">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rosewash Substack Dark Theme Fixture</title>
+    <style>
+      :root {
+        --web_bg_color: #171717;
+        --color_theme_bg_web: #171717;
+        --theme_bg_is_dark: 1;
+        --print_on_web_bg_color: #ffffff;
+        --background_contrast_1: #252525;
+      }
+
+      html {
+        background-color: var(--web_bg_color);
+      }
+
+      body {
+        background: transparent;
+        color: #363737;
+        font: 16px/1.5 Georgia, serif;
+        margin: 0;
+      }
+
+      /* Substack paints the page on a nested #entry / div#main shell, not <main>. */
+      #entry {
+        background: transparent;
+      }
+
+      #main.main.use-theme-bg {
+        background-color: var(--web_bg_color);
+        color: var(--print_on_web_bg_color);
+        margin: 0 auto;
+        max-width: 720px;
+        min-height: 100vh;
+        padding: 32px 24px;
+      }
+
+      .panel {
+        background: var(--background_contrast_1);
+        border: 1px solid #363636;
+        margin-top: 18px;
+        padding: 18px;
+      }
+
+      .logo {
+        background: #ffffff;
+        height: 32px;
+        width: 32px;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      // Script siblings used to crowd body-child tone samples on real Substack pages.
+      window.__rosewashFixtureMarker = true;
+    </script>
+    <div id="entry">
+      <div id="main" class="main typography use-theme-bg">
+        <h1>Substack dark publication fixture</h1>
+        <p>Nested dark theme shells should become Dawn paper in Auto-light or Dawn.</p>
+        <div class="panel">Elevated dark panels should lighten with the page.</div>
+        <div class="logo" aria-hidden="true"></div>
+      </div>
+    </div>
+    <script src="../../src/content/core.js"></script>
+    <script src="fixture-runner.js"></script>
+  </body>
+</html>

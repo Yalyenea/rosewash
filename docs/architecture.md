@@ -32,8 +32,12 @@ known Zhihu shell selectors to `--rosewash-base` so CSS-in-JS layers cannot win
 the cascade. Chrome membership is rebuilt on every restore so disable/theme
 changes do not leave stale force-color tracking.
 
-Before scanning, the engine samples root, SPA app roots such as `#root > *`, and
-major layout elements to classify the page as `light-page`, `dark-only`, or
+Before scanning, the engine samples root, SPA app roots such as `#root` /
+`#entry` / `#main` / `.main`, publication theme shells like
+`[class*='use-theme-bg']`, major layout elements, and a few root CSS custom
+properties (`--theme_bg_is_dark`, `--web_bg_color`, and related background
+tokens). Script and style nodes are skipped so they do not crowd out real
+layout samples. The result is classified as `light-page`, `dark-only`, or
 `mixed`. Dark-only adaptation runs only when the resolved theme is Dawn; it
 changes dark neutral surfaces and dark CSS gradients to Dawn paper tones, and
 light neutral text to Dawn text, while continuing to skip media, SVG, iframes,

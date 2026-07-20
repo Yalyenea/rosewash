@@ -281,19 +281,79 @@
       }
     }
 
-    if (darkSurfaces >= 1 && darkSignals >= 1 && lightSurfaces === 0) {
-      return "dark-only";
-    }
-
-    if (darkSurfaces >= 2 && lightText >= 1 && lightSurfaces === 0) {
-      return "dark-only";
-    }
-
     if (lightSurfaces > 0) {
       return "light-page";
     }
 
+    // Branded dark sites (e.g. Substack publication themes) often expose a
+    // single dark root plus light text, or an explicit dark theme flag, without
+    // prefers-color-scheme wiring or a second dark layout sample.
+    if (darkSurfaces >= 1 && darkSignals >= 1) {
+      return "dark-only";
+    }
+
+    if (darkSurfaces >= 1 && lightText >= 1) {
+      return "dark-only";
+    }
+
     return "mixed";
+  }
+
+  const TONE_SKIP_TAGS = new Set([
+    "SCRIPT",
+    "STYLE",
+    "LINK",
+    "META",
+    "NOSCRIPT",
+    "TEMPLATE",
+    "BR",
+    "HR",
+    "SOURCE",
+    "TRACK"
+  ]);
+
+  function isToneSampleElement(element) {
+    return isElementNode(element) && !TONE_SKIP_TAGS.has(element.tagName);
+  }
+
+  function readRootThemeSamples(window, document) {
+    const samples = [];
+    const rootStyle = window.getComputedStyle(document.documentElement);
+    if (!rootStyle || typeof rootStyle.getPropertyValue !== "function") {
+      return samples;
+    }
+
+    const darkFlag = String(rootStyle.getPropertyValue("--theme_bg_is_dark") || "")
+      .trim()
+      .toLowerCase();
+    if (darkFlag === "1" || darkFlag === "true") {
+      samples.push({
+        backgroundColor: "rgba(0, 0, 0, 0)",
+        color: "rgb(0, 0, 0)",
+        darkSignal: true
+      });
+    }
+
+    for (const property of [
+      "--web_bg_color",
+      "--color_theme_bg_web",
+      "--background",
+      "--bg",
+      "--color-bg",
+      "--background-color"
+    ]) {
+      const value = String(rootStyle.getPropertyValue(property) || "").trim();
+      if (!value) {
+        continue;
+      }
+      samples.push({
+        backgroundColor: value,
+        color: "rgb(0, 0, 0)",
+        darkSignal: false
+      });
+    }
+
+    return samples;
   }
 
   function normalizeHost(host) {
@@ -564,18 +624,24 @@
     }
 
     function detectPageTone() {
+      const bodyChildren = document.body
+        ? Array.from(document.body.children).filter(isToneSampleElement)
+        : [];
       const candidates = [
         document.documentElement,
         document.body,
         document.querySelector("#root"),
-        ...(document.body ? Array.from(document.body.children) : []),
-        ...document.querySelectorAll("#root > *"),
+        document.querySelector("#entry"),
+        document.querySelector("#main"),
+        document.querySelector(".main"),
+        document.querySelector("[class*='use-theme-bg']"),
+        ...bodyChildren,
+        ...document.querySelectorAll("#root > *, #entry > *, #main, .main"),
         ...document.querySelectorAll("main, article, section, header, footer, nav, aside")
-      ].filter(Boolean);
+      ].filter(isToneSampleElement);
 
       const uniqueCandidates = Array.from(new Set(candidates)).slice(0, 48);
-
-      return classifyPageTone(uniqueCandidates.map((element) => {
+      const elementSamples = uniqueCandidates.map((element) => {
         const computedStyle = window.getComputedStyle(element);
         return {
           backgroundColor: computedStyle.backgroundColor,
@@ -583,7 +649,12 @@
           darkSignal: element.classList.contains("dark")
             || computedStyle.colorScheme.split(/\s+/).includes("dark")
         };
-      }));
+      });
+
+      return classifyPageTone([
+        ...readRootThemeSamples(window, document),
+        ...elementSamples
+      ]);
     }
 
     function processElement(element, theme) {
@@ -779,10 +850,12 @@
     isNearWhiteColor,
     isPageChromeCandidate,
     isSurfaceTintBackground,
+    isToneSampleElement,
     isTransparentColor,
     luminance,
     normalizeSettings,
     parseColor,
+    readRootThemeSamples,
     resolveThemeMode,
     shouldTintTextColor
   });
