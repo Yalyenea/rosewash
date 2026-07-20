@@ -85,6 +85,16 @@ test("detects dark-only page tone from root surfaces and theme signals", async (
     { backgroundColor: "oklch(0.09 0.025 45)", color: "rgb(0, 0, 0)" },
     { backgroundColor: "rgb(5, 5, 5)", color: "oklch(0.922 0 0)" }
   ]), "dark-only");
+  // Single dark root + light body text (Substack-like nested shells).
+  assert.equal(core.classifyPageTone([
+    { backgroundColor: "rgb(23, 23, 23)", color: "rgb(0, 0, 0)" },
+    { backgroundColor: "rgb(23, 23, 23)", color: "rgb(255, 255, 255)" }
+  ]), "dark-only");
+  // Single dark root + publication theme flag, no light text on the root sample.
+  assert.equal(core.classifyPageTone([
+    { backgroundColor: "rgba(0, 0, 0, 0)", color: "rgb(0, 0, 0)", darkSignal: true },
+    { backgroundColor: "#171717", color: "rgb(0, 0, 0)" }
+  ]), "dark-only");
 });
 
 test("keeps normal light and mixed pages out of dark-only adaptation", async () => {
@@ -97,6 +107,18 @@ test("keeps normal light and mixed pages out of dark-only adaptation", async () 
     { backgroundColor: "rgb(8, 11, 10)", color: "rgb(229, 219, 192)" },
     { backgroundColor: "rgb(255, 250, 243)", color: "rgb(87, 82, 121)" }
   ]), "light-page");
+  // Lone dark surface without light text or theme flags stays mixed.
+  assert.equal(core.classifyPageTone([
+    { backgroundColor: "rgb(23, 23, 23)", color: "rgb(0, 0, 0)" }
+  ]), "mixed");
+});
+
+test("skips non-layout nodes when sampling page tone", async () => {
+  const core = await loadCore();
+  assert.equal(core.isToneSampleElement({ nodeType: 1, tagName: "DIV" }), true);
+  assert.equal(core.isToneSampleElement({ nodeType: 1, tagName: "SCRIPT" }), false);
+  assert.equal(core.isToneSampleElement({ nodeType: 1, tagName: "STYLE" }), false);
+  assert.equal(core.isToneSampleElement({ nodeType: 3, tagName: undefined }), false);
 });
 
 test("detects generated CSS gradients without treating image urls as safe backgrounds", async () => {
@@ -189,6 +211,7 @@ function createMockDom(nodes) {
   function createNode(spec, parent = null) {
     const attrs = new Map(Object.entries(spec.attrs || {}));
     const style = createStyleBag();
+    const customProperties = new Map(Object.entries(spec.cssVars || {}));
     const computed = {
       backgroundColor: spec.backgroundColor || "rgba(0, 0, 0, 0)",
       backgroundImage: spec.backgroundImage || "none",
@@ -197,12 +220,19 @@ function createMockDom(nodes) {
       borderRightColor: spec.borderRightColor || "rgb(0, 0, 0)",
       borderBottomColor: spec.borderBottomColor || "rgb(0, 0, 0)",
       borderLeftColor: spec.borderLeftColor || "rgb(0, 0, 0)",
-      colorScheme: spec.colorScheme || "normal"
+      colorScheme: spec.colorScheme || "normal",
+      getPropertyValue(property) {
+        if (customProperties.has(property)) {
+          return customProperties.get(property);
+        }
+        return "";
+      }
     };
     const children = [];
     const node = {
       nodeType: 1,
       tagName: String(spec.tag || "div").toUpperCase(),
+      id: spec.id || "",
       className: spec.className || "",
       classList: {
         contains(token) {
@@ -301,6 +331,7 @@ function createMockDom(nodes) {
     tag: "html",
     backgroundColor: nodes.htmlBackgroundColor || "rgb(255, 255, 255)",
     color: nodes.htmlColor || "rgb(0, 0, 0)",
+    cssVars: nodes.rootCssVars || {},
     children: [
       {
         tag: "body",
@@ -312,15 +343,26 @@ function createMockDom(nodes) {
   });
   const body = html.children[0];
 
+  function findBySelector(selector) {
+    if (selector.startsWith("#")) {
+      return byId.get(selector.slice(1)) || null;
+    }
+    if (selector.startsWith(".")) {
+      const token = selector.slice(1);
+      return all.find((node) => node.classList.contains(token)) || null;
+    }
+    if (selector.includes("use-theme-bg")) {
+      return all.find((node) => String(node.className).includes("use-theme-bg")) || null;
+    }
+    return null;
+  }
+
   const document = {
     documentElement: html,
     body,
     location: { href: nodes.href || "https://example.com/" },
     querySelector(selector) {
-      if (selector === "#root") {
-        return byId.get("root") || null;
-      }
-      return null;
+      return findBySelector(selector);
     },
     querySelectorAll(selector) {
       if (selector === "*") {
@@ -329,6 +371,23 @@ function createMockDom(nodes) {
       if (selector === "#root > *") {
         const root = byId.get("root");
         return root ? [...root.children] : [];
+      }
+      if (selector === "#root > *, #entry > *, #main, .main") {
+        const collected = [];
+        const root = byId.get("root");
+        const entry = byId.get("entry");
+        if (root) {
+          collected.push(...root.children);
+        }
+        if (entry) {
+          collected.push(...entry.children);
+        }
+        for (const node of all) {
+          if (node.id === "main" || node.classList.contains("main")) {
+            collected.push(node);
+          }
+        }
+        return collected;
       }
       if (selector === "main, article, section, header, footer, nav, aside") {
         return all.filter((node) => ["MAIN", "ARTICLE", "SECTION", "HEADER", "FOOTER", "NAV", "ASIDE"].includes(node.tagName));
@@ -553,6 +612,61 @@ test("engine paints transparent known chrome shells with important base fill", a
   assert.equal(byId.get("lean-bar").style.getPropertyPriority("background-color"), "important");
   assert.equal(byId.get("lean-bar").style.getPropertyPriority("background-image"), "important");
   assert.equal(byId.get("lean-fill").style.getPropertyValue("color"), palette.text);
+});
+
+test("engine adapts nested Substack-like dark publication shells in Dawn", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({
+    htmlBackgroundColor: "rgb(23, 23, 23)",
+    htmlColor: "rgb(0, 0, 0)",
+    bodyBackgroundColor: "rgba(0, 0, 0, 0)",
+    bodyColor: "rgb(54, 55, 55)",
+    prefersDark: false,
+    rootCssVars: {
+      "--web_bg_color": "#171717",
+      "--theme_bg_is_dark": "1",
+      "--print_on_web_bg_color": "#ffffff"
+    },
+    tree: [
+      {
+        id: "entry",
+        tag: "div",
+        backgroundColor: "rgba(0, 0, 0, 0)",
+        color: "rgb(54, 55, 55)",
+        children: [
+          {
+            id: "main",
+            tag: "div",
+            className: "main typography use-theme-bg",
+            backgroundColor: "rgb(23, 23, 23)",
+            color: "rgb(255, 255, 255)",
+            children: [
+              {
+                id: "panel",
+                tag: "div",
+                className: "panel",
+                backgroundColor: "rgb(37, 37, 37)",
+                color: "rgb(255, 255, 255)"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+
+  const engine = core.createEngine({ document, window });
+  const result = engine.apply({ enabled: true, mode: "auto", disabledHosts: [] });
+  const palette = core.PALETTES.dawn;
+
+  assert.equal(result.enabled, true);
+  assert.equal(result.theme, "dawn");
+  assert.equal(engine.stats().pageTone, "dark-only");
+  assert.equal(document.documentElement.style.getPropertyValue("background-color"), palette.base);
+  assert.equal(byId.get("main").style.getPropertyValue("background-color"), palette.surface);
+  assert.equal(byId.get("main").style.getPropertyValue("color"), palette.text);
+  assert.equal(byId.get("panel").style.getPropertyValue("background-color"), palette.surface);
+  assert.equal(byId.get("panel").style.getPropertyValue("color"), palette.text);
 });
 
 test("normalizes settings and blocked hosts", async () => {
