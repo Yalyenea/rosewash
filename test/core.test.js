@@ -58,22 +58,29 @@ test("detects harsh near-white backgrounds", async () => {
   const core = await loadCore();
   assert.equal(core.isNearWhiteColor(core.parseColor("rgb(255, 255, 255)")), true);
   assert.equal(core.isNearWhiteColor(core.parseColor("rgb(250, 244, 237)")), true);
+  assert.equal(core.isNearWhiteColor(core.parseColor("rgb(238, 242, 246)")), true);
   assert.equal(core.isNearWhiteColor(core.parseColor("rgb(240, 230, 210)")), false);
   assert.equal(core.isNearWhiteColor(core.parseColor("rgba(255, 255, 255, 0)")), false);
 });
 
-test("treats transparent page roots as white canvas, not generic transparent boxes", async () => {
+test("covers any opaque surface and transparent page roots", async () => {
   const core = await loadCore();
   const transparent = core.parseColor("rgba(0, 0, 0, 0)");
+  const coolPaper = core.parseColor("rgb(238, 242, 246)");
+  const darkShell = core.parseColor("rgb(10, 12, 16)");
+  const midGray = core.parseColor("rgb(150, 150, 150)");
   assert.equal(core.isTransparentColor(transparent), true);
-  assert.equal(core.isSurfaceTintBackground(transparent, { pageElement: true, pageTone: "mixed" }), true);
-  assert.equal(core.isSurfaceTintBackground(transparent, { pageElement: true, pageTone: "light-page" }), true);
-  assert.equal(core.isSurfaceTintBackground(transparent, { pageElement: true, pageTone: "dark-only" }), false);
-  assert.equal(core.isSurfaceTintBackground(transparent, { pageElement: false, pageTone: "mixed" }), false);
-  assert.equal(core.isSurfaceTintBackground(core.parseColor("rgb(255, 255, 255)"), {
-    pageElement: false,
-    pageTone: "mixed"
-  }), true);
+  assert.equal(core.isCoverSurfaceBackground(transparent, { pageElement: true }), true);
+  assert.equal(core.isCoverSurfaceBackground(transparent, { pageElement: false }), false);
+  assert.equal(core.isCoverSurfaceBackground(coolPaper, { pageElement: false }), true);
+  assert.equal(core.isCoverSurfaceBackground(darkShell, { pageElement: false }), true);
+  assert.equal(core.isCoverSurfaceBackground(midGray, { pageElement: false }), true);
+
+  const dawn = core.PALETTES.dawn;
+  assert.equal(core.surfaceColorFor(coolPaper, dawn, { pageElement: true }), dawn.base);
+  assert.equal(core.surfaceColorFor(coolPaper, dawn, { pageElement: false }), dawn.surface);
+  assert.equal(core.surfaceColorFor(darkShell, dawn, { pageElement: false }), dawn.surface);
+  assert.equal(core.surfaceColorFor(midGray, dawn, { pageElement: false }), dawn.overlay);
 });
 
 test("detects dark-only page tone from root surfaces and theme signals", async () => {
@@ -138,22 +145,28 @@ test("detects generated CSS gradients without treating image urls as safe backgr
   assert.equal(core.generatedBackgroundHasDarkSurface("linear-gradient(#d1bd95, #b39769)"), false);
 });
 
-test("classifies near-white design-system surface tokens for root CSS var overrides", async () => {
+test("classifies design-system surface and text tokens for root CSS var overrides", async () => {
   const core = await loadCore();
   const white = core.parseColor("#fcfcfc");
   const pure = core.parseColor("#ffffff");
+  const dark = core.parseColor("#0a0c10");
+  const ink = core.parseColor("rgb(22, 30, 27)");
   assert.equal(core.classifySurfaceCssVar("--main-surface-primary", white), "base");
   assert.equal(core.classifySurfaceCssVar("--bg-primary", pure), "base");
   assert.equal(core.classifySurfaceCssVar("--composer-surface-primary", pure), "surface");
   assert.equal(core.classifySurfaceCssVar("--main-surface-secondary", white), "surface");
   assert.equal(core.classifySurfaceCssVar("--sidebar-surface-primary", white), "base");
   assert.equal(core.classifySurfaceCssVar("--component-sidebar-bg", white), "base");
+  assert.equal(core.classifySurfaceCssVar("--ground", dark), "base");
+  assert.equal(core.classifySurfaceCssVar("--web_bg_color", dark), "base");
   // Do not recolor inverted button/icon whites or brand accents.
   assert.equal(core.classifySurfaceCssVar("--text-inverted", pure), null);
   assert.equal(core.classifySurfaceCssVar("--icon-inverted", pure), null);
   assert.equal(core.classifySurfaceCssVar("--interactive-label-primary-default", pure), null);
   assert.equal(core.classifySurfaceCssVar("--white", pure), null);
-  assert.equal(core.classifySurfaceCssVar("--main-surface-primary", core.parseColor("#232136")), null);
+  assert.equal(core.classifyTextCssVar("--ink", ink), "text");
+  assert.equal(core.classifyTextCssVar("--title-ink", ink), "text");
+  assert.equal(core.classifyTextCssVar("--text-inverted", pure), null);
 
   const palette = core.PALETTES.dawn;
   assert.equal(
@@ -161,12 +174,16 @@ test("classifies near-white design-system surface tokens for root CSS var overri
       ["--main-surface-primary", "#fcfcfc"],
       ["--composer-surface-primary", "#fff"],
       ["--text-inverted", "#fff"],
-      ["--bg-primary", "#ffffff"]
+      ["--bg-primary", "#ffffff"],
+      ["--ground", "rgb(238, 242, 246)"],
+      ["--ink", "rgb(22, 30, 27)"]
     ], palette)),
     JSON.stringify([
       ["--main-surface-primary", palette.base],
       ["--composer-surface-primary", palette.surface],
-      ["--bg-primary", palette.base]
+      ["--bg-primary", palette.base],
+      ["--ground", palette.base],
+      ["--ink", palette.text]
     ])
   );
 });
@@ -195,13 +212,14 @@ test("uses the same dawn theme for auto light and manual dawn", async () => {
   assert.equal(autoLightTheme, manualDawnTheme);
 });
 
-test("turns dark neutral text light in moon mode", async () => {
+test("covers opaque text colors in both dawn and moon", async () => {
   const core = await loadCore();
   assert.equal(core.shouldTintTextColor("moon", core.parseColor("rgb(17, 17, 17)"), false), true);
   assert.equal(core.shouldTintTextColor("moon", core.parseColor("#575279"), false), true);
-  assert.equal(core.shouldTintTextColor("moon", core.parseColor("#e0def4"), false), false);
-  assert.equal(core.shouldTintTextColor("dawn", core.parseColor("rgb(17, 17, 17)"), false), false);
-  assert.equal(core.shouldTintTextColor("dawn", core.parseColor("rgb(17, 17, 17)"), true), true);
+  assert.equal(core.shouldTintTextColor("moon", core.parseColor("#e0def4"), false), true);
+  assert.equal(core.shouldTintTextColor("dawn", core.parseColor("rgb(17, 17, 17)"), false), true);
+  assert.equal(core.shouldTintTextColor("dawn", core.parseColor("rgb(255, 255, 255)"), false), true);
+  assert.equal(core.shouldTintTextColor("dawn", core.parseColor("rgba(0, 0, 0, 0)"), false), false);
 });
 
 test("recognizes page-level headers and navigation without matching article chrome", async () => {
@@ -252,6 +270,7 @@ function createMockDom(nodes) {
     const attrs = new Map(Object.entries(spec.attrs || {}));
     const style = createStyleBag();
     const customProperties = new Map(Object.entries(spec.cssVars || {}));
+    const computedNames = [...customProperties.keys()];
     const computed = {
       backgroundColor: spec.backgroundColor || "rgba(0, 0, 0, 0)",
       backgroundImage: spec.backgroundImage || "none",
@@ -261,13 +280,20 @@ function createMockDom(nodes) {
       borderBottomColor: spec.borderBottomColor || "rgb(0, 0, 0)",
       borderLeftColor: spec.borderLeftColor || "rgb(0, 0, 0)",
       colorScheme: spec.colorScheme || "normal",
+      length: computedNames.length,
       getPropertyValue(property) {
         if (customProperties.has(property)) {
           return customProperties.get(property);
         }
         return "";
+      },
+      item(index) {
+        return computedNames[index] || "";
       }
     };
+    for (let index = 0; index < computedNames.length; index += 1) {
+      computed[index] = computedNames[index];
+    }
     const children = [];
     const node = {
       nodeType: 1,
@@ -528,7 +554,8 @@ test("engine tints colored and near-white page chrome to base with forced text",
   assert.equal(byId.get("zhihu-header").style.getPropertyValue("color"), palette.text);
   assert.equal(byId.get("zhihu-title").style.getPropertyPriority("color"), "important");
 
-  assert.equal(byId.get("inner-header").style.getPropertyValue("background-color"), "");
+  // Full cover remaps nested painted boxes too, not only near-white surfaces.
+  assert.equal(byId.get("inner-header").style.getPropertyValue("background-color"), palette.surface);
   assert.equal(byId.get("article-header").style.getPropertyValue("background-color"), palette.surface);
 
   engine.clear();
@@ -652,6 +679,57 @@ test("engine paints transparent known chrome shells with important base fill", a
   assert.equal(byId.get("lean-bar").style.getPropertyPriority("background-color"), "important");
   assert.equal(byId.get("lean-bar").style.getPropertyPriority("background-image"), "important");
   assert.equal(byId.get("lean-fill").style.getPropertyValue("color"), palette.text);
+});
+
+test("engine covers cool paper and dark shells in both themes", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({
+    htmlBackgroundColor: "rgb(238, 242, 246)",
+    bodyBackgroundColor: "rgb(238, 242, 246)",
+    bodyColor: "rgb(22, 30, 27)",
+    rootCssVars: {
+      "--ground": "rgb(238, 242, 246)",
+      "--ink": "rgb(22, 30, 27)"
+    },
+    tree: [
+      {
+        id: "card",
+        tag: "main",
+        backgroundColor: "rgb(10, 12, 16)",
+        color: "rgb(229, 231, 234)",
+        children: [
+          {
+            id: "title",
+            tag: "h1",
+            backgroundColor: "rgba(0, 0, 0, 0)",
+            color: "rgb(229, 231, 234)"
+          }
+        ]
+      }
+    ]
+  });
+
+  const engine = core.createEngine({ document, window });
+  const dawn = core.PALETTES.dawn;
+  const moon = core.PALETTES.moon;
+
+  let result = engine.apply({ enabled: true, mode: "dawn", disabledHosts: [] });
+  assert.equal(result.theme, "dawn");
+  assert.equal(document.documentElement.style.getPropertyValue("background-color"), dawn.base);
+  assert.equal(document.body.style.getPropertyValue("background-color"), dawn.base);
+  assert.equal(document.body.style.getPropertyValue("color"), dawn.text);
+  assert.equal(byId.get("card").style.getPropertyValue("background-color"), dawn.surface);
+  assert.equal(byId.get("title").style.getPropertyValue("color"), dawn.text);
+  assert.equal(document.documentElement.style.getPropertyValue("--ground"), dawn.base);
+  assert.equal(document.documentElement.style.getPropertyValue("--ink"), dawn.text);
+
+  result = engine.apply({ enabled: true, mode: "moon", disabledHosts: [] });
+  assert.equal(result.theme, "moon");
+  assert.equal(document.documentElement.style.getPropertyValue("background-color"), moon.base);
+  assert.equal(byId.get("card").style.getPropertyValue("background-color"), moon.surface);
+  assert.equal(byId.get("title").style.getPropertyValue("color"), moon.text);
+  assert.equal(document.documentElement.style.getPropertyValue("--ground"), moon.base);
+  assert.equal(document.documentElement.style.getPropertyValue("--ink"), moon.text);
 });
 
 test("engine adapts nested Substack-like dark publication shells in Dawn", async () => {

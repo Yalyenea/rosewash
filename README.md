@@ -1,30 +1,27 @@
 # Rosewash
 
-Rosewash is a lightweight Manifest V3 browser extension that tints harsh white
-web pages with restrained, curated color palettes. The current MVP ships with
-Rose Pine Dawn and Moon.
+Rosewash is a lightweight Manifest V3 browser extension that covers web pages
+with restrained Rose Pine palettes. The current MVP ships with Rose Pine Dawn
+and Moon.
 
-The first version is intentionally small: it does not try to become a full
-dynamic theme engine. It finds pure-white and near-white backgrounds, replaces
-them with warm paper tones, adjusts neutral dark text, and leaves media and code
-surfaces alone.
+It remaps page canvases, painted surfaces, neutral borders, and text into the
+active palette so everyday browsing follows Dawn or Moon instead of harsh site
+defaults. Media, canvas, SVG, inputs, editors, and code blocks stay protected.
 
 ## Features
 
 - Auto / Dawn / Moon mode.
 - Global enable switch.
 - Per-site block list.
-- Near-white background and border tinting, including default transparent
-  page canvases used by older sites such as jmlr.org.
+- Full-page Rose Pine cover for light, dark, and cool-paper sites.
+- Default transparent `html`/`body` canvases (legacy pages such as jmlr.org).
 - Page-level headers and navigation bars blend into the active page base,
   including colored top bars such as arXiv's and Zhihu `AppHeader` shells
   (forced even when styled via CSS-in-JS).
-- Dark-only page detection that adapts dark native sites to Dawn in Auto-light
-  or manual Dawn mode.
-- CSS Color 4 tone detection for modern `lab()`, `oklab()`, `lch()`, and
+- Root CSS custom property remapping for design-token backgrounds and text
+  (`--ground`, `--ink`, ChatGPT surface tokens, Substack theme vars, …).
+- CSS Color 4 tone parsing for modern `lab()`, `oklab()`, `lch()`, and
   `oklch()` authored pages.
-- Moon mode turns dark neutral text into Rose Pine Moon text, even when the
-  text sits on a transparent child element.
 - Media, canvas, SVG, inputs, editors, and code block protection.
 - No runtime dependencies or build step.
 
@@ -113,13 +110,13 @@ from the Actions tab.
 
 ## Scope
 
-Rosewash only changes the parts of a page that are likely to be eye-straining
-white surfaces, plus dark-only pages that expose no light appearance for
-Auto-light or Dawn users. It samples common document roots and SPA app roots so
-Tailwind-style pages can be classified without URL-specific rules. Complex
-app-specific theme engines, filter inversion, and site-specific rule packs are
-left for later versions. Future versions should add more theme presets through a
-shared palette registry instead of site-specific or theme-specific branches.
+Rosewash remaps page canvases, painted surfaces, text, and low-chroma borders
+into the active Dawn or Moon palette. It samples common document roots and SPA
+app roots so modern CSS and design-token pages are covered without URL-specific
+rules. Media, canvas, SVG, inputs, editors, and code stay protected. Complex
+filter inversion and large site-specific rule packs are left for later versions.
+Future versions should add more theme presets through a shared palette registry
+instead of site-specific or theme-specific branches.
 
 ## License
 

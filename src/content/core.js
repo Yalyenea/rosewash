@@ -234,18 +234,21 @@
   function isNearWhiteColor(color) {
     return Boolean(color)
       && color.alpha > 0.05
-      && luminance(color) >= 244
+      && luminance(color) >= 235
       && channelSpread(color) <= 22;
   }
 
-  // Default document canvas is white when html/body leave background unset.
-  // Sites like jmlr.org rely on that and never set an explicit near-white fill.
-  function isSurfaceTintBackground(color, { pageElement = false, pageTone = "mixed" } = {}) {
-    if (isNearWhiteColor(color)) {
+  function isOpaqueColor(color) {
+    return Boolean(color) && color.alpha > 0.05;
+  }
+
+  // Full cover: any painted surface, plus the default transparent document
+  // canvas on html/body (legacy pages that never set a background).
+  function isCoverSurfaceBackground(color, { pageElement = false } = {}) {
+    if (isOpaqueColor(color)) {
       return true;
     }
-
-    return pageElement && pageTone !== "dark-only" && isTransparentColor(color);
+    return pageElement && isTransparentColor(color);
   }
 
   function isDarkNeutralColor(color) {
@@ -267,6 +270,29 @@
       && color.alpha > 0.05
       && luminance(color) >= 150
       && channelSpread(color) <= 100;
+  }
+
+  // Preserve a little hierarchy: page root → base, elevated mids → overlay,
+  // everything else → surface. Media/code stay protected by SKIP_SELECTOR.
+  function surfaceColorFor(color, palette, { pageElement = false, theme = "dawn", tagName = "" } = {}) {
+    if (pageElement) {
+      return palette.base;
+    }
+    if (String(tagName).toLowerCase() === "pre" && theme === "moon") {
+      return palette.overlay;
+    }
+    if (!isOpaqueColor(color)) {
+      return palette.surface;
+    }
+    const level = luminance(color);
+    if (level >= 90 && level < 200) {
+      return palette.overlay;
+    }
+    return palette.surface;
+  }
+
+  function isCoverBorderColor(color) {
+    return isOpaqueColor(color) && channelSpread(color) <= 100;
   }
 
   function classifyPageTone(samples) {
@@ -417,12 +443,9 @@
     return prefersDark ? "moon" : "dawn";
   }
 
-  function shouldTintTextColor(theme, color, surfaceTinted) {
-    if (!isDarkNeutralColor(color)) {
-      return false;
-    }
-
-    return theme === "moon" || surfaceTinted;
+  // Full cover remaps any non-transparent text into the active palette.
+  function shouldTintTextColor(_theme, color, _surfaceTinted) {
+    return isOpaqueColor(color);
   }
 
   const PAGE_CHROME_CLASSES = new Set([
@@ -463,17 +486,18 @@
     return colors.some((color) => isDarkSurfaceColor(parseColor(color)));
   }
 
-  // ChatGPT (and similar design systems) paint sticky footer fades on
-  // ::after using var(--main-surface-primary). Inline element styles cannot
-  // reach pseudo-elements, so near-white surface tokens on :root must move.
-  const SURFACE_VAR_EXCLUDE = /text|icon|label|inverted|border|outline|ring|divider|btn-text|msg-text|on-primary|contrast|shadow-color|submit-btn-text/;
-  const SURFACE_VAR_INCLUDE = /main-surface|composer-surface|sidebar-surface|component-sidebar-bg|bg-primary|bg-secondary|bg-elevated|bg-secondary-surface|surface-primary|surface-secondary|surface-tertiary|page-bg|canvas|background-primary|background-secondary/;
+  // Design-system tokens often paint ::before/::after. Inline element styles
+  // cannot reach pseudo-elements, so root custom properties must move too.
+  const SURFACE_VAR_EXCLUDE = /text|icon|label|inverted|border|outline|ring|divider|btn-text|msg-text|on-primary|contrast|shadow-color|submit-btn-text|ink|print_on/;
+  const SURFACE_VAR_INCLUDE = /main-surface|composer-surface|sidebar-surface|component-sidebar-bg|bg-primary|bg-secondary|bg-elevated|bg-secondary-surface|surface-primary|surface-secondary|surface-tertiary|page-bg|canvas|background-primary|background-secondary|ground|web_bg|theme_bg|color_theme_bg|color-bg|^--bg$|^--background$|^--background-color$/;
+  const TEXT_VAR_EXCLUDE = /inverted|on-primary|btn|button|link|brand|accent|success|warning|error|danger|shadow/;
+  const TEXT_VAR_INCLUDE = /(?:^|-)(ink|title-ink|text-primary|text-secondary|text-color|foreground|body-color|color-text|print_on_web)(?:-|$)/;
 
   function classifySurfaceCssVar(name, color) {
     if (!name || !name.startsWith("--")) {
       return null;
     }
-    if (!isNearWhiteColor(color) || color.alpha < 0.9) {
+    if (!isOpaqueColor(color) || color.alpha < 0.9) {
       return null;
     }
 
@@ -485,10 +509,28 @@
       return null;
     }
 
-    if (/(secondary|elevated|composer|tertiary)/.test(normalized)) {
+    if (/(secondary|elevated|composer|tertiary|overlay)/.test(normalized)) {
       return "surface";
     }
     return "base";
+  }
+
+  function classifyTextCssVar(name, color) {
+    if (!name || !name.startsWith("--")) {
+      return null;
+    }
+    if (!isOpaqueColor(color) || color.alpha < 0.5) {
+      return null;
+    }
+
+    const normalized = name.toLowerCase();
+    if (TEXT_VAR_EXCLUDE.test(normalized)) {
+      return null;
+    }
+    if (!TEXT_VAR_INCLUDE.test(normalized)) {
+      return null;
+    }
+    return "text";
   }
 
   function listRootCssCustomProperties(window, document) {
@@ -515,11 +557,15 @@
   function resolveSurfaceCssVarOverrides(entries, palette) {
     const overrides = [];
     for (const [name, value] of entries) {
-      const role = classifySurfaceCssVar(name, parseColor(value));
-      if (!role) {
+      const color = parseColor(value);
+      const surfaceRole = classifySurfaceCssVar(name, color);
+      if (surfaceRole) {
+        overrides.push([name, surfaceRole === "surface" ? palette.surface : palette.base]);
         continue;
       }
-      overrides.push([name, role === "surface" ? palette.surface : palette.base]);
+      if (classifyTextCssVar(name, color)) {
+        overrides.push([name, palette.text]);
+      }
     }
     return overrides;
   }
@@ -636,32 +682,22 @@
       ];
 
       for (const [property, value] of borderPairs) {
-        if (isNearWhiteColor(parseColor(value))) {
+        if (isCoverBorderColor(parseColor(value))) {
           setStyle(element, property, palette.overlay);
         }
       }
     }
 
-    function lightenDarkBorders(element, computedStyle, palette) {
-      const borderPairs = [
-        ["border-top-color", computedStyle.borderTopColor],
-        ["border-right-color", computedStyle.borderRightColor],
-        ["border-bottom-color", computedStyle.borderBottomColor],
-        ["border-left-color", computedStyle.borderLeftColor]
-      ];
-
-      for (const [property, value] of borderPairs) {
-        const color = parseColor(value);
-        if (isDarkSurfaceColor(color) || isLightNeutralColor(color)) {
-          setStyle(element, property, palette.overlay);
-        }
+    function tintText(element, computedStyle, palette) {
+      const color = parseColor(computedStyle.color);
+      if (!shouldTintTextColor(activeTheme, color, true)) {
+        return;
       }
-    }
-
-    function tintText(element, computedStyle, palette, surfaceTinted) {
-      if (shouldTintTextColor(activeTheme, parseColor(computedStyle.color), surfaceTinted)) {
-        setStyle(element, "color", palette.text);
+      if (element.tagName === "A") {
+        setStyle(element, "color", palette.link);
+        return;
       }
+      setStyle(element, "color", palette.text);
     }
 
     function elementClassName(element) {
@@ -689,12 +725,6 @@
         }
       }
       return false;
-    }
-
-    function lightenDarkText(element, computedStyle, palette) {
-      if (isLightNeutralColor(parseColor(computedStyle.color))) {
-        setStyle(element, "color", palette.text);
-      }
     }
 
     function detectPageTone() {
@@ -740,25 +770,9 @@
       const computedStyle = window.getComputedStyle(element);
       const background = parseColor(computedStyle.backgroundColor);
       const hasBackgroundImage = computedStyle.backgroundImage && computedStyle.backgroundImage !== "none";
+      const generatedBackground = isGeneratedBackgroundImage(computedStyle.backgroundImage);
       const pageElement = isPageElement(element, document);
 
-      if (theme === "dawn" && activePageTone === "dark-only") {
-        const generatedBackground = isGeneratedBackgroundImage(computedStyle.backgroundImage);
-        const darkSurfaceTinted = isDarkSurfaceColor(background)
-          || generatedBackgroundHasDarkSurface(computedStyle.backgroundImage);
-        if (darkSurfaceTinted) {
-          if (generatedBackground) {
-            setStyle(element, "background-image", "none");
-          }
-          setStyle(element, "background-color", pageElement ? palette.base : palette.surface);
-        }
-
-        lightenDarkText(element, computedStyle, palette);
-        lightenDarkBorders(element, computedStyle, palette);
-        return;
-      }
-
-      const generatedBackground = isGeneratedBackgroundImage(computedStyle.backgroundImage);
       const chromeCandidate = isPageChromeElement(element);
       const knownChromeClass = hasPageChromeClass(elementClassName(element));
       // Semantic headers / known site shells still paint when the root is
@@ -779,17 +793,28 @@
         setStyle(element, "color", palette.text, "important");
       }
 
-      const surfaceTinted = !hasBackgroundImage
-        && isSurfaceTintBackground(background, { pageElement, pageTone: activePageTone });
-      if (surfaceTinted && !pageChromeTinted && !insidePageChrome) {
-        const surface = element.tagName.toLowerCase() === "pre" && theme === "moon"
-          ? palette.overlay
-          : palette.surface;
-        setStyle(element, "background-color", pageElement ? palette.base : surface);
+      // Full cover: every opaque painted box becomes Rose Pine. Gradient-only
+      // fills are flattened; url()/media backgrounds stay untouched.
+      const coverSurface = !pageChromeTinted
+        && (!hasBackgroundImage || generatedBackground)
+        && (isCoverSurfaceBackground(background, { pageElement }) || generatedBackground);
+      if (coverSurface) {
+        if (generatedBackground) {
+          setStyle(element, "background-image", "none");
+        }
+        setStyle(
+          element,
+          "background-color",
+          surfaceColorFor(background, palette, {
+            pageElement,
+            theme,
+            tagName: element.tagName
+          })
+        );
       }
 
       if (!insidePageChrome) {
-        tintText(element, computedStyle, palette, surfaceTinted);
+        tintText(element, computedStyle, palette);
       }
       tintBorders(element, computedStyle, palette);
     }
@@ -955,13 +980,17 @@
     isLightNeutralColor,
     isGeneratedBackgroundImage,
     isNearWhiteColor,
+    isOpaqueColor,
     isPageChromeCandidate,
-    isSurfaceTintBackground,
+    isCoverSurfaceBackground,
+    isCoverBorderColor,
     isToneSampleElement,
     isTransparentColor,
     classifySurfaceCssVar,
+    classifyTextCssVar,
     listRootCssCustomProperties,
     resolveSurfaceCssVarOverrides,
+    surfaceColorFor,
     luminance,
     normalizeSettings,
     parseColor,

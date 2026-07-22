@@ -3,8 +3,8 @@
 ## Goal
 
 Build a compact eye-comfort extension that stays fast and visually quiet. The
-MVP starts with Rose Pine white-surface tinting instead of full page recoloring,
-then grows into a small set of curated theme presets.
+MVP covers pages with Rose Pine Dawn/Moon (full-page palette remap, media and
+code protected), then grows into a small set of curated theme presets.
 
 ## Current Milestone: MVP
 
@@ -22,9 +22,9 @@ then grows into a small set of curated theme presets.
 - [x] No default pre-apply before stored settings load.
 - [x] Stale Rosewash inline-style cleanup after extension reload.
 - [x] Early `document_start` injection and immediate Auto theme reapply.
-- [x] Dark-only page detection and Dawn adaptation for sites without a light
-  appearance.
-- [x] CSS Color 4 and SPA app-root sampling for modern dark-only pages.
+- [x] Full-page Rose Pine cover for arbitrary light/dark/cool-paper sites.
+- [x] Dark-only page tone sampling retained for mixed re-detect diagnostics.
+- [x] CSS Color 4 and SPA app-root sampling for modern pages.
 - [x] Page-chrome tinting for headers, banners, nav, and known shells
   (arXiv-style bars, Zhihu `AppHeader` / `LeanAppHeaderBar` / `MobileAppHeader`).
 - [x] Transparent `html`/`body` canvas tinting for legacy sites such as jmlr.org.

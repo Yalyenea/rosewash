@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Switched from selective near-white tinting to full-page Rose Pine cover:
+  any opaque surface, text, and low-chroma border maps into the active Dawn or
+  Moon palette, so cool paper sites (e.g. mikaelhuuhtanen.com), dark-only
+  shells, and ordinary light pages all follow Auto / Dawn / Moon.
+- Remapped additional root design tokens (`--ground`, `--ink`, theme
+  backgrounds) so CSS-variable pages and pseudo-elements track the paper
+  palette.
+- Forced `html`/`body` canvas and link colors through `theme.css` for an
+  immediate base cover before the DOM scan finishes.
 - Fixed ChatGPT-style sticky footer fades painted on `::after` via design tokens
   such as `--main-surface-primary`: Rosewash now remaps near-white root surface
   CSS variables to the active paper palette so pseudo-elements and token-based

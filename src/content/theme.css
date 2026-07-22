@@ -18,13 +18,23 @@ html[data-rosewash-theme="moon"] {
   color-scheme: dark;
 }
 
+/* Force the page canvas immediately; nested boxes are covered by the engine. */
+html[data-rosewash-theme],
+html[data-rosewash-theme] body {
+  background-color: var(--rosewash-base) !important;
+}
+
+html[data-rosewash-theme] body {
+  color: var(--rosewash-text) !important;
+}
+
 html[data-rosewash-theme] ::selection {
   background: var(--rosewash-overlay);
   color: var(--rosewash-text);
 }
 
 html[data-rosewash-theme] a:not([data-rosewash-ignore]) {
-  color: var(--rosewash-link);
+  color: var(--rosewash-link) !important;
 }
 
 /* Site shells that paint top bars via CSS-in-JS (e.g. Zhihu AppHeader). */

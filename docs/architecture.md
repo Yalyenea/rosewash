@@ -7,54 +7,45 @@ Rosewash has three small layers.
 `src/content/core.js` is the testable engine. It owns:
 
 - Rose Pine Dawn and Moon tokens.
-- Color parsing and near-white detection, including the CSS Color 4 `lab()`,
-  `oklab()`, `lch()`, and `oklch()` forms used by modern Tailwind output.
-- Dark-only page tone detection for Dawn light adaptation.
+- Color parsing for hex, `rgb()`, and CSS Color 4 `lab()`, `oklab()`, `lch()`,
+  and `oklch()` forms used by modern Tailwind output.
+- Full-page surface and text covering into the active palette.
+- Optional page-tone sampling (still used for diagnostics and mixed re-detect).
 - Site block matching.
 - DOM tinting and restoration.
 - A throttled `MutationObserver` for newly inserted elements.
 
-The engine only writes inline styles to elements it has classified as needing a
-small accessibility tint: near-white surfaces, near-white borders, dark neutral
-text in Moon mode, dark-only page surfaces in Dawn mode, or page-level chrome
-bars. Transparent `html`/`body` roots on non-dark-only pages are treated as the
-default white canvas (legacy sites such as jmlr.org never set an explicit white
-fill). Original inline values are recorded and restored when the extension is
-disabled, the current host is blocked, or the active theme changes.
+The engine writes inline styles so every non-protected painted surface becomes
+Rose Pine:
 
-Design-system pages (ChatGPT and similar) often paint sticky composers and
-scroll fades on `::after` with `background-color: var(--main-surface-primary)`.
-Those pseudo-elements cannot receive per-element inline tints, so the engine
-also remaps near-white **surface** custom properties on `documentElement`
-(`main-surface*`, `composer-surface*`, `bg-primary`, sidebar canvas tokens, …)
-to `palette.base` / `palette.surface`. Inverted text/icon whites and brand
-tokens are left alone. Overrides are restored with the rest of the theme.
+- Opaque backgrounds map to `base` (page roots), `surface`, or `overlay`
+  (mid-luminance boxes keep a little hierarchy).
+- Transparent `html`/`body` roots are treated as the default document canvas.
+- Opaque text maps to `palette.text`; anchors map to `palette.link`.
+- Low-chroma borders map to `palette.overlay`.
+- CSS gradients are flattened to solid palette fills; `url()` media backgrounds
+  are left alone.
+- Media, canvas, SVG, iframes, inputs, editors, and code blocks are skipped.
 
 Page chrome is `header`, `[role=banner]`, top-level `nav`, and known app shells
 such as Zhihu's `.AppHeader` / `.LeanAppHeaderBar` / `.MobileAppHeader`, when
-they sit outside `main`/`article`. Opaque, gradient, or known transparent
-shells are filled with `palette.base` using `!important`, and descendant text
-is forced to `palette.text` with `!important` so branded top bars (arXiv red,
-Zhihu Emotion-styled white bars) blend into the page. `theme.css` also pins the
-known Zhihu shell selectors to `--rosewash-base` so CSS-in-JS layers cannot win
-the cascade. Chrome membership is rebuilt on every restore so disable/theme
-changes do not leave stale force-color tracking.
+they sit outside `main`/`article`. Those shells get `palette.base` with
+`!important`, and descendant text is forced to `palette.text` with
+`!important`. `theme.css` also pins the known Zhihu shell selectors and the
+document canvas to `--rosewash-*` tokens so CSS-in-JS layers cannot keep pure
+white chrome.
 
-Before scanning, the engine samples root, SPA app roots such as `#root` /
-`#entry` / `#main` / `.main`, publication theme shells like
-`[class*='use-theme-bg']`, major layout elements, and a few root CSS custom
-properties (`--theme_bg_is_dark`, `--web_bg_color`, and related background
-tokens). Script and style nodes are skipped so they do not crowd out real
-layout samples. The result is classified as `light-page`, `dark-only`, or
-`mixed`. Dark-only adaptation runs only when the resolved theme is Dawn; it
-changes dark neutral surfaces and dark CSS gradients to Dawn paper tones, and
-light neutral text to Dawn text, while continuing to skip media, SVG, iframes,
-inputs, editors, and code.
+Design-system pages often paint sticky composers and scroll fades on `::after`
+with tokens such as `var(--main-surface-primary)`. Pseudo-elements cannot take
+per-element inline tints, so the engine remaps matching root custom properties
+(`main-surface*`, `composer-surface*`, `bg-primary`, `--ground`, sidebar
+canvas tokens, …) to `palette.base` / `palette.surface`, and text tokens such
+as `--ink` / `--title-ink` to `palette.text`. Inverted icon/button tokens and
+brand accents are left alone. Overrides restore with the rest of the theme.
 
 If the first document-start pass can only classify the page as `mixed`, the
 next runtime re-apply restores Rosewash's own inline styles before sampling
-again. This keeps early `color-scheme: light` writes from masking a dark-only
-page once the body and app roots have rendered.
+again. This keeps early `color-scheme` writes from masking a later SPA shell.
 
 Original inline style snapshots are also mirrored onto `data-rosewash-*`
 attributes. This lets a new content-script instance clean up stale inline styles
