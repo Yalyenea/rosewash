@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed ChatGPT-style sticky footer fades painted on `::after` via design tokens
+  such as `--main-surface-primary`: Rosewash now remaps near-white root surface
+  CSS variables to the active paper palette so pseudo-elements and token-based
+  shadows follow the page base (inline styles cannot target `::before`/`::after`).
 - Expanded README install docs: Install From Release (download zip, extract,
   load unpacked, update steps) and Install From Source for development.
 - Blended page-level headers and navigation bars into the page base, including

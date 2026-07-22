@@ -89,6 +89,17 @@
       return { red, green, blue, alpha: 1 };
     }
 
+    if (hex.length === 8) {
+      const red = parseInt(hex.slice(0, 2), 16);
+      const green = parseInt(hex.slice(2, 4), 16);
+      const blue = parseInt(hex.slice(4, 6), 16);
+      const alpha = parseInt(hex.slice(6, 8), 16) / 255;
+      if (![red, green, blue, alpha].every(Number.isFinite)) {
+        return null;
+      }
+      return { red, green, blue, alpha };
+    }
+
     return null;
   }
 
@@ -452,6 +463,67 @@
     return colors.some((color) => isDarkSurfaceColor(parseColor(color)));
   }
 
+  // ChatGPT (and similar design systems) paint sticky footer fades on
+  // ::after using var(--main-surface-primary). Inline element styles cannot
+  // reach pseudo-elements, so near-white surface tokens on :root must move.
+  const SURFACE_VAR_EXCLUDE = /text|icon|label|inverted|border|outline|ring|divider|btn-text|msg-text|on-primary|contrast|shadow-color|submit-btn-text/;
+  const SURFACE_VAR_INCLUDE = /main-surface|composer-surface|sidebar-surface|component-sidebar-bg|bg-primary|bg-secondary|bg-elevated|bg-secondary-surface|surface-primary|surface-secondary|surface-tertiary|page-bg|canvas|background-primary|background-secondary/;
+
+  function classifySurfaceCssVar(name, color) {
+    if (!name || !name.startsWith("--")) {
+      return null;
+    }
+    if (!isNearWhiteColor(color) || color.alpha < 0.9) {
+      return null;
+    }
+
+    const normalized = name.toLowerCase();
+    if (SURFACE_VAR_EXCLUDE.test(normalized)) {
+      return null;
+    }
+    if (!SURFACE_VAR_INCLUDE.test(normalized)) {
+      return null;
+    }
+
+    if (/(secondary|elevated|composer|tertiary)/.test(normalized)) {
+      return "surface";
+    }
+    return "base";
+  }
+
+  function listRootCssCustomProperties(window, document) {
+    const root = document.documentElement;
+    if (!root || !window.getComputedStyle) {
+      return [];
+    }
+
+    const styles = window.getComputedStyle(root);
+    const entries = [];
+    for (let index = 0; index < styles.length; index += 1) {
+      const name = styles[index];
+      if (!name || !name.startsWith("--")) {
+        continue;
+      }
+      const value = String(styles.getPropertyValue(name) || "").trim();
+      if (value) {
+        entries.push([name, value]);
+      }
+    }
+    return entries;
+  }
+
+  function resolveSurfaceCssVarOverrides(entries, palette) {
+    const overrides = [];
+    for (const [name, value] of entries) {
+      const role = classifySurfaceCssVar(name, parseColor(value));
+      if (!role) {
+        continue;
+      }
+      overrides.push([name, role === "surface" ? palette.surface : palette.base]);
+    }
+    return overrides;
+  }
+
   function isElementNode(node) {
     return node && node.nodeType === 1;
   }
@@ -472,6 +544,8 @@
     const originalStyles = new WeakMap();
     const tintedElements = new Set();
     let tintedPageChrome = new WeakSet();
+    // name -> previous inline value (null if unset)
+    let cssVarOverrides = new Map();
     let observer = null;
     let pendingRoots = new Set();
     let pendingTimer = null;
@@ -781,15 +855,47 @@
       pendingRoots = new Set();
     }
 
+    function restoreCssVarOverrides() {
+      const root = document.documentElement;
+      for (const [name, previous] of cssVarOverrides) {
+        if (previous === null || previous === "") {
+          root.style.removeProperty(name);
+        } else {
+          root.style.setProperty(name, previous);
+        }
+      }
+      cssVarOverrides = new Map();
+    }
+
+    function applyCssVarSurfaces(theme) {
+      const palette = PALETTES[theme];
+      const root = document.documentElement;
+      restoreCssVarOverrides();
+
+      const overrides = resolveSurfaceCssVarOverrides(
+        listRootCssCustomProperties(window, document),
+        palette
+      );
+      for (const [name, value] of overrides) {
+        if (!cssVarOverrides.has(name)) {
+          const previous = root.style.getPropertyValue(name);
+          cssVarOverrides.set(name, previous || null);
+        }
+        root.style.setProperty(name, value);
+      }
+    }
+
     function applyRootTheme(theme) {
       document.documentElement.setAttribute(THEME_ATTRIBUTE, theme);
       setStyle(document.documentElement, "color-scheme", theme === "moon" ? "dark" : "light");
       setStyle(document.documentElement, "scrollbar-color", `${PALETTES[theme].muted} ${PALETTES[theme].base}`);
+      applyCssVarSurfaces(theme);
     }
 
     function clear() {
       disconnectObserver();
       restoreTintedElements();
+      restoreCssVarOverrides();
       activeMode = null;
       activeTheme = null;
       activePageTone = "mixed";
@@ -814,6 +920,7 @@
       const pageToneStale = activeTheme && !themeChanged && activePageTone === "mixed";
       if (themeChanged || pageToneStale) {
         restoreTintedElements();
+        restoreCssVarOverrides();
       }
 
       const pageTone = activeTheme && !themeChanged && !pageToneStale
@@ -852,6 +959,9 @@
     isSurfaceTintBackground,
     isToneSampleElement,
     isTransparentColor,
+    classifySurfaceCssVar,
+    listRootCssCustomProperties,
+    resolveSurfaceCssVarOverrides,
     luminance,
     normalizeSettings,
     parseColor,
