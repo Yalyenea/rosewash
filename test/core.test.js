@@ -811,4 +811,13 @@ test("normalizes settings and blocked hosts", async () => {
 
   assert.equal(core.isHostDisabled("news.example.com", ["example.com"]), true);
   assert.equal(core.isHostDisabled("example.org", ["example.com"]), false);
+
+  assert.deepEqual(plain(core.toggleHostDisabled("Example.COM", [])), ["example.com"]);
+  assert.deepEqual(plain(core.toggleHostDisabled("example.com", ["example.com"])), []);
+  assert.deepEqual(plain(core.toggleHostDisabled("news.example.com", ["example.com"])), []);
+  assert.deepEqual(
+    plain(core.toggleHostDisabled("docs.example.com", ["other.org"])),
+    ["docs.example.com", "other.org"]
+  );
+  assert.deepEqual(plain(core.toggleHostDisabled("", ["example.com"])), ["example.com"]);
 });

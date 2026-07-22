@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added agent-facing docs: `AGENTS.md` entry point and
+  `docs/implementation.md` (settings, content pipeline, engine, commands, tests).
+- Added default keyboard shortcut `Alt+Shift+B` to toggle blocked / allowed for
+  the current site (`chrome.commands` + background service worker). Rebind under
+  `chrome://extensions/shortcuts`.
 - Fixed full-cover FOUC and SPA white flashes: provisional `data-rosewash-theme`
   at `document_start` so theme.css paints the canvas before storage returns;
   dropped mixed-tone full restore on load; mutation scans run on the next

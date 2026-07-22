@@ -1,6 +1,8 @@
 # Architecture
 
-Rosewash has three small layers.
+Rosewash has three small layers. For file-level behavior, settings schema,
+content pipeline, and change recipes, see
+[implementation.md](./implementation.md) (linked from [AGENTS.md](../AGENTS.md)).
 
 ## Content Engine
 
@@ -64,9 +66,10 @@ left by an older orphaned script after extension reload.
 
 `src/content/content.js` wires the engine to Chrome extension APIs:
 
-- Reads settings from `chrome.storage.sync`.
-- Keeps an in-page settings cache after the first storage read.
-- Does not apply the default settings before storage has returned.
+- Paints a provisional theme attribute, then applies default settings
+  immediately at `document_start` so the canvas is covered before storage
+  returns; stored settings refine or clear that cover.
+- Reads settings from `chrome.storage.sync` and keeps an in-page cache.
 - Re-applies on storage changes.
 - Re-applies after `DOMContentLoaded` and `load` using the already-loaded
   settings cache.
@@ -75,6 +78,18 @@ left by an older orphaned script after extension reload.
 - Re-checks settings when a page becomes visible again.
 - Accepts popup refresh messages.
 - Stops DOM listeners if the extension context is already invalidated.
+
+## Background
+
+`src/background/background.js` is the MV3 service worker. It loads
+`src/content/core.js` via `importScripts` for host helpers, then handles
+`chrome.commands`:
+
+- `toggle-current-site` (default `Alt+Shift+B`) toggles the active tab's host
+  in `disabledHosts` and writes `chrome.storage.sync`. Content scripts pick up
+  the change through `storage.onChanged`.
+
+Users can rebind the shortcut under `chrome://extensions/shortcuts`.
 
 ## UI
 

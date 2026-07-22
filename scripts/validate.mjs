@@ -13,6 +13,7 @@ const pkg = JSON.parse(await readFile(packagePath, "utf8"));
 const requiredFiles = [
   "popup.html",
   "options.html",
+  ...(manifest.background?.service_worker ? [manifest.background.service_worker] : []),
   ...(manifest.content_scripts?.[0]?.css || []),
   ...(manifest.content_scripts?.[0]?.js || [])
 ];
@@ -41,10 +42,19 @@ if (!manifest.host_permissions?.includes("<all_urls>")) {
 const scriptFiles = [
   "src/content/core.js",
   "src/content/content.js",
+  "src/background/background.js",
   "src/popup/popup.js",
   "src/options/options.js",
   "scripts/validate.mjs"
 ];
+
+if (!manifest.commands?.["toggle-current-site"]?.suggested_key?.default) {
+  throw new Error("toggle-current-site command with suggested_key.default is required");
+}
+
+if (!manifest.background?.service_worker) {
+  throw new Error("background.service_worker is required for keyboard commands");
+}
 
 for (const file of scriptFiles) {
   const result = spawnSync(process.execPath, ["--check", join(root, file)], { encoding: "utf8" });

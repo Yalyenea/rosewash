@@ -421,6 +421,24 @@
     });
   }
 
+  function toggleHostDisabled(host, disabledHosts) {
+    const normalizedHost = normalizeHost(host);
+    const current = Array.isArray(disabledHosts)
+      ? disabledHosts.map(normalizeHost).filter(Boolean)
+      : [];
+
+    if (!normalizedHost) {
+      return Array.from(new Set(current)).sort();
+    }
+
+    const next = current.filter((entry) => !isHostDisabled(normalizedHost, [entry]));
+    if (next.length === current.length) {
+      next.push(normalizedHost);
+    }
+
+    return Array.from(new Set(next)).sort();
+  }
+
   function normalizeSettings(settings) {
     const source = settings && typeof settings === "object" ? settings : {};
     const disabledHosts = Array.isArray(source.disabledHosts)
@@ -1022,6 +1040,7 @@
     isDarkSurfaceColor,
     generatedBackgroundHasDarkSurface,
     isHostDisabled,
+    toggleHostDisabled,
     isLightNeutralColor,
     isGeneratedBackgroundImage,
     isNearWhiteColor,

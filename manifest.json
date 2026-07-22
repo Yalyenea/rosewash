@@ -14,6 +14,18 @@
     "default_title": "Rosewash"
   },
   "options_page": "options.html",
+  "background": {
+    "service_worker": "src/background/background.js"
+  },
+  "commands": {
+    "toggle-current-site": {
+      "suggested_key": {
+        "default": "Alt+Shift+B",
+        "mac": "Alt+Shift+B"
+      },
+      "description": "Toggle blocked / allowed for the current site"
+    }
+  },
   "content_scripts": [
     {
       "matches": [

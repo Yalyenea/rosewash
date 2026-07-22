@@ -12,6 +12,7 @@ code protected), then grows into a small set of curated theme presets.
 - [x] Zero-dependency content tint engine.
 - [x] Popup controls: enabled, Auto, Dawn, Moon, current-site block.
 - [x] Options page for blocked sites.
+- [x] Keyboard shortcut to toggle blocked / allowed for the current site.
 - [x] Justfile, tests, validation script, docs, changelog.
 - [x] Browser fixture verification.
 - [x] Theme-switch restoration so Auto dark and manual Moon share one path.
@@ -59,7 +60,8 @@ code protected), then grows into a small set of curated theme presets.
    curated set such as Catppuccin, Gruvbox, Nord, and Solarized.
 4. Refactor settings from `mode` alone to `preset + appearance` so Auto, light,
    and dark variants work across all presets without duplicating UI logic.
-5. Add keyboard shortcuts for global toggle and site toggle.
+5. ~~Add keyboard shortcuts for global toggle and site toggle.~~ Site toggle
+   shipped (`Alt+Shift+B`). Global enable shortcut still open.
 6. Split browser packaging into target-specific manifests and archives:
    Chromium first, Firefox next, Safari after the WebExtension wrapper path is
    understood.

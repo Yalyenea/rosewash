@@ -13,6 +13,8 @@ defaults. Media, canvas, SVG, inputs, editors, and code blocks stay protected.
 - Auto / Dawn / Moon mode.
 - Global enable switch.
 - Per-site block list.
+- Default shortcut `Alt+Shift+B` toggles blocked / allowed for the current site
+  (rebind under `chrome://extensions/shortcuts`).
 - Full-page Rose Pine cover for light, dark, and cool-paper sites.
 - Default transparent `html`/`body` canvases (legacy pages such as jmlr.org).
 - Page-level headers and navigation bars blend into the active page base,
@@ -73,6 +75,13 @@ Chrome leaves old content scripts in existing page contexts after extension
 reloads; Rosewash guards new scripts against that state and clears stale
 Rosewash inline styles when the new script starts, but old injected scripts
 cannot be patched in place.
+
+## Docs
+
+- [AGENTS.md](AGENTS.md) — entry point for coding agents
+- [docs/implementation.md](docs/implementation.md) — current implementation details
+- [docs/architecture.md](docs/architecture.md) — conceptual layers
+- [PLAN.md](PLAN.md) — roadmap
 
 ## Dev Loop
 
