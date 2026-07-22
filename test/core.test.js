@@ -479,7 +479,11 @@ function createMockDom(nodes) {
     setTimeout(fn) {
       return 1;
     },
-    clearTimeout() {}
+    clearTimeout() {},
+    requestAnimationFrame(fn) {
+      return 1;
+    },
+    cancelAnimationFrame() {}
   };
 
   return { document, window, byId, all };
@@ -593,8 +597,14 @@ test("engine rebuilds page chrome membership after restore", async () => {
   byId.get("site-header")._computed.color = "rgb(17, 17, 17)";
   engine.apply({ enabled: true, mode: "dawn", disabledHosts: [] });
 
+  // Transparent non-shell headers are no longer forced as page chrome.
   assert.equal(byId.get("site-header").style.getPropertyValue("background-color"), "");
-  assert.equal(byId.get("header-text").style.getPropertyPriority("color"), "");
+  // Full-cover still remaps descendant text (with !important against SPA CSS).
+  assert.equal(
+    byId.get("header-text").style.getPropertyValue("color"),
+    core.PALETTES.dawn.text
+  );
+  assert.equal(byId.get("header-text").style.getPropertyPriority("color"), "important");
 });
 
 test("engine tints default transparent html/body like jmlr-style pages", async () => {

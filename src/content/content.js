@@ -27,11 +27,22 @@
   }
 
   function applyCachedSettings() {
-    if (disposed || !settingsLoaded) {
+    if (disposed) {
       return;
     }
 
     engine.apply(settingsCache);
+  }
+
+  // Paint the canvas token before chrome.storage returns so theme.css can
+  // force html/body on the first frame. Refined once real settings load.
+  function paintProvisionalRoot() {
+    if (disposed || !document.documentElement) {
+      return;
+    }
+
+    const theme = core.resolveThemeMode("auto", darkQuery.matches);
+    document.documentElement.setAttribute("data-rosewash-theme", theme);
   }
 
   async function loadSettings() {
@@ -103,6 +114,11 @@
     try {
       chrome.storage.onChanged.addListener(handleStorageChanged);
       chrome.runtime.onMessage.addListener(handleMessage);
+      // 1) Attribute so theme.css covers the canvas this frame.
+      paintProvisionalRoot();
+      // 2) Default full cover immediately (document_start DOM is small).
+      applyCachedSettings();
+      // 3) Storage refines enabled/mode/blocklist without a blank gap.
       loadSettings();
     } catch {
       dispose();

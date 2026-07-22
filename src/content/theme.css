@@ -18,13 +18,26 @@ html[data-rosewash-theme="moon"] {
   color-scheme: dark;
 }
 
-/* Force the page canvas immediately; nested boxes are covered by the engine. */
+/* Force the page canvas as soon as data-rosewash-theme is set (provisional at
+   document_start, refined after storage). Nested boxes still need the engine. */
 html[data-rosewash-theme],
 html[data-rosewash-theme] body {
   background-color: var(--rosewash-base) !important;
 }
 
 html[data-rosewash-theme] body {
+  color: var(--rosewash-text) !important;
+}
+
+/* Common SPA shells paint white on deep roots, not body — cover them in CSS
+   so x.com-style navigations do not flash white before the mutation scan. */
+html[data-rosewash-theme] #react-root,
+html[data-rosewash-theme] #root,
+html[data-rosewash-theme] #app,
+html[data-rosewash-theme] #__next,
+html[data-rosewash-theme] [data-testid="primaryColumn"],
+html[data-rosewash-theme] main {
+  background-color: var(--rosewash-base) !important;
   color: var(--rosewash-text) !important;
 }
 

@@ -594,7 +594,7 @@
     let cssVarOverrides = new Map();
     let observer = null;
     let pendingRoots = new Set();
-    let pendingTimer = null;
+    let pendingFrame = null;
     let activeMode = null;
     let activeTheme = null;
     let activePageTone = "mixed";
@@ -623,7 +623,17 @@
     function setStyle(element, property, value, priority = "") {
       remember(element);
       tintedElements.add(element);
-      element.style.setProperty(property, value, priority);
+      // Full-cover uses !important so SPA/CSS-in-JS layers (x.com) cannot
+      // flash their original white between React commits.
+      const nextPriority = priority || "important";
+      if (
+        element.style.getPropertyValue(property) === value
+        && element.style.getPropertyPriority(property) === nextPriority
+      ) {
+        element.setAttribute(TINT_ATTRIBUTE, activeTheme);
+        return;
+      }
+      element.style.setProperty(property, value, nextPriority);
       element.setAttribute(TINT_ATTRIBUTE, activeTheme);
     }
 
@@ -829,22 +839,34 @@
     }
 
     function flushPending() {
-      pendingTimer = null;
-      const roots = pendingRoots;
-      pendingRoots = new Set();
-
-      for (const root of roots) {
-        scan(root, activeTheme);
-      }
-    }
-
-    function scheduleScan(root) {
-      pendingRoots.add(root);
-      if (pendingTimer !== null) {
+      pendingFrame = null;
+      if (!activeTheme) {
+        pendingRoots = new Set();
         return;
       }
 
-      pendingTimer = window.setTimeout(flushPending, 250);
+      const roots = pendingRoots;
+      pendingRoots = new Set();
+      for (const root of roots) {
+        if (isElementNode(root) && root.isConnected !== false) {
+          scan(root, activeTheme);
+        }
+      }
+    }
+
+    // Coalesce SPA mutations to the next frame — not 250ms — so new white
+    // nodes (e.g. x.com post views) cover before the next paint when possible.
+    function scheduleScan(root) {
+      pendingRoots.add(root);
+      if (pendingFrame !== null) {
+        return;
+      }
+
+      if (typeof window.requestAnimationFrame === "function") {
+        pendingFrame = window.requestAnimationFrame(flushPending);
+      } else {
+        pendingFrame = window.setTimeout(flushPending, 0);
+      }
     }
 
     function observe() {
@@ -873,9 +895,12 @@
         observer.disconnect();
         observer = null;
       }
-      if (pendingTimer !== null) {
-        window.clearTimeout(pendingTimer);
-        pendingTimer = null;
+      if (pendingFrame !== null) {
+        if (typeof window.cancelAnimationFrame === "function") {
+          window.cancelAnimationFrame(pendingFrame);
+        }
+        window.clearTimeout(pendingFrame);
+        pendingFrame = null;
       }
       pendingRoots = new Set();
     }
@@ -892,21 +917,37 @@
       cssVarOverrides = new Map();
     }
 
+    // Diff against current overrides so re-apply does not tear tokens off
+    // (which flashed the underlying site colors between load handlers).
     function applyCssVarSurfaces(theme) {
       const palette = PALETTES[theme];
       const root = document.documentElement;
-      restoreCssVarOverrides();
-
-      const overrides = resolveSurfaceCssVarOverrides(
+      const nextEntries = resolveSurfaceCssVarOverrides(
         listRootCssCustomProperties(window, document),
         palette
       );
-      for (const [name, value] of overrides) {
+      const next = new Map(nextEntries);
+
+      for (const [name, previous] of cssVarOverrides) {
+        if (next.has(name)) {
+          continue;
+        }
+        if (previous === null || previous === "") {
+          root.style.removeProperty(name);
+        } else {
+          root.style.setProperty(name, previous);
+        }
+        cssVarOverrides.delete(name);
+      }
+
+      for (const [name, value] of next) {
         if (!cssVarOverrides.has(name)) {
           const previous = root.style.getPropertyValue(name);
           cssVarOverrides.set(name, previous || null);
         }
-        root.style.setProperty(name, value);
+        if (root.style.getPropertyValue(name) !== value) {
+          root.style.setProperty(name, value);
+        }
       }
     }
 
@@ -941,16 +982,20 @@
 
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       const theme = resolveThemeMode(normalized.mode, prefersDark);
-      const themeChanged = activeTheme && (activeTheme !== theme || activeMode !== normalized.mode);
-      const pageToneStale = activeTheme && !themeChanged && activePageTone === "mixed";
-      if (themeChanged || pageToneStale) {
+      const themeChanged = Boolean(
+        activeTheme && (activeTheme !== theme || activeMode !== normalized.mode)
+      );
+      // Full-cover no longer depends on pageTone for surface decisions. Only
+      // restore when the resolved palette actually changes — never on mixed
+      // re-detect (that path flashed the whole page white on every load).
+      if (themeChanged) {
         restoreTintedElements();
         restoreCssVarOverrides();
       }
 
-      const pageTone = activeTheme && !themeChanged && !pageToneStale
-        ? activePageTone
-        : detectPageTone();
+      const pageTone = !activeTheme || themeChanged || activePageTone === "mixed"
+        ? detectPageTone()
+        : activePageTone;
       activeMode = normalized.mode;
       activeTheme = theme;
       activePageTone = pageTone;

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Fixed full-cover FOUC and SPA white flashes: provisional `data-rosewash-theme`
+  at `document_start` so theme.css paints the canvas before storage returns;
+  dropped mixed-tone full restore on load; mutation scans run on the next
+  animation frame instead of a 250ms delay; CSS-var re-apply is diffed; surface
+  and text tints use `!important`; common SPA roots (`#react-root`, `main`, …)
+  get base paper from theme.css so x.com-style navigations do not flash white.
 - Switched from selective near-white tinting to full-page Rose Pine cover:
   any opaque surface, text, and low-chroma border maps into the active Dawn or
   Moon palette, so cool paper sites (e.g. mikaelhuuhtanen.com), dark-only

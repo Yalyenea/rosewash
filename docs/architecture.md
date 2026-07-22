@@ -15,8 +15,17 @@ Rosewash has three small layers.
 - DOM tinting and restoration.
 - A throttled `MutationObserver` for newly inserted elements.
 
-The engine writes inline styles so every non-protected painted surface becomes
-Rose Pine:
+At `document_start` the content runtime paints a provisional
+`data-rosewash-theme` (Auto from system preference) and applies default
+settings immediately so `theme.css` can force the page canvas before
+`chrome.storage` returns. Stored settings then refine or clear the cover.
+MutationObserver scans coalesce to `requestAnimationFrame` (not a multi-hundred
+millisecond delay). Theme re-apply only restores previous tints when the
+resolved palette actually changes, so mixed page-tone re-detect no longer
+flashes the whole document white. CSS variable overrides are diffed in place.
+
+The engine writes inline styles (with `!important`) so every non-protected
+painted surface becomes Rose Pine:
 
 - Opaque backgrounds map to `base` (page roots), `surface`, or `overlay`
   (mid-luminance boxes keep a little hierarchy).
