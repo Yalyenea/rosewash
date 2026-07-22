@@ -28,6 +28,8 @@ then grows into a small set of curated theme presets.
 - [x] Page-chrome tinting for headers, banners, nav, and known shells
   (arXiv-style bars, Zhihu `AppHeader` / `LeanAppHeaderBar` / `MobileAppHeader`).
 - [x] Transparent `html`/`body` canvas tinting for legacy sites such as jmlr.org.
+- [x] Root surface CSS-variable remapping so token-driven `::after` fades
+  (ChatGPT thread footer) follow the paper palette.
 
 ## Implementation Rules
 

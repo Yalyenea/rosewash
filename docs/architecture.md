@@ -22,6 +22,14 @@ default white canvas (legacy sites such as jmlr.org never set an explicit white
 fill). Original inline values are recorded and restored when the extension is
 disabled, the current host is blocked, or the active theme changes.
 
+Design-system pages (ChatGPT and similar) often paint sticky composers and
+scroll fades on `::after` with `background-color: var(--main-surface-primary)`.
+Those pseudo-elements cannot receive per-element inline tints, so the engine
+also remaps near-white **surface** custom properties on `documentElement`
+(`main-surface*`, `composer-surface*`, `bg-primary`, sidebar canvas tokens, …)
+to `palette.base` / `palette.surface`. Inverted text/icon whites and brand
+tokens are left alone. Overrides are restored with the rest of the theme.
+
 Page chrome is `header`, `[role=banner]`, top-level `nav`, and known app shells
 such as Zhihu's `.AppHeader` / `.LeanAppHeaderBar` / `.MobileAppHeader`, when
 they sit outside `main`/`article`. Opaque, gradient, or known transparent

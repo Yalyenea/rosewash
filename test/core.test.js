@@ -35,6 +35,13 @@ test("parses rgb, rgba, and hex colors", async () => {
     blue: 237,
     alpha: 1
   });
+  assert.deepEqual(plain(core.parseColor("#fffffff2")), {
+    red: 255,
+    green: 255,
+    blue: 255,
+    alpha: 242 / 255
+  });
+  assert.equal(core.classifySurfaceCssVar("--main-surface-background", core.parseColor("#fffffff2")), "base");
 });
 
 test("parses modern CSS color functions enough for tone detection", async () => {
@@ -129,6 +136,39 @@ test("detects generated CSS gradients without treating image urls as safe backgr
   assert.equal(core.isGeneratedBackgroundImage("none"), false);
   assert.equal(core.generatedBackgroundHasDarkSurface("linear-gradient(rgb(8, 11, 10), transparent)"), true);
   assert.equal(core.generatedBackgroundHasDarkSurface("linear-gradient(#d1bd95, #b39769)"), false);
+});
+
+test("classifies near-white design-system surface tokens for root CSS var overrides", async () => {
+  const core = await loadCore();
+  const white = core.parseColor("#fcfcfc");
+  const pure = core.parseColor("#ffffff");
+  assert.equal(core.classifySurfaceCssVar("--main-surface-primary", white), "base");
+  assert.equal(core.classifySurfaceCssVar("--bg-primary", pure), "base");
+  assert.equal(core.classifySurfaceCssVar("--composer-surface-primary", pure), "surface");
+  assert.equal(core.classifySurfaceCssVar("--main-surface-secondary", white), "surface");
+  assert.equal(core.classifySurfaceCssVar("--sidebar-surface-primary", white), "base");
+  assert.equal(core.classifySurfaceCssVar("--component-sidebar-bg", white), "base");
+  // Do not recolor inverted button/icon whites or brand accents.
+  assert.equal(core.classifySurfaceCssVar("--text-inverted", pure), null);
+  assert.equal(core.classifySurfaceCssVar("--icon-inverted", pure), null);
+  assert.equal(core.classifySurfaceCssVar("--interactive-label-primary-default", pure), null);
+  assert.equal(core.classifySurfaceCssVar("--white", pure), null);
+  assert.equal(core.classifySurfaceCssVar("--main-surface-primary", core.parseColor("#232136")), null);
+
+  const palette = core.PALETTES.dawn;
+  assert.equal(
+    JSON.stringify(core.resolveSurfaceCssVarOverrides([
+      ["--main-surface-primary", "#fcfcfc"],
+      ["--composer-surface-primary", "#fff"],
+      ["--text-inverted", "#fff"],
+      ["--bg-primary", "#ffffff"]
+    ], palette)),
+    JSON.stringify([
+      ["--main-surface-primary", palette.base],
+      ["--composer-surface-primary", palette.surface],
+      ["--bg-primary", palette.base]
+    ])
+  );
 });
 
 test("resolves auto mode from system preference", async () => {
