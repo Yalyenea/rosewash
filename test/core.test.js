@@ -41,6 +41,9 @@ test("parses rgb, rgba, and hex colors", async () => {
     blue: 255,
     alpha: 242 / 255
   });
+  assert.equal(core.parseColor("#ggg"), null);
+  assert.equal(core.parseColor("#gggggg"), null);
+  assert.equal(core.parseColor("#ggggggff"), null);
   assert.equal(core.classifySurfaceCssVar("--main-surface-background", core.parseColor("#fffffff2")), "base");
 });
 

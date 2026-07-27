@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Rejected invalid 3- and 6-digit hex colors in `parseColor` (return `null`
+  when channels are non-finite), matching the 8-digit hex branch.
 - Added agent-facing docs: `AGENTS.md` entry point and
   `docs/implementation.md` (settings, content pipeline, engine, commands, tests).
 - Added default keyboard shortcut `Alt+Shift+B` to toggle blocked / allowed for

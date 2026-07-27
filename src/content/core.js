@@ -79,6 +79,9 @@
       const red = parseInt(hex[0] + hex[0], 16);
       const green = parseInt(hex[1] + hex[1], 16);
       const blue = parseInt(hex[2] + hex[2], 16);
+      if (![red, green, blue].every(Number.isFinite)) {
+        return null;
+      }
       return { red, green, blue, alpha: 1 };
     }
 
@@ -86,6 +89,9 @@
       const red = parseInt(hex.slice(0, 2), 16);
       const green = parseInt(hex.slice(2, 4), 16);
       const blue = parseInt(hex.slice(4, 6), 16);
+      if (![red, green, blue].every(Number.isFinite)) {
+        return null;
+      }
       return { red, green, blue, alpha: 1 };
     }
 
