@@ -48,11 +48,20 @@ white chrome.
 
 Design-system pages often paint sticky composers and scroll fades on `::after`
 with tokens such as `var(--main-surface-primary)`. Pseudo-elements cannot take
-per-element inline tints, so the engine remaps matching root custom properties
-(`main-surface*`, `composer-surface*`, `bg-primary`, `--ground`, sidebar
-canvas tokens, …) to `palette.base` / `palette.surface`, and text tokens such
-as `--ink` / `--title-ink` to `palette.text`. Inverted icon/button tokens and
-brand accents are left alone. Overrides restore with the rest of the theme.
+per-element inline tints, so:
+
+1. **`theme.css`** forces ChatGPT-style surface tokens on `html` / `.dark` /
+   `[data-theme=dark]` to `--rosewash-*`, and pins
+   `[class*="thread-bottom-container"]::after` (and related fades) to
+   `--rosewash-base`.
+2. **Engine** remaps matching root custom properties (`main-surface*`,
+   `composer-surface*`, `bg-primary`, `--ground`, sidebar canvas tokens, …)
+   to `palette.base` / `surface` / `overlay`, and text tokens such as
+   `--ink` to `palette.text`, with `!important`. Known ChatGPT token names
+   are forced even when the current value cannot be parsed.
+
+Inverted icon/button tokens and brand accents are left alone. Overrides
+restore with the rest of the theme.
 
 If the first document-start pass can only classify the page as `mixed`, the
 next runtime re-apply restores Rosewash's own inline styles before sampling
