@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Fixed ChatGPT dark-mode sticky footer / composer block that stayed native
+  dark while the page was Dawn/Moon paper: force known surface tokens
+  (`--main-surface-primary`, `--composer-surface-primary`, …) with `!important`
+  on root and `.dark` scopes via `theme.css`, pin
+  `[class*="thread-bottom-container"]::after` to `--rosewash-base`, and name-
+  force those tokens in the engine even when values are unparseable
+  (`color(display-p3 …)`).
 - Rejected invalid 3- and 6-digit hex colors in `parseColor` (return `null`
   when channels are non-finite), matching the 8-digit hex branch.
 - Added agent-facing docs: `AGENTS.md` entry point and

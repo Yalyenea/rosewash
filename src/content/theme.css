@@ -71,3 +71,38 @@ html[data-rosewash-theme] .MobileAppHeader a:not([data-rosewash-ignore]) {
   color: var(--rosewash-link) !important;
 }
 
+/* ChatGPT (and similar) paint sticky composer fades on ::after via design
+   tokens. Dark themes often re-declare those tokens with !important on
+   .dark, or only on nested shells — force paper tokens on both the root and
+   common dark scopes, and pin the fade pseudo itself. */
+html[data-rosewash-theme],
+html[data-rosewash-theme].dark,
+html[data-rosewash-theme] body,
+html[data-rosewash-theme] .dark,
+html[data-rosewash-theme] [data-theme="dark"],
+html[data-rosewash-theme] [data-color-scheme="dark"] {
+  --main-surface-primary: var(--rosewash-base) !important;
+  --main-surface-secondary: var(--rosewash-surface) !important;
+  --main-surface-background: var(--rosewash-base) !important;
+  --main-surface-tertiary: var(--rosewash-overlay) !important;
+  --composer-surface-primary: var(--rosewash-surface) !important;
+  --bg-primary: var(--rosewash-base) !important;
+  --bg-secondary: var(--rosewash-overlay) !important;
+  --bg-secondary-surface: var(--rosewash-surface) !important;
+  --bg-elevated-primary: var(--rosewash-surface) !important;
+  --sidebar-surface-primary: var(--rosewash-base) !important;
+  --sidebar-surface-secondary: var(--rosewash-surface) !important;
+  --sidebar-surface-tertiary: var(--rosewash-overlay) !important;
+  --component-sidebar-bg: var(--rosewash-base) !important;
+}
+
+html[data-rosewash-theme] [class*="thread-bottom-container"]::before,
+html[data-rosewash-theme] [class*="thread-bottom-container"]::after,
+html[data-rosewash-theme] [class*="threadFooterContentFade"]::before,
+html[data-rosewash-theme] [class*="threadFooterContentFade"]::after,
+html[data-rosewash-theme] [class*="thread-bottom"]::before,
+html[data-rosewash-theme] [class*="thread-bottom"]::after {
+  background-color: var(--rosewash-base) !important;
+  background-image: none !important;
+}
+

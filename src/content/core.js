@@ -517,6 +517,35 @@
   const TEXT_VAR_EXCLUDE = /inverted|on-primary|btn|button|link|brand|accent|success|warning|error|danger|shadow/;
   const TEXT_VAR_INCLUDE = /(?:^|-)(ink|title-ink|text-primary|text-secondary|text-color|foreground|body-color|color-text|print_on_web)(?:-|$)/;
 
+  // Always force these when present or when any surface token is active.
+  // ChatGPT dark may expose unparseable values (display-p3) or re-declare
+  // tokens only under .dark — name-based force still paints the footer.
+  const FORCED_SURFACE_VARS = Object.freeze([
+    ["--main-surface-primary", "base"],
+    ["--main-surface-secondary", "surface"],
+    ["--main-surface-background", "base"],
+    ["--main-surface-tertiary", "overlay"],
+    ["--composer-surface-primary", "surface"],
+    ["--bg-primary", "base"],
+    ["--bg-secondary", "overlay"],
+    ["--bg-secondary-surface", "surface"],
+    ["--bg-elevated-primary", "surface"],
+    ["--sidebar-surface-primary", "base"],
+    ["--sidebar-surface-secondary", "surface"],
+    ["--sidebar-surface-tertiary", "overlay"],
+    ["--component-sidebar-bg", "base"]
+  ]);
+
+  function paletteColorForSurfaceRole(palette, role) {
+    if (role === "surface") {
+      return palette.surface;
+    }
+    if (role === "overlay") {
+      return palette.overlay;
+    }
+    return palette.base;
+  }
+
   function classifySurfaceCssVar(name, color) {
     if (!name || !name.startsWith("--")) {
       return null;
@@ -579,19 +608,40 @@
   }
 
   function resolveSurfaceCssVarOverrides(entries, palette) {
-    const overrides = [];
+    const overrides = new Map();
+    let sawSurfaceToken = false;
+
     for (const [name, value] of entries) {
       const color = parseColor(value);
       const surfaceRole = classifySurfaceCssVar(name, color);
       if (surfaceRole) {
-        overrides.push([name, surfaceRole === "surface" ? palette.surface : palette.base]);
+        sawSurfaceToken = true;
+        overrides.set(name, paletteColorForSurfaceRole(palette, surfaceRole));
         continue;
       }
       if (classifyTextCssVar(name, color)) {
-        overrides.push([name, palette.text]);
+        overrides.set(name, palette.text);
+        continue;
+      }
+      // Unparseable but known surface name (e.g. color(display-p3 …)).
+      const forced = FORCED_SURFACE_VARS.find(([token]) => token === name);
+      if (forced) {
+        sawSurfaceToken = true;
+        overrides.set(name, paletteColorForSurfaceRole(palette, forced[1]));
       }
     }
-    return overrides;
+
+    // When any ChatGPT-style surface token is on the page, force the full
+    // known set so dark .dark re-declarations cannot leave a native strip.
+    if (sawSurfaceToken) {
+      for (const [name, role] of FORCED_SURFACE_VARS) {
+        if (!overrides.has(name)) {
+          overrides.set(name, paletteColorForSurfaceRole(palette, role));
+        }
+      }
+    }
+
+    return Array.from(overrides.entries());
   }
 
   function isElementNode(node) {
@@ -969,8 +1019,13 @@
           const previous = root.style.getPropertyValue(name);
           cssVarOverrides.set(name, previous || null);
         }
-        if (root.style.getPropertyValue(name) !== value) {
-          root.style.setProperty(name, value);
+        // ChatGPT (and similar) dark themes set surface tokens with
+        // !important on .dark; non-important inline loses that cascade.
+        if (
+          root.style.getPropertyValue(name) !== value
+          || root.style.getPropertyPriority(name) !== "important"
+        ) {
+          root.style.setProperty(name, value, "important");
         }
       }
     }
@@ -1060,6 +1115,7 @@
     classifyTextCssVar,
     listRootCssCustomProperties,
     resolveSurfaceCssVarOverrides,
+    FORCED_SURFACE_VARS,
     surfaceColorFor,
     luminance,
     normalizeSettings,

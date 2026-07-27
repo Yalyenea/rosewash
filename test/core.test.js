@@ -172,23 +172,48 @@ test("classifies design-system surface and text tokens for root CSS var override
   assert.equal(core.classifyTextCssVar("--text-inverted", pure), null);
 
   const palette = core.PALETTES.dawn;
-  assert.equal(
-    JSON.stringify(core.resolveSurfaceCssVarOverrides([
-      ["--main-surface-primary", "#fcfcfc"],
-      ["--composer-surface-primary", "#fff"],
-      ["--text-inverted", "#fff"],
-      ["--bg-primary", "#ffffff"],
-      ["--ground", "rgb(238, 242, 246)"],
-      ["--ink", "rgb(22, 30, 27)"]
-    ], palette)),
-    JSON.stringify([
-      ["--main-surface-primary", palette.base],
-      ["--composer-surface-primary", palette.surface],
-      ["--bg-primary", palette.base],
-      ["--ground", palette.base],
-      ["--ink", palette.text]
-    ])
-  );
+  const dawnOverrides = Object.fromEntries(core.resolveSurfaceCssVarOverrides([
+    ["--main-surface-primary", "#fcfcfc"],
+    ["--composer-surface-primary", "#fff"],
+    ["--text-inverted", "#fff"],
+    ["--bg-primary", "#ffffff"],
+    ["--ground", "rgb(238, 242, 246)"],
+    ["--ink", "rgb(22, 30, 27)"]
+  ], palette));
+  assert.equal(dawnOverrides["--main-surface-primary"], palette.base);
+  assert.equal(dawnOverrides["--composer-surface-primary"], palette.surface);
+  assert.equal(dawnOverrides["--bg-primary"], palette.base);
+  assert.equal(dawnOverrides["--ground"], palette.base);
+  assert.equal(dawnOverrides["--ink"], palette.text);
+  assert.equal(dawnOverrides["--text-inverted"], undefined);
+  assert.equal(dawnOverrides["--component-sidebar-bg"], palette.base);
+
+  // ChatGPT dark tokens (opaque dark surfaces, not near-white) must still map.
+  const moon = core.PALETTES.moon;
+  assert.equal(core.classifySurfaceCssVar("--main-surface-primary", dark), "base");
+  assert.equal(core.classifySurfaceCssVar("--composer-surface-primary", dark), "surface");
+  const darkOverrides = Object.fromEntries(core.resolveSurfaceCssVarOverrides([
+    ["--main-surface-primary", "#212121"],
+    ["--composer-surface-primary", "#303030"],
+    ["--bg-primary", "rgb(33, 33, 33)"],
+    ["--sidebar-surface-primary", "#171717"],
+    ["--text-inverted", "#fff"]
+  ], moon));
+  assert.equal(darkOverrides["--main-surface-primary"], moon.base);
+  assert.equal(darkOverrides["--composer-surface-primary"], moon.surface);
+  assert.equal(darkOverrides["--bg-primary"], moon.base);
+  assert.equal(darkOverrides["--sidebar-surface-primary"], moon.base);
+  // Seeing any surface token forces the full ChatGPT-known set.
+  assert.equal(darkOverrides["--component-sidebar-bg"], moon.base);
+  assert.equal(darkOverrides["--main-surface-secondary"], moon.surface);
+
+  // Unparseable display-p3 values still force known surface token names.
+  const p3Overrides = Object.fromEntries(core.resolveSurfaceCssVarOverrides([
+    ["--main-surface-primary", "color(display-p3 0.13 0.13 0.13)"],
+    ["--composer-surface-primary", "color(display-p3 0.19 0.19 0.19)"]
+  ], moon));
+  assert.equal(p3Overrides["--main-surface-primary"], moon.base);
+  assert.equal(p3Overrides["--composer-surface-primary"], moon.surface);
 });
 
 test("resolves auto mode from system preference", async () => {
@@ -743,6 +768,45 @@ test("engine covers cool paper and dark shells in both themes", async () => {
   assert.equal(byId.get("title").style.getPropertyValue("color"), moon.text);
   assert.equal(document.documentElement.style.getPropertyValue("--ground"), moon.base);
   assert.equal(document.documentElement.style.getPropertyValue("--ink"), moon.text);
+  assert.equal(document.documentElement.style.getPropertyPriority("--ground"), "important");
+  assert.equal(document.documentElement.style.getPropertyPriority("--ink"), "important");
+});
+
+test("engine remaps ChatGPT dark surface tokens with !important for footer fades", async () => {
+  const core = await loadCore();
+  const { document, window } = createMockDom({
+    htmlBackgroundColor: "rgb(33, 33, 33)",
+    bodyBackgroundColor: "rgb(33, 33, 33)",
+    bodyColor: "rgb(236, 236, 236)",
+    prefersDark: true,
+    rootCssVars: {
+      "--main-surface-primary": "#212121",
+      "--composer-surface-primary": "#303030",
+      "--bg-primary": "#212121",
+      "--sidebar-surface-primary": "#171717",
+      "--component-sidebar-bg": "#171717"
+    },
+    tree: []
+  });
+
+  const engine = core.createEngine({ document, window });
+  const moon = core.PALETTES.moon;
+  const result = engine.apply({ enabled: true, mode: "moon", disabledHosts: [] });
+  assert.equal(result.theme, "moon");
+
+  const rootStyle = document.documentElement.style;
+  assert.equal(rootStyle.getPropertyValue("--main-surface-primary"), moon.base);
+  assert.equal(rootStyle.getPropertyPriority("--main-surface-primary"), "important");
+  assert.equal(rootStyle.getPropertyValue("--composer-surface-primary"), moon.surface);
+  assert.equal(rootStyle.getPropertyPriority("--composer-surface-primary"), "important");
+  assert.equal(rootStyle.getPropertyValue("--bg-primary"), moon.base);
+  assert.equal(rootStyle.getPropertyPriority("--bg-primary"), "important");
+  assert.equal(rootStyle.getPropertyValue("--sidebar-surface-primary"), moon.base);
+  assert.equal(rootStyle.getPropertyPriority("--sidebar-surface-primary"), "important");
+
+  engine.clear();
+  assert.equal(rootStyle.getPropertyValue("--main-surface-primary"), "");
+  assert.equal(rootStyle.getPropertyValue("--composer-surface-primary"), "");
 });
 
 test("engine adapts nested Substack-like dark publication shells in Dawn", async () => {

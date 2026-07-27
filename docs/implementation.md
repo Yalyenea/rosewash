@@ -200,11 +200,16 @@ surfaces (CodeMirror, Monaco, hljs, KaTeX, MathJax), and
 
 ### Root CSS variable remapping
 
-Pseudo-elements cannot take per-element inline tints. The engine rewrites
-matching **root** custom properties (ChatGPT `main-surface*`, Substack/theme
-`ground` / `ink`, sidebar canvas tokens, …) to palette colors. Include/exclude
-regexes live as `SURFACE_VAR_*` / `TEXT_VAR_*` in `core.js`. Overrides are
-diffed and restored with the theme.
+Pseudo-elements cannot take per-element inline tints.
+
+- **`theme.css`**: while `data-rosewash-theme` is set, force ChatGPT surface
+  tokens on root / `.dark` scopes and pin sticky footer fade pseudos
+  (`thread-bottom-container`, `threadFooterContentFade`) to
+  `--rosewash-base`.
+- **Engine** (`SURFACE_VAR_*` / `TEXT_VAR_*` / `FORCED_SURFACE_VARS` in
+  `core.js`): rewrite matching root custom properties to palette colors with
+  `!important`. Known ChatGPT names are forced even for unparseable values.
+  Overrides are diffed and restored with the theme.
 
 ### MutationObserver
 
