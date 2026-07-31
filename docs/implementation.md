@@ -203,13 +203,14 @@ surfaces (CodeMirror, Monaco, hljs, KaTeX, MathJax), and
 Pseudo-elements cannot take per-element inline tints.
 
 - **`theme.css`**: while `data-rosewash-theme` is set, force ChatGPT surface
-  tokens on root / `.dark` scopes and pin sticky footer fade pseudos
-  (`thread-bottom-container`, `threadFooterContentFade`) to
-  `--rosewash-base`.
+  tokens and Substack publication tokens on root / `.dark` scopes; pin sticky
+  footer fade pseudos (`thread-bottom-container`, `threadFooterContentFade`) to
+  `--rosewash-base`; cover SPA roots plus Substack shells (`#entry`, `#main`,
+  `.use-theme-bg`, `.intro-popup`).
 - **Engine** (`SURFACE_VAR_*` / `TEXT_VAR_*` / `FORCED_SURFACE_VARS` in
   `core.js`): rewrite matching root custom properties to palette colors with
-  `!important`. Known ChatGPT names are forced even for unparseable values.
-  Overrides are diffed and restored with the theme.
+  `!important`. Known ChatGPT / Substack surface names are forced even for
+  unparseable values. Overrides are diffed and restored with the theme.
 
 ### MutationObserver
 
@@ -233,7 +234,8 @@ Active only under `html[data-rosewash-theme]`:
 
 - Sets `--rosewash-*` tokens and `color-scheme`.
 - Forces `html`/`body` base + body text.
-- Covers common SPA roots (`#react-root`, `#root`, `#app`, `#__next`, `main`, …).
+- Covers common SPA roots (`#react-root`, `#root`, `#app`, `#__next`, `main`, …)
+  and Substack shells (`#entry`, `#main`, `.use-theme-bg`, intro popup).
 - Forces Zhihu header shells and link colors with `!important`.
 - Selection and default link colors.
 

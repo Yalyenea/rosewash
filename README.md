@@ -21,7 +21,7 @@ defaults. Media, canvas, SVG, inputs, editors, and code blocks stay protected.
   including colored top bars such as arXiv's and Zhihu `AppHeader` shells
   (forced even when styled via CSS-in-JS).
 - Root CSS custom property remapping for design-token backgrounds and text
-  (`--ground`, `--ink`, ChatGPT surface tokens, Substack theme vars, …).
+  (`--ground`, `--ink`, ChatGPT surface tokens, Substack publication vars, …).
 - CSS Color 4 tone parsing for modern `lab()`, `oklab()`, `lch()`, and
   `oklch()` authored pages.
 - Media, canvas, SVG, inputs, editors, and code block protection.

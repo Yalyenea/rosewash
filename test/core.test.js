@@ -162,6 +162,12 @@ test("classifies design-system surface and text tokens for root CSS var override
   assert.equal(core.classifySurfaceCssVar("--component-sidebar-bg", white), "base");
   assert.equal(core.classifySurfaceCssVar("--ground", dark), "base");
   assert.equal(core.classifySurfaceCssVar("--web_bg_color", dark), "base");
+  // Substack light publication tokens (elevated contrasts, cover paper).
+  assert.equal(core.classifySurfaceCssVar("--background_contrast_1", white), "surface");
+  assert.equal(core.classifySurfaceCssVar("--cover_bg_color", pure), "base");
+  assert.equal(core.classifySurfaceCssVar("--color-bg-primary", pure), "base");
+  // Utility-contrast labels stay excluded; background_contrast is surfaces.
+  assert.equal(core.classifySurfaceCssVar("--color-semantic-utility-contrast", pure), null);
   // Do not recolor inverted button/icon whites or brand accents.
   assert.equal(core.classifySurfaceCssVar("--text-inverted", pure), null);
   assert.equal(core.classifySurfaceCssVar("--icon-inverted", pure), null);
@@ -169,6 +175,8 @@ test("classifies design-system surface and text tokens for root CSS var override
   assert.equal(core.classifySurfaceCssVar("--white", pure), null);
   assert.equal(core.classifyTextCssVar("--ink", ink), "text");
   assert.equal(core.classifyTextCssVar("--title-ink", ink), "text");
+  assert.equal(core.classifyTextCssVar("--color-fg-primary", ink), "text");
+  assert.equal(core.classifyTextCssVar("--cover_print_primary", ink), "text");
   assert.equal(core.classifyTextCssVar("--text-inverted", pure), null);
 
   const palette = core.PALETTES.dawn;
@@ -862,6 +870,77 @@ test("engine adapts nested Substack-like dark publication shells in Dawn", async
   assert.equal(byId.get("main").style.getPropertyValue("color"), palette.text);
   assert.equal(byId.get("panel").style.getPropertyValue("background-color"), palette.surface);
   assert.equal(byId.get("panel").style.getPropertyValue("color"), palette.text);
+});
+
+test("engine covers light Substack publication shells in Moon", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({
+    htmlBackgroundColor: "rgba(0, 0, 0, 0)",
+    htmlColor: "rgb(0, 0, 0)",
+    bodyBackgroundColor: "rgba(0, 0, 0, 0)",
+    bodyColor: "rgb(54, 55, 55)",
+    prefersDark: false,
+    rootCssVars: {
+      "--theme_bg_is_dark": "0",
+      "--color-bg-primary": "rgb(255, 255, 255)",
+      "--color-bg-secondary": "rgb(238, 238, 238)",
+      "--color-fg-primary": "rgb(54, 55, 55)",
+      "--background_contrast_1": "#f0f0f0",
+      "--cover_bg_color": "#FFFFFF",
+      "--cover_print_primary": "#363737"
+    },
+    tree: [
+      {
+        id: "entry",
+        tag: "div",
+        backgroundColor: "rgba(0, 0, 0, 0)",
+        color: "rgb(54, 55, 55)",
+        children: [
+          {
+            id: "main",
+            tag: "div",
+            className: "main typography use-theme-bg should-flex",
+            backgroundColor: "rgb(255, 255, 255)",
+            color: "rgb(54, 55, 55)",
+            children: [
+              {
+                id: "panel",
+                tag: "div",
+                className: "panel",
+                backgroundColor: "rgb(240, 240, 240)",
+                color: "rgb(54, 55, 55)"
+              },
+              {
+                id: "title",
+                tag: "h1",
+                backgroundColor: "rgba(0, 0, 0, 0)",
+                color: "rgb(54, 55, 55)"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  });
+
+  const engine = core.createEngine({ document, window });
+  const result = engine.apply({ enabled: true, mode: "moon", disabledHosts: [] });
+  const moon = core.PALETTES.moon;
+  const rootStyle = document.documentElement.style;
+
+  assert.equal(result.enabled, true);
+  assert.equal(result.theme, "moon");
+  assert.equal(engine.stats().pageTone, "light-page");
+  assert.equal(document.documentElement.style.getPropertyValue("background-color"), moon.base);
+  assert.equal(byId.get("main").style.getPropertyValue("background-color"), moon.surface);
+  assert.equal(byId.get("main").style.getPropertyValue("color"), moon.text);
+  assert.equal(byId.get("panel").style.getPropertyValue("background-color"), moon.surface);
+  assert.equal(byId.get("title").style.getPropertyValue("color"), moon.text);
+  assert.equal(rootStyle.getPropertyValue("--color-bg-primary"), moon.base);
+  assert.equal(rootStyle.getPropertyValue("--background_contrast_1"), moon.surface);
+  assert.equal(rootStyle.getPropertyValue("--cover_bg_color"), moon.base);
+  assert.equal(rootStyle.getPropertyValue("--color-fg-primary"), moon.text);
+  assert.equal(rootStyle.getPropertyValue("--cover_print_primary"), moon.text);
 });
 
 test("normalizes settings and blocked hosts", async () => {

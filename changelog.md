@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Fixed light Substack publications (e.g. gonzoml.substack.com) in Moon mode:
+  cover `div#main` / `#entry` / `.use-theme-bg` / intro popup shells in
+  `theme.css` before the DOM scan; remap publication tokens
+  (`--color-bg-primary`, `--background_contrast_*`, `--color-fg-primary`,
+  `--cover_bg_color`, …) instead of leaving pure white paper and dark ink.
 - Fixed ChatGPT dark-mode sticky footer / composer block that stayed native
   dark while the page was Dawn/Moon paper: force known surface tokens
   (`--main-surface-primary`, `--composer-surface-primary`, …) with `!important`

@@ -512,10 +512,11 @@
 
   // Design-system tokens often paint ::before/::after. Inline element styles
   // cannot reach pseudo-elements, so root custom properties must move too.
-  const SURFACE_VAR_EXCLUDE = /text|icon|label|inverted|border|outline|ring|divider|btn-text|msg-text|on-primary|contrast|shadow-color|submit-btn-text|ink|print_on/;
-  const SURFACE_VAR_INCLUDE = /main-surface|composer-surface|sidebar-surface|component-sidebar-bg|bg-primary|bg-secondary|bg-elevated|bg-secondary-surface|surface-primary|surface-secondary|surface-tertiary|page-bg|canvas|background-primary|background-secondary|ground|web_bg|theme_bg|color_theme_bg|color-bg|^--bg$|^--background$|^--background-color$/;
-  const TEXT_VAR_EXCLUDE = /inverted|on-primary|btn|button|link|brand|accent|success|warning|error|danger|shadow/;
-  const TEXT_VAR_INCLUDE = /(?:^|-)(ink|title-ink|text-primary|text-secondary|text-color|foreground|body-color|color-text|print_on_web)(?:-|$)/;
+  // Exclude utility-contrast (on-accent labels), not Substack background_contrast_*.
+  const SURFACE_VAR_EXCLUDE = /text|icon|label|inverted|border|outline|ring|divider|btn-text|msg-text|on-primary|utility-contrast|shadow-color|submit-btn-text|ink|print_on/;
+  const SURFACE_VAR_INCLUDE = /main-surface|composer-surface|sidebar-surface|component-sidebar-bg|bg-primary|bg-secondary|bg-elevated|bg-secondary-surface|surface-primary|surface-secondary|surface-tertiary|page-bg|canvas|background-primary|background-secondary|background_contrast|cover_bg|fp-recirc-block-bg|ground|web_bg|theme_bg|color_theme_bg|color-bg|^--bg$|^--background$|^--background-color$/;
+  const TEXT_VAR_EXCLUDE = /inverted|on-primary|btn|button|link|brand|accent|success|warning|error|danger|shadow|utility-contrast/;
+  const TEXT_VAR_INCLUDE = /(?:^|-)(ink|title-ink|text-primary|text-secondary|text-color|foreground|body-color|color-text|print_on_web|fg-primary|fg-secondary|cover_print_primary)(?:-|$)/;
 
   // Always force these when present or when any surface token is active.
   // ChatGPT dark may expose unparseable values (display-p3) or re-declare
@@ -533,7 +534,18 @@
     ["--sidebar-surface-primary", "base"],
     ["--sidebar-surface-secondary", "surface"],
     ["--sidebar-surface-tertiary", "overlay"],
-    ["--component-sidebar-bg", "base"]
+    ["--component-sidebar-bg", "base"],
+    // Substack publication shells (light pubs keep pure white without these).
+    ["--color-bg-primary", "base"],
+    ["--color-bg-secondary", "surface"],
+    ["--color-bg-elevated-primary", "surface"],
+    ["--color-bg-elevated-secondary", "overlay"],
+    ["--web_bg_color", "base"],
+    ["--color_theme_bg_web", "base"],
+    ["--background_contrast_1", "surface"],
+    ["--background_contrast_2", "overlay"],
+    ["--cover_bg_color", "base"],
+    ["--cover_bg_color_secondary", "surface"]
   ]);
 
   function paletteColorForSurfaceRole(palette, role) {
@@ -562,7 +574,7 @@
       return null;
     }
 
-    if (/(secondary|elevated|composer|tertiary|overlay)/.test(normalized)) {
+    if (/(secondary|elevated|composer|tertiary|overlay|contrast|recirc)/.test(normalized)) {
       return "surface";
     }
     return "base";

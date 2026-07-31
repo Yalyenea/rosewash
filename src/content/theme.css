@@ -30,13 +30,19 @@ html[data-rosewash-theme] body {
 }
 
 /* Common SPA shells paint white on deep roots, not body — cover them in CSS
-   so x.com-style navigations do not flash white before the mutation scan. */
+   so x.com-style navigations do not flash white before the mutation scan.
+   Substack uses div#main / #entry / .use-theme-bg (not <main>). */
 html[data-rosewash-theme] #react-root,
 html[data-rosewash-theme] #root,
 html[data-rosewash-theme] #app,
 html[data-rosewash-theme] #__next,
 html[data-rosewash-theme] [data-testid="primaryColumn"],
-html[data-rosewash-theme] main {
+html[data-rosewash-theme] main,
+html[data-rosewash-theme] #entry,
+html[data-rosewash-theme] #main,
+html[data-rosewash-theme] .use-theme-bg,
+html[data-rosewash-theme] .intro-popup,
+html[data-rosewash-theme] .intro-popup-page {
   background-color: var(--rosewash-base) !important;
   color: var(--rosewash-text) !important;
 }
@@ -94,6 +100,23 @@ html[data-rosewash-theme] [data-color-scheme="dark"] {
   --sidebar-surface-secondary: var(--rosewash-surface) !important;
   --sidebar-surface-tertiary: var(--rosewash-overlay) !important;
   --component-sidebar-bg: var(--rosewash-base) !important;
+  /* Substack publication tokens (light pubs stay white in Moon without this). */
+  --color-bg-primary: var(--rosewash-base) !important;
+  --color-bg-secondary: var(--rosewash-surface) !important;
+  --color-bg-elevated-primary: var(--rosewash-surface) !important;
+  --color-bg-elevated-secondary: var(--rosewash-overlay) !important;
+  --color-fg-primary: var(--rosewash-text) !important;
+  --color-fg-primary-themed: var(--rosewash-text) !important;
+  --color-fg-secondary: var(--rosewash-muted) !important;
+  --web_bg_color: var(--rosewash-base) !important;
+  --color_theme_bg_web: var(--rosewash-base) !important;
+  --background_contrast_1: var(--rosewash-surface) !important;
+  --background_contrast_2: var(--rosewash-overlay) !important;
+  --cover_bg_color: var(--rosewash-base) !important;
+  --cover_bg_color_secondary: var(--rosewash-surface) !important;
+  --cover_print_primary: var(--rosewash-text) !important;
+  --print_on_web_bg_color: var(--rosewash-text) !important;
+  --fp-recirc-block-bg: var(--rosewash-surface) !important;
 }
 
 html[data-rosewash-theme] [class*="thread-bottom-container"]::before,

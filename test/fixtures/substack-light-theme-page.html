@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Rosewash Substack Light Theme Fixture</title>
+    <style>
+      :root {
+        --theme_bg_is_dark: 0;
+        --color-bg-primary: rgb(255, 255, 255);
+        --color-bg-secondary: rgb(238, 238, 238);
+        --color-fg-primary: rgb(54, 55, 55);
+        --background_contrast_1: #f0f0f0;
+        --cover_bg_color: #FFFFFF;
+        --cover_print_primary: #363737;
+      }
+
+      html {
+        background-color: transparent;
+      }
+
+      body {
+        background: transparent;
+        color: var(--color-fg-primary);
+        font: 16px/1.5 Georgia, serif;
+        margin: 0;
+      }
+
+      /* Light Substack pubs paint white on div#main, not <main>. */
+      #entry {
+        background: transparent;
+      }
+
+      #main.main.use-theme-bg {
+        background-color: var(--color-bg-primary);
+        color: var(--color-fg-primary);
+        margin: 0 auto;
+        max-width: 720px;
+        min-height: 100vh;
+        padding: 32px 24px;
+      }
+
+      .panel {
+        background: var(--background_contrast_1);
+        border: 1px solid #dddddd;
+        margin-top: 18px;
+        padding: 18px;
+      }
+
+      .intro-popup {
+        background: #ffffff;
+        color: #363737;
+        min-height: 40vh;
+        padding: 24px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="intro-popup">Subscribe wall should follow Moon paper.</div>
+    <div id="entry">
+      <div id="main" class="main typography use-theme-bg should-flex">
+        <h1>Substack light publication fixture</h1>
+        <p>White shells and design tokens should become Moon paper in Moon mode.</p>
+        <div class="panel">Elevated light panels should darken with the page.</div>
+      </div>
+    </div>
+    <script src="../../src/content/core.js"></script>
+    <script src="fixture-runner.js"></script>
+  </body>
+</html>
