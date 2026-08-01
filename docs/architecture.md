@@ -103,8 +103,9 @@ Users can rebind the shortcut under `chrome://extensions/shortcuts`.
 
 ## UI
 
-`popup.html` is the daily control surface. `options.html` is only for editing
-the block list. Both are plain HTML/CSS/JS and share the same storage schema:
+`popup.html` is the daily control surface. `options.html` is the full settings
+page (appearance, clickable palette grid, block list). Both are plain HTML/CSS/JS
+and share the same storage schema:
 
 ```json
 {

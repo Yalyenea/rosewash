@@ -18,7 +18,7 @@ extension. Package with `just package` → `.tmp/rosewash.zip`.
 ```text
 manifest.json              MV3 entry: permissions, content scripts, SW, commands
 popup.html + src/popup/    Action popup (enable, appearance, preset, site block)
-options.html + src/options/ Block-list editor
+options.html + src/options/ Settings (palette grid, appearance, block list)
 src/background/            Service worker (keyboard commands)
 src/content/
   core.js                  Pure engine + host helpers (testable via vm)
@@ -56,7 +56,7 @@ justfile                   test · validate · check · package
 | CSS cover | `src/content/theme.css` | First-frame canvas / SPA roots / known shells |
 | Background | `src/background/background.js` | `toggle-current-site` command |
 | Popup | `src/popup/popup.js` | Daily controls + push message to active tab |
-| Options | `src/options/options.js` | Full block list edit |
+| Options | `src/options/options.js` | Palette grid, appearance, block list |
 
 ## Settings schema
 
