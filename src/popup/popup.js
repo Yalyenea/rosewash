@@ -16,7 +16,6 @@
   const siteButton = document.querySelector("#site-toggle");
   const optionsButton = document.querySelector("#options");
   const refreshButton = document.querySelector("#refresh");
-  const statusLabel = document.querySelector("#status");
 
   let activeTab = null;
   let activeHost = "";
@@ -57,14 +56,7 @@
     for (const preset of presets) {
       const option = document.createElement("option");
       option.value = preset.id;
-      const variants = [];
-      if (preset.light) {
-        variants.push("L");
-      }
-      if (preset.dark) {
-        variants.push("D");
-      }
-      option.textContent = `${preset.label} (${variants.join("/")})`;
+      option.textContent = preset.label;
       presetSelect.appendChild(option);
     }
   }
@@ -90,13 +82,6 @@
     root.style.setProperty("--muted", palette.muted);
     root.style.setProperty("--accent", palette.link);
     root.style.colorScheme = core.isDarkThemeKey(themeKey) ? "dark" : "light";
-  }
-
-  function setStatus(text) {
-    if (!statusLabel) {
-      return;
-    }
-    statusLabel.textContent = text || "";
   }
 
   async function storageGet() {
@@ -152,9 +137,6 @@
     siteButton.textContent = disabled ? "Blocked" : "Allowed";
     siteButton.disabled = !activeHost;
     paintPopupChrome();
-
-    const { themeKey } = resolvedPalette();
-    setStatus(themeKey);
   }
 
   async function updateSettings(nextSettings) {
@@ -163,10 +145,7 @@
     ).sort();
     await storageSet({ ...nextSettings, disabledHosts: normalizedHosts });
     render();
-    const reached = await syncContentScripts();
-    if (reached === 0) {
-      setStatus(`${resolvedPalette().themeKey} · reload page`);
-    }
+    await syncContentScripts();
   }
 
   enabledInput.addEventListener("change", () => {
@@ -200,9 +179,8 @@
     chrome.runtime.openOptionsPage();
   });
 
-  refreshButton.addEventListener("click", async () => {
-    const reached = await syncContentScripts();
-    setStatus(reached > 0 ? `${resolvedPalette().themeKey} · applied` : `${resolvedPalette().themeKey} · reload page`);
+  refreshButton.addEventListener("click", () => {
+    syncContentScripts();
   });
 
   async function init() {

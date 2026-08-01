@@ -4,6 +4,7 @@
 
 - Renamed popup footer action from Sites to Settings; settings page lists every
   palette as a selectable card (color swatches + label) instead of a dropdown.
+- Removed informal UI copy (Codex/hint text, L/D labels, status debug lines).
 - Shipped curated theme presets aligned with the Codex desktop app palette list
   (28 families: Rose Pine, Catppuccin, Gruvbox, Nord, Solarized, Tokyo Night,
   Dracula, One, GitHub, Linear, Notion, Raycast, Vercel, Codex, …). Settings are

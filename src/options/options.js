@@ -75,14 +75,6 @@
       button.setAttribute("role", "option");
       button.setAttribute("aria-selected", "false");
 
-      const variants = [];
-      if (preset.light) {
-        variants.push("Light");
-      }
-      if (preset.dark) {
-        variants.push("Dark");
-      }
-
       const colors = swatchColors(preset);
       button.innerHTML = `
         <span class="swatches" aria-hidden="true">
@@ -91,10 +83,7 @@
           <span style="background:${colors.text}"></span>
           <span style="background:${colors.link}"></span>
         </span>
-        <span class="meta">
-          <span class="name">${preset.label}</span>
-          <span class="variants">${variants.join(" · ")}</span>
-        </span>
+        <span class="name">${preset.label}</span>
       `;
 
       button.addEventListener("click", () => {
@@ -136,7 +125,7 @@
     });
     await chrome.storage.sync.set(next);
     await chrome.storage.sync.remove("mode");
-    setStatus(`Saved · ${next.preset}`);
+    setStatus("Saved");
   });
 
   resetButton.addEventListener("click", async () => {

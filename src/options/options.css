@@ -52,21 +52,6 @@ section {
   padding-top: 20px;
 }
 
-.hint {
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.5;
-  margin: 0 0 12px;
-}
-
-kbd {
-  background: var(--surface);
-  border: 1px solid var(--overlay);
-  border-radius: 4px;
-  font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  padding: 1px 5px;
-}
-
 .modes {
   display: flex;
   gap: 14px;
@@ -120,22 +105,11 @@ kbd {
   min-width: 100%;
 }
 
-.preset-card .meta {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-
 .preset-card .name {
   font-size: 13px;
   font-weight: 600;
   line-height: 1.2;
-}
-
-.preset-card .variants {
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.2;
+  min-width: 0;
 }
 
 textarea {

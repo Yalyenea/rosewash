@@ -160,16 +160,6 @@ p {
   padding: 0 10px;
 }
 
-.status {
-  color: var(--muted);
-  font-size: 11px;
-  margin: 0;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 footer {
   gap: 8px;
 }
