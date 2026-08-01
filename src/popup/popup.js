@@ -1,18 +1,22 @@
 (function () {
   "use strict";
 
-  const DEFAULT_SETTINGS = {
-    enabled: true,
-    mode: "auto",
-    disabledHosts: []
-  };
+  const core = globalThis.RosewashCore;
+  if (!core) {
+    document.body.innerHTML = "<p style=\"padding:12px\">Rosewash core failed to load.</p>";
+    return;
+  }
+
+  const DEFAULT_SETTINGS = core.plainSettings(core.DEFAULT_SETTINGS);
 
   const enabledInput = document.querySelector("#enabled");
   const hostLabel = document.querySelector("#host");
-  const modeButtons = Array.from(document.querySelectorAll("[data-mode]"));
+  const appearanceButtons = Array.from(document.querySelectorAll("[data-appearance]"));
+  const presetSelect = document.querySelector("#preset");
   const siteButton = document.querySelector("#site-toggle");
   const optionsButton = document.querySelector("#options");
   const refreshButton = document.querySelector("#refresh");
+  const statusLabel = document.querySelector("#status");
 
   let activeTab = null;
   let activeHost = "";
@@ -39,58 +43,145 @@
     });
   }
 
-  function storageGet() {
-    return chrome.storage.sync.get(DEFAULT_SETTINGS);
+  function fillPresetOptions() {
+    const presets = Object.values(core.PRESETS).slice().sort((a, b) => {
+      if (a.id === "rose-pine") {
+        return -1;
+      }
+      if (b.id === "rose-pine") {
+        return 1;
+      }
+      return a.label.localeCompare(b.label);
+    });
+
+    for (const preset of presets) {
+      const option = document.createElement("option");
+      option.value = preset.id;
+      const variants = [];
+      if (preset.light) {
+        variants.push("L");
+      }
+      if (preset.dark) {
+        variants.push("D");
+      }
+      option.textContent = `${preset.label} (${variants.join("/")})`;
+      presetSelect.appendChild(option);
+    }
   }
 
-  function storageSet(nextSettings) {
-    settings = nextSettings;
-    return chrome.storage.sync.set(nextSettings);
+  function resolvedPalette() {
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const themeKey = core.resolveThemeKey(settings.preset, settings.appearance, prefersDark);
+    return { themeKey, palette: core.PALETTES[themeKey] };
+  }
+
+  function paintPopupChrome() {
+    const { themeKey, palette } = resolvedPalette();
+    if (!palette) {
+      return;
+    }
+
+    const root = document.documentElement;
+    root.dataset.theme = themeKey;
+    root.style.setProperty("--base", palette.base);
+    root.style.setProperty("--surface", palette.surface);
+    root.style.setProperty("--overlay", palette.overlay);
+    root.style.setProperty("--text", palette.text);
+    root.style.setProperty("--muted", palette.muted);
+    root.style.setProperty("--accent", palette.link);
+    root.style.colorScheme = core.isDarkThemeKey(themeKey) ? "dark" : "light";
+  }
+
+  function setStatus(text) {
+    if (!statusLabel) {
+      return;
+    }
+    statusLabel.textContent = text || "";
+  }
+
+  async function storageGet() {
+    const raw = await chrome.storage.sync.get(null);
+    return core.plainSettings({ ...DEFAULT_SETTINGS, ...raw });
+  }
+
+  async function storageSet(nextSettings) {
+    const normalized = core.plainSettings(nextSettings);
+    settings = normalized;
+    await chrome.storage.sync.set(normalized);
+    // Drop legacy key so it cannot fight the new schema on next read.
+    await chrome.storage.sync.remove("mode");
+    return normalized;
   }
 
   function activeTabQuery() {
     return chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => tabs[0] || null);
   }
 
-  function syncContentScript() {
-    if (!activeTab || !activeTab.id) {
-      return Promise.resolve();
-    }
-
-    return chrome.tabs
-      .sendMessage(activeTab.id, { type: "rosewash:settings-updated", settings })
-      .catch(() => undefined);
+  async function syncContentScripts() {
+    const tabs = await chrome.tabs.query({});
+    let reached = 0;
+    await Promise.all(
+      tabs.map((tab) => {
+        if (!tab.id) {
+          return Promise.resolve();
+        }
+        return chrome.tabs
+          .sendMessage(tab.id, { type: "rosewash:settings-updated", settings })
+          .then(() => {
+            reached += 1;
+          })
+          .catch(() => undefined);
+      })
+    );
+    return reached;
   }
 
   function render() {
     enabledInput.checked = settings.enabled;
     hostLabel.textContent = activeHost || "unsupported page";
+    presetSelect.value = settings.preset;
 
-    for (const button of modeButtons) {
-      button.setAttribute("aria-pressed", String(button.dataset.mode === settings.mode));
+    for (const button of appearanceButtons) {
+      button.setAttribute(
+        "aria-pressed",
+        String(button.dataset.appearance === settings.appearance)
+      );
     }
 
     const disabled = activeHost && isHostDisabled(activeHost, settings.disabledHosts);
     siteButton.textContent = disabled ? "Blocked" : "Allowed";
     siteButton.disabled = !activeHost;
+    paintPopupChrome();
+
+    const { themeKey } = resolvedPalette();
+    setStatus(themeKey);
   }
 
   async function updateSettings(nextSettings) {
-    const normalizedHosts = Array.from(new Set(nextSettings.disabledHosts.map(normalizeHost).filter(Boolean))).sort();
+    const normalizedHosts = Array.from(
+      new Set((nextSettings.disabledHosts || []).map(normalizeHost).filter(Boolean))
+    ).sort();
     await storageSet({ ...nextSettings, disabledHosts: normalizedHosts });
     render();
-    await syncContentScript();
+    const reached = await syncContentScripts();
+    if (reached === 0) {
+      setStatus(`${resolvedPalette().themeKey} · reload page`);
+    }
   }
 
   enabledInput.addEventListener("change", () => {
     updateSettings({ ...settings, enabled: enabledInput.checked });
   });
 
-  for (const button of modeButtons) {
+  for (const button of appearanceButtons) {
     button.addEventListener("click", () => {
-      updateSettings({ ...settings, mode: button.dataset.mode });
+      updateSettings({ ...settings, appearance: button.dataset.appearance });
     });
   }
+
+  presetSelect.addEventListener("change", () => {
+    updateSettings({ ...settings, preset: presetSelect.value });
+  });
 
   siteButton.addEventListener("click", () => {
     if (!activeHost) {
@@ -109,11 +200,13 @@
     chrome.runtime.openOptionsPage();
   });
 
-  refreshButton.addEventListener("click", () => {
-    syncContentScript();
+  refreshButton.addEventListener("click", async () => {
+    const reached = await syncContentScripts();
+    setStatus(reached > 0 ? `${resolvedPalette().themeKey} · applied` : `${resolvedPalette().themeKey} · reload page`);
   });
 
   async function init() {
+    fillPresetOptions();
     activeTab = await activeTabQuery();
     activeHost = activeTab ? hostFromUrl(activeTab.url) : "";
     settings = await storageGet();
@@ -122,4 +215,3 @@
 
   init();
 })();
-

@@ -224,28 +224,56 @@ test("classifies design-system surface and text tokens for root CSS var override
   assert.equal(p3Overrides["--composer-surface-primary"], moon.surface);
 });
 
-test("resolves auto mode from system preference", async () => {
+test("resolves auto appearance from system preference", async () => {
   const core = await loadCore();
-  assert.equal(core.resolveThemeMode("auto", false), "dawn");
-  assert.equal(core.resolveThemeMode("auto", true), "moon");
-  assert.equal(core.resolveThemeMode("dawn", true), "dawn");
-  assert.equal(core.resolveThemeMode("moon", false), "moon");
+  assert.equal(core.resolveThemeKey("rose-pine", "auto", false), "rose-pine-light");
+  assert.equal(core.resolveThemeKey("rose-pine", "auto", true), "rose-pine-dark");
+  assert.equal(core.resolveThemeKey("rose-pine", "light", true), "rose-pine-light");
+  assert.equal(core.resolveThemeKey("rose-pine", "dark", false), "rose-pine-dark");
+  assert.equal(core.resolveThemeMode("auto", false), "rose-pine-light");
+  assert.equal(core.resolveThemeMode("auto", true), "rose-pine-dark");
+  assert.equal(core.resolveThemeMode("dawn", true), "rose-pine-light");
+  assert.equal(core.resolveThemeMode("moon", false), "rose-pine-dark");
 });
 
-test("uses the same moon theme for auto dark and manual moon", async () => {
+test("uses the same dark palette for auto dark and manual dark", async () => {
   const core = await loadCore();
-  const autoDarkTheme = core.resolveThemeMode("auto", true);
-  const manualMoonTheme = core.resolveThemeMode("moon", false);
-  assert.equal(autoDarkTheme, "moon");
-  assert.equal(autoDarkTheme, manualMoonTheme);
+  const autoDarkTheme = core.resolveThemeKey("rose-pine", "auto", true);
+  const manualDarkTheme = core.resolveThemeKey("rose-pine", "dark", false);
+  assert.equal(autoDarkTheme, "rose-pine-dark");
+  assert.equal(autoDarkTheme, manualDarkTheme);
 });
 
-test("uses the same dawn theme for auto light and manual dawn", async () => {
+test("uses the same light palette for auto light and manual light", async () => {
   const core = await loadCore();
-  const autoLightTheme = core.resolveThemeMode("auto", false);
-  const manualDawnTheme = core.resolveThemeMode("dawn", true);
-  assert.equal(autoLightTheme, "dawn");
-  assert.equal(autoLightTheme, manualDawnTheme);
+  const autoLightTheme = core.resolveThemeKey("rose-pine", "auto", false);
+  const manualLightTheme = core.resolveThemeKey("rose-pine", "light", true);
+  assert.equal(autoLightTheme, "rose-pine-light");
+  assert.equal(autoLightTheme, manualLightTheme);
+});
+
+test("falls back when a preset lacks the requested appearance", async () => {
+  const core = await loadCore();
+  assert.equal(core.resolveThemeKey("dracula", "light", false), "dracula-dark");
+  assert.equal(core.resolveThemeKey("proof", "dark", true), "proof-light");
+  assert.ok(core.PRESETS.catppuccin.light);
+  assert.ok(core.PRESETS["tokyo-night"].dark);
+  assert.equal(core.PRESET_IDS.length, 28);
+});
+
+test("plainSettings freezes a storage-safe settings blob", async () => {
+  const core = await loadCore();
+  assert.deepEqual(plain(core.plainSettings({
+    enabled: true,
+    preset: "catppuccin",
+    appearance: "dark",
+    disabledHosts: ["Example.COM"]
+  })), {
+    enabled: true,
+    preset: "catppuccin",
+    appearance: "dark",
+    disabledHosts: ["example.com"]
+  });
 });
 
 test("covers opaque text colors in both dawn and moon", async () => {
@@ -577,9 +605,9 @@ test("engine tints colored and near-white page chrome to base with forced text",
   });
 
   const engine = core.createEngine({ document, window });
-  const result = engine.apply({ enabled: true, mode: "dawn", disabledHosts: [] });
+  const result = engine.apply({ enabled: true, preset: "rose-pine", appearance: "light", disabledHosts: [] });
   assert.equal(result.enabled, true);
-  assert.equal(result.theme, "dawn");
+  assert.equal(result.theme, "rose-pine-light");
 
   const palette = core.PALETTES.dawn;
   assert.equal(byId.get("site-header").style.getPropertyValue("background-color"), palette.base);
@@ -626,12 +654,12 @@ test("engine rebuilds page chrome membership after restore", async () => {
   });
 
   const engine = core.createEngine({ document, window });
-  engine.apply({ enabled: true, mode: "dawn", disabledHosts: [] });
+  engine.apply({ enabled: true, preset: "rose-pine", appearance: "light", disabledHosts: [] });
   engine.clear();
 
   byId.get("site-header")._computed.backgroundColor = "rgba(0, 0, 0, 0)";
   byId.get("site-header")._computed.color = "rgb(17, 17, 17)";
-  engine.apply({ enabled: true, mode: "dawn", disabledHosts: [] });
+  engine.apply({ enabled: true, preset: "rose-pine", appearance: "light", disabledHosts: [] });
 
   // Transparent non-shell headers are no longer forced as page chrome.
   assert.equal(byId.get("site-header").style.getPropertyValue("background-color"), "");
@@ -682,9 +710,9 @@ test("engine tints default transparent html/body like jmlr-style pages", async (
   });
 
   const engine = core.createEngine({ document, window });
-  const result = engine.apply({ enabled: true, mode: "dawn", disabledHosts: [] });
+  const result = engine.apply({ enabled: true, preset: "rose-pine", appearance: "light", disabledHosts: [] });
   assert.equal(result.enabled, true);
-  assert.equal(result.theme, "dawn");
+  assert.equal(result.theme, "rose-pine-light");
 
   const palette = core.PALETTES.dawn;
   assert.equal(document.documentElement.style.getPropertyValue("background-color"), palette.base);
@@ -718,7 +746,7 @@ test("engine paints transparent known chrome shells with important base fill", a
   });
 
   const engine = core.createEngine({ document, window });
-  engine.apply({ enabled: true, mode: "dawn", disabledHosts: [] });
+  engine.apply({ enabled: true, preset: "rose-pine", appearance: "light", disabledHosts: [] });
   const palette = core.PALETTES.dawn;
 
   assert.equal(byId.get("lean-bar").style.getPropertyValue("background-color"), palette.base);
@@ -759,8 +787,8 @@ test("engine covers cool paper and dark shells in both themes", async () => {
   const dawn = core.PALETTES.dawn;
   const moon = core.PALETTES.moon;
 
-  let result = engine.apply({ enabled: true, mode: "dawn", disabledHosts: [] });
-  assert.equal(result.theme, "dawn");
+  let result = engine.apply({ enabled: true, preset: "rose-pine", appearance: "light", disabledHosts: [] });
+  assert.equal(result.theme, "rose-pine-light");
   assert.equal(document.documentElement.style.getPropertyValue("background-color"), dawn.base);
   assert.equal(document.body.style.getPropertyValue("background-color"), dawn.base);
   assert.equal(document.body.style.getPropertyValue("color"), dawn.text);
@@ -769,8 +797,8 @@ test("engine covers cool paper and dark shells in both themes", async () => {
   assert.equal(document.documentElement.style.getPropertyValue("--ground"), dawn.base);
   assert.equal(document.documentElement.style.getPropertyValue("--ink"), dawn.text);
 
-  result = engine.apply({ enabled: true, mode: "moon", disabledHosts: [] });
-  assert.equal(result.theme, "moon");
+  result = engine.apply({ enabled: true, preset: "rose-pine", appearance: "dark", disabledHosts: [] });
+  assert.equal(result.theme, "rose-pine-dark");
   assert.equal(document.documentElement.style.getPropertyValue("background-color"), moon.base);
   assert.equal(byId.get("card").style.getPropertyValue("background-color"), moon.surface);
   assert.equal(byId.get("title").style.getPropertyValue("color"), moon.text);
@@ -799,8 +827,8 @@ test("engine remaps ChatGPT dark surface tokens with !important for footer fades
 
   const engine = core.createEngine({ document, window });
   const moon = core.PALETTES.moon;
-  const result = engine.apply({ enabled: true, mode: "moon", disabledHosts: [] });
-  assert.equal(result.theme, "moon");
+  const result = engine.apply({ enabled: true, preset: "rose-pine", appearance: "dark", disabledHosts: [] });
+  assert.equal(result.theme, "rose-pine-dark");
 
   const rootStyle = document.documentElement.style;
   assert.equal(rootStyle.getPropertyValue("--main-surface-primary"), moon.base);
@@ -859,11 +887,11 @@ test("engine adapts nested Substack-like dark publication shells in Dawn", async
   });
 
   const engine = core.createEngine({ document, window });
-  const result = engine.apply({ enabled: true, mode: "auto", disabledHosts: [] });
+  const result = engine.apply({ enabled: true, preset: "rose-pine", appearance: "auto", disabledHosts: [] });
   const palette = core.PALETTES.dawn;
 
   assert.equal(result.enabled, true);
-  assert.equal(result.theme, "dawn");
+  assert.equal(result.theme, "rose-pine-light");
   assert.equal(engine.stats().pageTone, "dark-only");
   assert.equal(document.documentElement.style.getPropertyValue("background-color"), palette.base);
   assert.equal(byId.get("main").style.getPropertyValue("background-color"), palette.surface);
@@ -924,12 +952,12 @@ test("engine covers light Substack publication shells in Moon", async () => {
   });
 
   const engine = core.createEngine({ document, window });
-  const result = engine.apply({ enabled: true, mode: "moon", disabledHosts: [] });
+  const result = engine.apply({ enabled: true, preset: "rose-pine", appearance: "dark", disabledHosts: [] });
   const moon = core.PALETTES.moon;
   const rootStyle = document.documentElement.style;
 
   assert.equal(result.enabled, true);
-  assert.equal(result.theme, "moon");
+  assert.equal(result.theme, "rose-pine-dark");
   assert.equal(engine.stats().pageTone, "light-page");
   assert.equal(document.documentElement.style.getPropertyValue("background-color"), moon.base);
   assert.equal(byId.get("main").style.getPropertyValue("background-color"), moon.surface);
@@ -947,12 +975,25 @@ test("normalizes settings and blocked hosts", async () => {
   const core = await loadCore();
   assert.deepEqual(plain(core.normalizeSettings({
     enabled: true,
-    mode: "moon",
+    preset: "rose-pine", appearance: "dark",
     disabledHosts: [" Example.COM ", ".docs.example.com", "example.com"]
   })), {
     enabled: true,
-    mode: "moon",
+    preset: "rose-pine",
+    appearance: "dark",
     disabledHosts: ["docs.example.com", "example.com"]
+  });
+
+  assert.deepEqual(plain(core.normalizeSettings({
+    enabled: true,
+    preset: "catppuccin",
+    appearance: "light",
+    disabledHosts: []
+  })), {
+    enabled: true,
+    preset: "catppuccin",
+    appearance: "light",
+    disabledHosts: []
   });
 
   assert.equal(core.isHostDisabled("news.example.com", ["example.com"]), true);

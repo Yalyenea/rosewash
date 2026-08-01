@@ -6,9 +6,17 @@
   const storageDelayFrames = Number(params.get("storageDelayFrames") || "0");
   const settings = {
     enabled: true,
-    mode: params.get("mode") || "auto",
+    preset: params.get("preset") || "rose-pine",
+    appearance: params.get("appearance") || params.get("mode") || "auto",
     disabledHosts: []
   };
+
+  // Legacy fixture query `mode=dawn|moon|auto` still works via normalizeSettings.
+  if (params.has("mode") && !params.has("appearance") && !params.has("preset")) {
+    settings.mode = params.get("mode");
+    delete settings.appearance;
+    delete settings.preset;
+  }
 
   const listeners = new Set();
   const mediaQueryList = {

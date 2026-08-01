@@ -1,21 +1,24 @@
 # Rosewash
 
 Rosewash is a lightweight Manifest V3 browser extension that covers web pages
-with restrained Rose Pine palettes. The current MVP ships with Rose Pine Dawn
-and Moon.
+with restrained paper palettes. Rose Pine is the default; the popup also offers
+the full set of Codex desktop app theme families (Catppuccin, Gruvbox, Nord,
+Tokyo Night, Solarized, Dracula, GitHub, Linear, Notion, Raycast, Vercel, …).
 
 It remaps page canvases, painted surfaces, neutral borders, and text into the
-active palette so everyday browsing follows Dawn or Moon instead of harsh site
-defaults. Media, canvas, SVG, inputs, editors, and code blocks stay protected.
+active palette so everyday browsing follows a calm paper tone instead of harsh
+site defaults. Media, canvas, SVG, inputs, editors, and code blocks stay
+protected.
 
 ## Features
 
-- Auto / Dawn / Moon mode.
+- Palette preset selector (28 Codex-aligned families; default Rose Pine).
+- Appearance: Auto / Light / Dark.
 - Global enable switch.
 - Per-site block list.
 - Default shortcut `Alt+Shift+B` toggles blocked / allowed for the current site
   (rebind under `chrome://extensions/shortcuts`).
-- Full-page Rose Pine cover for light, dark, and cool-paper sites.
+- Full-page paper cover for light, dark, and cool-paper sites.
 - Default transparent `html`/`body` canvases (legacy pages such as jmlr.org).
 - Page-level headers and navigation bars blend into the active page base,
   including colored top bars such as arXiv's and Zhihu `AppHeader` shells

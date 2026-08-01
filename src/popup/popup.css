@@ -115,6 +115,36 @@ p {
   box-shadow: 0 1px 4px var(--shadow);
 }
 
+.preset {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid rgba(152, 147, 165, 0.22);
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  min-height: 38px;
+  padding: 0 8px 0 10px;
+}
+
+.preset label {
+  color: var(--muted);
+  flex: 0 0 auto;
+}
+
+.preset select {
+  appearance: none;
+  background: var(--overlay);
+  border: 0;
+  border-radius: 7px;
+  color: var(--text);
+  flex: 1 1 auto;
+  font: inherit;
+  max-width: 190px;
+  min-height: 26px;
+  padding: 0 8px;
+}
+
 .site {
   background: var(--surface);
   border: 1px solid rgba(152, 147, 165, 0.22);
@@ -128,6 +158,16 @@ p {
   color: var(--accent);
   min-height: 26px;
   padding: 0 10px;
+}
+
+.status {
+  color: var(--muted);
+  font-size: 11px;
+  margin: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 footer {

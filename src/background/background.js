@@ -21,9 +21,10 @@ async function toggleCurrentSite() {
     return;
   }
 
-  const settings = core.normalizeSettings(await chrome.storage.sync.get(core.DEFAULT_SETTINGS));
+  const raw = await chrome.storage.sync.get(null);
+  const settings = core.plainSettings({ ...core.DEFAULT_SETTINGS, ...raw });
   const disabledHosts = core.toggleHostDisabled(host, settings.disabledHosts);
-  await chrome.storage.sync.set({ ...settings, disabledHosts });
+  await chrome.storage.sync.set(core.plainSettings({ ...settings, disabledHosts }));
 }
 
 chrome.commands.onCommand.addListener((command) => {

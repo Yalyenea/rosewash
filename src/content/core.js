@@ -6,32 +6,197 @@
   const HAD_STYLE_ATTRIBUTE = "data-rosewash-had-style";
   const ORIGINAL_STYLE_ATTRIBUTE = "data-rosewash-original-style";
 
-  const PALETTES = Object.freeze({
-    dawn: Object.freeze({
-      base: "#faf4ed",
-      surface: "#fffaf3",
-      overlay: "#f2e9de",
-      muted: "#9893a5",
-      text: "#575279",
-      link: "#286983"
+  // Curated presets aligned with Codex desktop app code themes (Settings →
+  // Appearance). Each preset exposes light and/or dark paper tokens only.
+  const PRESETS = Object.freeze({
+    "rose-pine": Object.freeze({
+      id: "rose-pine",
+      label: "Rose Pine",
+      light: Object.freeze({ base: "#faf4ed", surface: "#fffaf3", overlay: "#f2e9de", muted: "#9893a5", text: "#575279", link: "#286983" }),
+      dark: Object.freeze({ base: "#232136", surface: "#2a273f", overlay: "#393552", muted: "#6e6a86", text: "#e0def4", link: "#9ccfd8" })
     }),
-    moon: Object.freeze({
-      base: "#232136",
-      surface: "#2a273f",
-      overlay: "#393552",
-      muted: "#6e6a86",
-      text: "#e0def4",
-      link: "#9ccfd8"
+    absolutely: Object.freeze({
+      id: "absolutely",
+      label: "Absolutely",
+      light: Object.freeze({ base: "#f9f9f7", surface: "#f4f4f2", overlay: "#ebebe8", muted: "#939391", text: "#2d2d2b", link: "#cc7d5e" }),
+      dark: Object.freeze({ base: "#2d2d2b", surface: "#373735", overlay: "#424240", muted: "#b2b2b0", text: "#f9f9f7", link: "#cc7d5e" })
+    }),
+    ayu: Object.freeze({
+      id: "ayu",
+      label: "Ayu",
+      dark: Object.freeze({ base: "#0b0e14", surface: "#0d1017", overlay: "#11151c", muted: "#6c7380", text: "#bfbdb6", link: "#e6b450" })
+    }),
+    catppuccin: Object.freeze({
+      id: "catppuccin",
+      label: "Catppuccin",
+      light: Object.freeze({ base: "#eff1f5", surface: "#e6e9ef", overlay: "#ccd0da", muted: "#9ca0b0", text: "#4c4f69", link: "#1e66f5" }),
+      dark: Object.freeze({ base: "#1e1e2e", surface: "#313244", overlay: "#45475a", muted: "#6c7086", text: "#cdd6f4", link: "#89b4fa" })
+    }),
+    codex: Object.freeze({
+      id: "codex",
+      label: "Codex",
+      light: Object.freeze({ base: "#f7f7f7", surface: "#ffffff", overlay: "#ececec", muted: "#666666", text: "#0d0d0d", link: "#0169cc" }),
+      dark: Object.freeze({ base: "#111111", surface: "#1a1a1a", overlay: "#262626", muted: "#8f8f8f", text: "#fcfcfc", link: "#3d8dff" })
+    }),
+    dracula: Object.freeze({
+      id: "dracula",
+      label: "Dracula",
+      dark: Object.freeze({ base: "#282a36", surface: "#21222c", overlay: "#44475a", muted: "#6272a4", text: "#f8f8f2", link: "#8be9fd" })
+    }),
+    everforest: Object.freeze({
+      id: "everforest",
+      label: "Everforest",
+      light: Object.freeze({ base: "#fdf6e3", surface: "#f4f0d9", overlay: "#efebd4", muted: "#939f91", text: "#5c6a72", link: "#8da101" }),
+      dark: Object.freeze({ base: "#2d353b", surface: "#343f44", overlay: "#3d484d", muted: "#859289", text: "#d3c6aa", link: "#a7c080" })
+    }),
+    github: Object.freeze({
+      id: "github",
+      label: "GitHub",
+      light: Object.freeze({ base: "#ffffff", surface: "#f6f8fa", overlay: "#eaeef2", muted: "#656d76", text: "#1f2328", link: "#0969da" }),
+      dark: Object.freeze({ base: "#0d1117", surface: "#161b22", overlay: "#21262d", muted: "#8b949e", text: "#e6edf3", link: "#2f81f7" })
+    }),
+    gruvbox: Object.freeze({
+      id: "gruvbox",
+      label: "Gruvbox",
+      light: Object.freeze({ base: "#fbf1c7", surface: "#f2e5bc", overlay: "#ebdbb2", muted: "#928374", text: "#3c3836", link: "#076678" }),
+      dark: Object.freeze({ base: "#282828", surface: "#3c3836", overlay: "#504945", muted: "#928374", text: "#ebdbb2", link: "#83a598" })
+    }),
+    linear: Object.freeze({
+      id: "linear",
+      label: "Linear",
+      light: Object.freeze({ base: "#f7f8fa", surface: "#ffffff", overlay: "#eef0f4", muted: "#8a93a6", text: "#2a3140", link: "#5e6ad2" }),
+      dark: Object.freeze({ base: "#0f0f11", surface: "#17181d", overlay: "#1c1e26", muted: "#636b7b", text: "#e6e9ef", link: "#5e6ad2" })
+    }),
+    lobster: Object.freeze({
+      id: "lobster",
+      label: "Lobster",
+      dark: Object.freeze({ base: "#111827", surface: "#1a1d25", overlay: "#1f2937", muted: "#71717a", text: "#e4e4e7", link: "#ff5c5c" })
+    }),
+    material: Object.freeze({
+      id: "material",
+      label: "Material",
+      dark: Object.freeze({ base: "#212121", surface: "#2a2a2a", overlay: "#353535", muted: "#545454", text: "#eeffff", link: "#80cbc4" })
+    }),
+    matrix: Object.freeze({
+      id: "matrix",
+      label: "Matrix",
+      dark: Object.freeze({ base: "#040805", surface: "#0a140c", overlay: "#102016", muted: "#3f8f52", text: "#b8ffca", link: "#1eff5a" })
+    }),
+    monokai: Object.freeze({
+      id: "monokai",
+      label: "Monokai",
+      dark: Object.freeze({ base: "#272822", surface: "#1e1f1c", overlay: "#3e3d32", muted: "#75715e", text: "#f8f8f2", link: "#66d9ef" })
+    }),
+    "night-owl": Object.freeze({
+      id: "night-owl",
+      label: "Night Owl",
+      dark: Object.freeze({ base: "#011627", surface: "#0b2942", overlay: "#1d3b53", muted: "#637777", text: "#d6deeb", link: "#82aaff" })
+    }),
+    nord: Object.freeze({
+      id: "nord",
+      label: "Nord",
+      dark: Object.freeze({ base: "#2e3440", surface: "#3b4252", overlay: "#434c5e", muted: "#4c566a", text: "#eceff4", link: "#88c0d0" })
+    }),
+    notion: Object.freeze({
+      id: "notion",
+      label: "Notion",
+      light: Object.freeze({ base: "#ffffff", surface: "#f7f6f3", overlay: "#f1efe8", muted: "#787774", text: "#37352f", link: "#2383e2" }),
+      dark: Object.freeze({ base: "#191919", surface: "#202020", overlay: "#2c2c2c", muted: "#9b9b9b", text: "#d4d4d4", link: "#529cca" })
+    }),
+    one: Object.freeze({
+      id: "one",
+      label: "One",
+      light: Object.freeze({ base: "#fafafa", surface: "#f0f0f1", overlay: "#e5e5e6", muted: "#a0a1a7", text: "#383a42", link: "#4078f2" }),
+      dark: Object.freeze({ base: "#282c34", surface: "#21252b", overlay: "#3e4452", muted: "#5c6370", text: "#abb2bf", link: "#61afef" })
+    }),
+    oscurange: Object.freeze({
+      id: "oscurange",
+      label: "Oscurange",
+      dark: Object.freeze({ base: "#0b0b0f", surface: "#141419", overlay: "#1c1c22", muted: "#46474f", text: "#e6e6e6", link: "#ff7a18" })
+    }),
+    proof: Object.freeze({
+      id: "proof",
+      label: "Proof",
+      light: Object.freeze({ base: "#f5f3ed", surface: "#efede6", overlay: "#e5e2d8", muted: "#8b877c", text: "#2f312d", link: "#3d755d" })
+    }),
+    raycast: Object.freeze({
+      id: "raycast",
+      label: "Raycast",
+      light: Object.freeze({ base: "#ffffff", surface: "#f4f4f5", overlay: "#e4e4e7", muted: "#71717a", text: "#18181b", link: "#ff6363" }),
+      dark: Object.freeze({ base: "#141414", surface: "#1c1c1c", overlay: "#272727", muted: "#a1a1aa", text: "#fafafa", link: "#ff6363" })
+    }),
+    sentry: Object.freeze({
+      id: "sentry",
+      label: "Sentry",
+      dark: Object.freeze({ base: "#2d2935", surface: "#26222d", overlay: "#3a3545", muted: "#8d849f", text: "#e6dff9", link: "#7055f6" })
+    }),
+    solarized: Object.freeze({
+      id: "solarized",
+      label: "Solarized",
+      light: Object.freeze({ base: "#fdf6e3", surface: "#eee8d5", overlay: "#e4dcc8", muted: "#93a1a1", text: "#657b83", link: "#268bd2" }),
+      dark: Object.freeze({ base: "#002b36", surface: "#073642", overlay: "#0a4450", muted: "#586e75", text: "#839496", link: "#268bd2" })
+    }),
+    temple: Object.freeze({
+      id: "temple",
+      label: "Temple",
+      dark: Object.freeze({ base: "#02120c", surface: "#0c1f14", overlay: "#1d2d0f", muted: "#394d46", text: "#c7e6da", link: "#e4f222" })
+    }),
+    "tokyo-night": Object.freeze({
+      id: "tokyo-night",
+      label: "Tokyo Night",
+      dark: Object.freeze({ base: "#1a1b26", surface: "#16161e", overlay: "#24283b", muted: "#565f89", text: "#a9b1d6", link: "#7aa2f7" })
+    }),
+    vercel: Object.freeze({
+      id: "vercel",
+      label: "Vercel",
+      light: Object.freeze({ base: "#fafafa", surface: "#ffffff", overlay: "#eaeaea", muted: "#666666", text: "#171717", link: "#0070f3" }),
+      dark: Object.freeze({ base: "#000000", surface: "#0a0a0a", overlay: "#171717", muted: "#888888", text: "#ededed", link: "#0070f3" })
+    }),
+    "vscode-plus": Object.freeze({
+      id: "vscode-plus",
+      label: "VS Code Plus",
+      light: Object.freeze({ base: "#ffffff", surface: "#f3f3f3", overlay: "#e7e7e7", muted: "#6a6a6a", text: "#000000", link: "#0000ee" }),
+      dark: Object.freeze({ base: "#1e1e1e", surface: "#252526", overlay: "#2d2d2d", muted: "#858585", text: "#d4d4d4", link: "#3794ff" })
+    }),
+    xcode: Object.freeze({
+      id: "xcode",
+      label: "Xcode",
+      light: Object.freeze({ base: "#ffffff", surface: "#f5f5f7", overlay: "#e8e8ed", muted: "#5d6c79", text: "#1d1d1f", link: "#0e0eff" }),
+      dark: Object.freeze({ base: "#1f1f24", surface: "#282830", overlay: "#32323c", muted: "#6c7986", text: "#ffffff", link: "#5482ff" })
     })
   });
 
+  const PRESET_IDS = Object.freeze(Object.keys(PRESETS));
+
+  const PALETTES = Object.freeze((() => {
+    const map = {};
+    for (const preset of Object.values(PRESETS)) {
+      if (preset.light) {
+        map[`${preset.id}-light`] = preset.light;
+      }
+      if (preset.dark) {
+        map[`${preset.id}-dark`] = preset.dark;
+      }
+    }
+    // Legacy theme keys from the pre-preset settings shape.
+    map.dawn = map["rose-pine-light"];
+    map.moon = map["rose-pine-dark"];
+    return Object.freeze(map);
+  })());
+
   const DEFAULT_SETTINGS = Object.freeze({
     enabled: true,
-    mode: "auto",
+    preset: "rose-pine",
+    appearance: "auto",
     disabledHosts: []
   });
 
-  const VALID_MODES = new Set(["auto", "dawn", "moon"]);
+  const VALID_APPEARANCES = new Set(["auto", "light", "dark"]);
+  const LEGACY_MODE_TO_APPEARANCE = Object.freeze({
+    auto: "auto",
+    dawn: "light",
+    moon: "dark"
+  });
   const RESTORED_PROPERTIES = [
     "background-color",
     "background-image",
@@ -280,11 +445,15 @@
 
   // Preserve a little hierarchy: page root → base, elevated mids → overlay,
   // everything else → surface. Media/code stay protected by SKIP_SELECTOR.
-  function surfaceColorFor(color, palette, { pageElement = false, theme = "dawn", tagName = "" } = {}) {
+  function isDarkThemeKey(theme) {
+    return theme === "moon" || String(theme).endsWith("-dark");
+  }
+
+  function surfaceColorFor(color, palette, { pageElement = false, theme = "rose-pine-light", tagName = "" } = {}) {
     if (pageElement) {
       return palette.base;
     }
-    if (String(tagName).toLowerCase() === "pre" && theme === "moon") {
+    if (String(tagName).toLowerCase() === "pre" && isDarkThemeKey(theme)) {
       return palette.overlay;
     }
     if (!isOpaqueColor(color)) {
@@ -450,21 +619,98 @@
     const disabledHosts = Array.isArray(source.disabledHosts)
       ? source.disabledHosts.map(normalizeHost).filter(Boolean)
       : [];
-    const mode = VALID_MODES.has(source.mode) ? source.mode : DEFAULT_SETTINGS.mode;
+
+    const preset = PRESETS[source.preset] ? source.preset : DEFAULT_SETTINGS.preset;
+    let appearance = DEFAULT_SETTINGS.appearance;
+    if (VALID_APPEARANCES.has(source.appearance)) {
+      appearance = source.appearance;
+    } else if (LEGACY_MODE_TO_APPEARANCE[source.mode]) {
+      // Migrate pre-preset `mode: auto|dawn|moon` storage blobs.
+      appearance = LEGACY_MODE_TO_APPEARANCE[source.mode];
+    }
 
     return {
       enabled: source.enabled !== false,
-      mode,
+      preset,
+      appearance,
       disabledHosts: Array.from(new Set(disabledHosts)).sort()
     };
   }
 
+  function resolveAppearance(appearance, prefersDark) {
+    if (appearance === "light" || appearance === "dark") {
+      return appearance;
+    }
+    return prefersDark ? "dark" : "light";
+  }
+
+  function resolveThemeKey(preset, appearance, prefersDark) {
+    const presetId = PRESETS[preset] ? preset : DEFAULT_SETTINGS.preset;
+    const desired = resolveAppearance(appearance, prefersDark);
+    const entry = PRESETS[presetId];
+    if (entry[desired]) {
+      return `${presetId}-${desired}`;
+    }
+    // Dark-only / light-only presets fall back to the available variant.
+    if (entry.dark) {
+      return `${presetId}-dark`;
+    }
+    return `${presetId}-light`;
+  }
+
+  // Legacy helper: maps old mode strings onto rose-pine theme keys.
   function resolveThemeMode(mode, prefersDark) {
     if (mode === "dawn" || mode === "moon") {
-      return mode;
+      return mode === "dawn" ? "rose-pine-light" : "rose-pine-dark";
+    }
+    if (LEGACY_MODE_TO_APPEARANCE[mode]) {
+      return resolveThemeKey("rose-pine", LEGACY_MODE_TO_APPEARANCE[mode], prefersDark);
+    }
+    if (typeof mode === "object" && mode) {
+      const normalized = normalizeSettings(mode);
+      return resolveThemeKey(normalized.preset, normalized.appearance, prefersDark);
+    }
+    return resolveThemeKey("rose-pine", "auto", prefersDark);
+  }
+
+  function applyThemeTokens(root, theme) {
+    const palette = PALETTES[theme];
+    if (!root || !palette) {
+      return null;
     }
 
-    return prefersDark ? "moon" : "dawn";
+    root.setAttribute(THEME_ATTRIBUTE, theme);
+    // !important so stylesheet fallbacks in theme.css cannot keep Rose Pine.
+    root.style.setProperty("--rosewash-base", palette.base, "important");
+    root.style.setProperty("--rosewash-surface", palette.surface, "important");
+    root.style.setProperty("--rosewash-overlay", palette.overlay, "important");
+    root.style.setProperty("--rosewash-muted", palette.muted, "important");
+    root.style.setProperty("--rosewash-text", palette.text, "important");
+    root.style.setProperty("--rosewash-link", palette.link, "important");
+    return palette;
+  }
+
+  function clearThemeTokens(root) {
+    if (!root) {
+      return;
+    }
+    root.removeAttribute(THEME_ATTRIBUTE);
+    root.style.removeProperty("--rosewash-base");
+    root.style.removeProperty("--rosewash-surface");
+    root.style.removeProperty("--rosewash-overlay");
+    root.style.removeProperty("--rosewash-muted");
+    root.style.removeProperty("--rosewash-text");
+    root.style.removeProperty("--rosewash-link");
+  }
+
+  function plainSettings(settings) {
+    const normalized = normalizeSettings(settings);
+    return {
+      enabled: normalized.enabled,
+      preset: normalized.preset,
+      appearance: normalized.appearance,
+      disabledHosts: normalized.disabledHosts.slice()
+    };
   }
 
   // Full cover remaps any non-transparent text into the active palette.
@@ -681,7 +927,8 @@
     let observer = null;
     let pendingRoots = new Set();
     let pendingFrame = null;
-    let activeMode = null;
+    let activePreset = null;
+    let activeAppearance = null;
     let activeTheme = null;
     let activePageTone = "mixed";
 
@@ -715,8 +962,8 @@
       if (
         element.style.getPropertyValue(property) === value
         && element.style.getPropertyPriority(property) === nextPriority
+        && element.getAttribute(TINT_ATTRIBUTE) === activeTheme
       ) {
-        element.setAttribute(TINT_ATTRIBUTE, activeTheme);
         return;
       }
       element.style.setProperty(property, value, nextPriority);
@@ -1043,20 +1290,26 @@
     }
 
     function applyRootTheme(theme) {
-      document.documentElement.setAttribute(THEME_ATTRIBUTE, theme);
-      setStyle(document.documentElement, "color-scheme", theme === "moon" ? "dark" : "light");
-      setStyle(document.documentElement, "scrollbar-color", `${PALETTES[theme].muted} ${PALETTES[theme].base}`);
+      const palette = applyThemeTokens(document.documentElement, theme);
+      setStyle(
+        document.documentElement,
+        "color-scheme",
+        isDarkThemeKey(theme) ? "dark" : "light"
+      );
+      setStyle(document.documentElement, "scrollbar-color", `${palette.muted} ${palette.base}`);
       applyCssVarSurfaces(theme);
+      return palette;
     }
 
     function clear() {
       disconnectObserver();
       restoreTintedElements();
       restoreCssVarOverrides();
-      activeMode = null;
+      activePreset = null;
+      activeAppearance = null;
       activeTheme = null;
       activePageTone = "mixed";
-      document.documentElement.removeAttribute(THEME_ATTRIBUTE);
+      clearThemeTokens(document.documentElement);
     }
 
     function apply(settings) {
@@ -1072,9 +1325,17 @@
       }
 
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const theme = resolveThemeMode(normalized.mode, prefersDark);
+      const theme = resolveThemeKey(normalized.preset, normalized.appearance, prefersDark);
+      const nextPalette = PALETTES[theme];
+      const currentBase = document.documentElement.style.getPropertyValue("--rosewash-base").trim();
       const themeChanged = Boolean(
-        activeTheme && (activeTheme !== theme || activeMode !== normalized.mode)
+        activeTheme
+        && (
+          activeTheme !== theme
+          || activePreset !== normalized.preset
+          || activeAppearance !== normalized.appearance
+          || (nextPalette && currentBase && currentBase !== nextPalette.base)
+        )
       );
       // Full-cover no longer depends on pageTone for surface decisions. Only
       // restore when the resolved palette actually changes — never on mixed
@@ -1087,17 +1348,32 @@
       const pageTone = !activeTheme || themeChanged || activePageTone === "mixed"
         ? detectPageTone()
         : activePageTone;
-      activeMode = normalized.mode;
+      activePreset = normalized.preset;
+      activeAppearance = normalized.appearance;
       activeTheme = theme;
       activePageTone = pageTone;
       applyRootTheme(theme);
+      // Always rescan on apply so preset switches repaint even if some nodes
+      // were only covered via CSS variables on the first pass.
       scan(document.documentElement, theme);
       observe();
-      return { enabled: true, theme, tinted: tintedElements.size };
+      return {
+        enabled: true,
+        theme,
+        preset: normalized.preset,
+        appearance: normalized.appearance,
+        tinted: tintedElements.size
+      };
     }
 
     function stats() {
-      return { mode: activeMode, theme: activeTheme, pageTone: activePageTone, tinted: tintedElements.size };
+      return {
+        preset: activePreset,
+        appearance: activeAppearance,
+        theme: activeTheme,
+        pageTone: activePageTone,
+        tinted: tintedElements.size
+      };
     }
 
     return { apply, clear, stats, disconnect: disconnectObserver };
@@ -1105,12 +1381,15 @@
 
   const api = Object.freeze({
     DEFAULT_SETTINGS,
+    PRESETS,
+    PRESET_IDS,
     PALETTES,
     createEngine,
     classifyPageTone,
     hostFromUrl,
     isDarkNeutralColor,
     isDarkSurfaceColor,
+    isDarkThemeKey,
     generatedBackgroundHasDarkSurface,
     isHostDisabled,
     toggleHostDisabled,
@@ -1131,9 +1410,14 @@
     surfaceColorFor,
     luminance,
     normalizeSettings,
+    plainSettings,
     parseColor,
     readRootThemeSamples,
+    resolveAppearance,
+    resolveThemeKey,
     resolveThemeMode,
+    applyThemeTokens,
+    clearThemeTokens,
     shouldTintTextColor
   });
 

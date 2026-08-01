@@ -4,7 +4,8 @@
   window.addEventListener("DOMContentLoaded", () => {
     const engine = window.RosewashCore.createEngine({ document, window });
     const params = new URLSearchParams(window.location.search);
-    const mode = params.get("mode") || "dawn";
+    const mode = params.get("mode") || params.get("appearance") || "dawn";
+    const preset = params.get("preset") || "rose-pine";
     const system = params.get("system");
     if (system === "dark" || system === "light") {
       window.matchMedia = (query) => ({
@@ -21,7 +22,14 @@
       .filter(Boolean);
     let result = null;
     for (const entry of sequence) {
-      result = engine.apply({ enabled: true, mode: entry, disabledHosts: [] });
+      // Accept legacy mode tokens (auto/dawn/moon) and new appearance tokens.
+      result = engine.apply({
+        enabled: true,
+        preset,
+        mode: entry,
+        appearance: entry,
+        disabledHosts: []
+      });
     }
 
     document.body.dataset.fixtureReady = "true";

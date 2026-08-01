@@ -4,8 +4,7 @@
   const core = globalThis.RosewashCore;
   const engine = core.createEngine({ document, window });
   const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
-  let settingsCache = core.DEFAULT_SETTINGS;
-  let settingsLoaded = false;
+  let settingsCache = core.plainSettings(core.DEFAULT_SETTINGS);
   let disposed = false;
 
   function hasExtensionContext() {
@@ -41,8 +40,19 @@
       return;
     }
 
-    const theme = core.resolveThemeMode("auto", darkQuery.matches);
-    document.documentElement.setAttribute("data-rosewash-theme", theme);
+    const theme = core.resolveThemeKey(
+      settingsCache.preset,
+      settingsCache.appearance,
+      darkQuery.matches
+    );
+    core.applyThemeTokens(document.documentElement, theme);
+  }
+
+  async function readStorageSettings() {
+    // Read raw keys then merge defaults so we do not invent values that hide
+    // a legacy `mode` field before normalizeSettings can migrate it.
+    const raw = await chrome.storage.sync.get(null);
+    return core.plainSettings({ ...core.DEFAULT_SETTINGS, ...raw });
   }
 
   async function loadSettings() {
@@ -52,8 +62,7 @@
     }
 
     try {
-      settingsCache = core.normalizeSettings(await chrome.storage.sync.get(core.DEFAULT_SETTINGS));
-      settingsLoaded = true;
+      settingsCache = await readStorageSettings();
       applyCachedSettings();
     } catch {
       dispose();
@@ -65,20 +74,24 @@
       return;
     }
 
-    const nextSettings = { ...settingsCache };
-    let shouldApply = false;
-    for (const key of ["enabled", "mode", "disabledHosts"]) {
-      if (changes[key]) {
-        nextSettings[key] = changes[key].newValue;
-        shouldApply = true;
-      }
+    const watched = ["enabled", "preset", "appearance", "mode", "disabledHosts"];
+    if (!watched.some((key) => Object.prototype.hasOwnProperty.call(changes, key))) {
+      return;
     }
 
-    if (shouldApply) {
-      settingsCache = core.normalizeSettings(nextSettings);
-      settingsLoaded = true;
-      applyCachedSettings();
-    }
+    // Full re-read avoids partial-merge bugs when keys are removed or when
+    // multiple fields update across separate set/remove calls.
+    readStorageSettings()
+      .then((next) => {
+        if (disposed) {
+          return;
+        }
+        settingsCache = next;
+        applyCachedSettings();
+      })
+      .catch(() => {
+        dispose();
+      });
   }
 
   function handleMessage(message, _sender, sendResponse) {
@@ -86,8 +99,7 @@
       return false;
     }
 
-    settingsCache = core.normalizeSettings(message.settings);
-    settingsLoaded = true;
+    settingsCache = core.plainSettings(message.settings);
     engine.apply(settingsCache);
     sendResponse({ ok: true, stats: engine.stats() });
     return true;
@@ -114,11 +126,11 @@
     try {
       chrome.storage.onChanged.addListener(handleStorageChanged);
       chrome.runtime.onMessage.addListener(handleMessage);
-      // 1) Attribute so theme.css covers the canvas this frame.
+      // 1) Attribute + tokens so theme.css covers the canvas this frame.
       paintProvisionalRoot();
       // 2) Default full cover immediately (document_start DOM is small).
       applyCachedSettings();
-      // 3) Storage refines enabled/mode/blocklist without a blank gap.
+      // 3) Storage refines enabled/preset/appearance/blocklist without a blank gap.
       loadSettings();
     } catch {
       dispose();

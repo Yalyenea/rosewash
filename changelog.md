@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Shipped curated theme presets aligned with the Codex desktop app palette list
+  (28 families: Rose Pine, Catppuccin, Gruvbox, Nord, Solarized, Tokyo Night,
+  Dracula, One, GitHub, Linear, Notion, Raycast, Vercel, Codex, …). Settings are
+  now `preset + appearance` (`auto` / `light` / `dark`); legacy `mode`
+  (`auto` / `dawn` / `moon`) still loads and migrates. Engine resolves through a
+  single palette registry; CSS paper tokens are written as `--rosewash-*` vars.
+  Popup and options expose a palette selector plus Auto / Light / Dark.
+- Fixed preset switches that still painted Rose Pine: write paper tokens with
+  `!important`, re-read full storage on change, broadcast settings to all tabs,
+  and paint the popup chrome from the active palette. Status line shows the
+  resolved theme key (reload the page if it says `reload page`).
 - Fixed light Substack publications (e.g. gonzoml.substack.com) in Moon mode:
   cover `div#main` / `#entry` / `.use-theme-bg` / intro popup shells in
   `theme.css` before the DOM scan; remap publication tokens

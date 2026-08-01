@@ -1,21 +1,14 @@
-html[data-rosewash-theme="dawn"] {
+/* Paper tokens are written by the engine onto documentElement
+   (--rosewash-base / surface / overlay / muted / text / link). Fallback values
+   below match Rose Pine light so the first paint never lands on pure white if
+   the attribute appears a tick before inline vars. */
+html[data-rosewash-theme] {
   --rosewash-base: #faf4ed;
   --rosewash-surface: #fffaf3;
   --rosewash-overlay: #f2e9de;
   --rosewash-muted: #9893a5;
   --rosewash-text: #575279;
   --rosewash-link: #286983;
-  color-scheme: light;
-}
-
-html[data-rosewash-theme="moon"] {
-  --rosewash-base: #232136;
-  --rosewash-surface: #2a273f;
-  --rosewash-overlay: #393552;
-  --rosewash-muted: #6e6a86;
-  --rosewash-text: #e0def4;
-  --rosewash-link: #9ccfd8;
-  color-scheme: dark;
 }
 
 /* Force the page canvas as soon as data-rosewash-theme is set (provisional at

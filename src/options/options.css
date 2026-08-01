@@ -72,6 +72,18 @@ kbd {
   gap: 14px;
 }
 
+#preset {
+  appearance: none;
+  background: var(--surface);
+  border: 1px solid var(--overlay);
+  border-radius: 8px;
+  color: var(--text);
+  font: inherit;
+  min-height: 38px;
+  padding: 0 12px;
+  width: 100%;
+}
+
 textarea {
   background: var(--surface);
   border: 1px solid var(--overlay);

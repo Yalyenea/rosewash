@@ -17,7 +17,7 @@ extension. Package with `just package` → `.tmp/rosewash.zip`.
 
 ```text
 manifest.json              MV3 entry: permissions, content scripts, SW, commands
-popup.html + src/popup/    Action popup (enable, mode, site block)
+popup.html + src/popup/    Action popup (enable, appearance, preset, site block)
 options.html + src/options/ Block-list editor
 src/background/            Service worker (keyboard commands)
 src/content/
@@ -65,7 +65,8 @@ Stored in **`chrome.storage.sync`**.
 ```json
 {
   "enabled": true,
-  "mode": "auto",
+  "preset": "rose-pine",
+  "appearance": "auto",
   "disabledHosts": []
 }
 ```
@@ -73,14 +74,23 @@ Stored in **`chrome.storage.sync`**.
 | Field | Values | Meaning |
 | --- | --- | --- |
 | `enabled` | boolean | Global off clears all tints |
-| `mode` | `auto` \| `dawn` \| `moon` | `auto` → Dawn/Moon from `prefers-color-scheme` |
+| `preset` | preset id (e.g. `rose-pine`, `catppuccin`) | Color family from `PRESETS` |
+| `appearance` | `auto` \| `light` \| `dark` | `auto` follows `prefers-color-scheme` |
 | `disabledHosts` | string[] | Hostnames (and parents) where Rosewash is blocked |
 
 Normalization lives in `RosewashCore.normalizeSettings()`:
 
 - Hosts lowercased, leading dots stripped, deduped, sorted.
-- Unknown `mode` falls back to `auto`.
+- Unknown `preset` falls back to `rose-pine`.
+- Unknown `appearance` falls back to `auto`.
+- Legacy blobs with only `mode: auto|dawn|moon` migrate to
+  `appearance: auto|light|dark` (preset stays `rose-pine`).
 - `enabled !== false` counts as true.
+
+`resolveThemeKey(preset, appearance, prefersDark)` picks
+`{preset}-{light|dark}`. Dark-only / light-only presets fall back to the
+available variant. Tokens are applied as `--rosewash-*` CSS variables plus
+`data-rosewash-theme` on `documentElement`.
 
 Host matching (`isHostDisabled`): exact match or subdomain of a listed host
 (`news.example.com` matches entry `example.com`).
@@ -88,20 +98,6 @@ Host matching (`isHostDisabled`): exact match or subdomain of a listed host
 Toggle (`toggleHostDisabled`): remove any list entry that matches the host; if
 none matched, append the host. Used by the background command; popup implements
 the same algorithm inline.
-
-### Planned shape (not shipped)
-
-```json
-{
-  "enabled": true,
-  "preset": "rose-pine",
-  "appearance": "auto",
-  "disabledHosts": []
-}
-```
-
-Presets should resolve through one palette registry before DOM work so new
-families (Catppuccin, Nord, …) do not branch inside `processElement`.
 
 ## Manifest details
 
@@ -122,8 +118,9 @@ On every page match, roughly:
 2. **`paintProvisionalRoot()`** sets `data-rosewash-theme` from system Auto
    preference so theme.css paints the canvas on the first frame.
 3. **`applyCachedSettings()`** with in-memory defaults (`enabled: true`,
-   `mode: auto`) runs a full engine apply on the (still small) document_start
-   DOM — intentional FOUC mitigation; not a blank wait for storage.
+   `appearance: auto`, `preset: rose-pine`) runs a full engine apply on the
+   (still small) document_start DOM — intentional FOUC mitigation; not a blank
+   wait for storage.
 4. **`loadSettings()`** reads `chrome.storage.sync`, replaces the cache, re-
    applies (may clear if disabled / blocked host).
 5. Later: `storage.onChanged`, `matchMedia` dark changes, `DOMContentLoaded`,
@@ -150,7 +147,7 @@ Attributes used:
 
 | Attribute | Purpose |
 | --- | --- |
-| `data-rosewash-theme` | Active theme for CSS (`dawn` / `moon`) |
+| `data-rosewash-theme` | Active theme key for CSS (`{preset}-light` / `{preset}-dark`; legacy aliases `dawn` / `moon` still resolve in `PALETTES`) |
 | `data-rosewash-tinted` | Element was touched by the engine |
 | `data-rosewash-had-style` | Had an inline `style` before Rosewash |
 | `data-rosewash-original-style` | Snapshot of that original inline style |
@@ -164,12 +161,21 @@ Node `vm` context (`test/core.test.js`). Arrays returned from the sandbox need
 
 ### Palettes
 
-| Theme | base | surface | overlay | text | link |
-| --- | --- | --- | --- | --- | --- |
-| Dawn | `#faf4ed` | `#fffaf3` | `#f2e9de` | `#575279` | `#286983` |
-| Moon | `#232136` | `#2a273f` | `#393552` | `#e0def4` | `#9ccfd8` |
+Presets live in `RosewashCore.PRESETS` (28 families aligned with Codex app code
+themes). Each entry has optional `light` / `dark` token sets:
 
-Also: `muted` for scrollbar tracks.
+`base`, `surface`, `overlay`, `muted`, `text`, `link`.
+
+Default Rose Pine (former Dawn / Moon):
+
+| Variant | base | surface | overlay | text | link |
+| --- | --- | --- | --- | --- | --- |
+| light | `#faf4ed` | `#fffaf3` | `#f2e9de` | `#575279` | `#286983` |
+| dark | `#232136` | `#2a273f` | `#393552` | `#e0def4` | `#9ccfd8` |
+
+`PALETTES` is a flat map of `{preset}-{light|dark}` keys (plus legacy
+`dawn` / `moon` aliases). Adding a family means registering tokens only — not
+branching inside `processElement`. `muted` is also used for scrollbar tracks.
 
 ### Color parsing
 
@@ -267,11 +273,11 @@ No direct message to the content script is required; pages listen to
 
 **Options**
 
-- Edit enabled / mode / full host list (one host per line).
+- Edit enabled / appearance / preset / full host list (one host per line).
 - Mentions the site-toggle shortcut.
 
-Host helper logic is duplicated in popup/options (small, no build step to
-share modules with HTML pages). Engine + background share `core.js`.
+Popup and options load `src/content/core.js` for `PRESETS` / `normalizeSettings`.
+Engine + background also share `core.js`.
 
 ## Messaging contract
 
@@ -316,7 +322,7 @@ branch other than `main`.
 
 | Goal | Touch |
 | --- | --- |
-| New palette / mode | `PALETTES`, `theme.css` tokens, popup/options mode UI, `VALID_MODES` |
+| New palette family | `PRESETS` in `core.js` (tokens only); popup/options list from registry |
 | New protected widget class | `SKIP_SELECTOR` in `core.js` |
 | New design-token names | `SURFACE_VAR_INCLUDE` / `TEXT_VAR_*` + unit tests |
 | New page-chrome shell | `PAGE_CHROME_CLASSES` + matching `theme.css` rules if CSS-in-JS |
