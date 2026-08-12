@@ -104,22 +104,24 @@ Users can rebind the shortcut under `chrome://extensions/shortcuts`.
 ## UI
 
 `popup.html` is the daily control surface. `options.html` is the full settings
-page (appearance, clickable palette grid, block list). Both are plain HTML/CSS/JS
+page (appearance, light/dark palette grids, block list). Both are plain HTML/CSS/JS
 and share the same storage schema:
 
 ```json
 {
   "enabled": true,
-  "preset": "rose-pine",
+  "presetLight": "rose-pine",
+  "presetDark": "rose-pine",
   "appearance": "auto",
   "disabledHosts": []
 }
 ```
 
 Theme presets live in one palette registry with light and/or dark variants. The
-content engine resolves `preset + appearance` into a concrete palette before
-scanning, so adding another curated family does not add branching inside DOM
-processing. Legacy `mode: auto|dawn|moon` storage still normalizes cleanly.
+content engine resolves `presetLight` or `presetDark` from appearance into a
+concrete palette before scanning, so adding another curated family does not add
+branching inside DOM processing. Legacy `preset` and `mode: auto|dawn|moon`
+storage still normalize cleanly.
 
 ## Performance Boundary
 

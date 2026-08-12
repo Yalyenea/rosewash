@@ -261,16 +261,82 @@ test("falls back when a preset lacks the requested appearance", async () => {
   assert.equal(core.PRESET_IDS.length, 28);
 });
 
+test("resolves independent light and dark presets", async () => {
+  const core = await loadCore();
+  const split = {
+    presetLight: "catppuccin",
+    presetDark: "tokyo-night",
+    appearance: "auto"
+  };
+  assert.equal(core.resolveSettingsThemeKey(split, false), "catppuccin-light");
+  assert.equal(core.resolveSettingsThemeKey(split, true), "tokyo-night-dark");
+  assert.equal(core.resolveSettingsThemeKey({
+    ...split,
+    appearance: "light"
+  }, true), "catppuccin-light");
+  assert.equal(core.resolveSettingsThemeKey({
+    ...split,
+    appearance: "dark"
+  }, false), "tokyo-night-dark");
+});
+
+test("engine applies the matching variant preset", async () => {
+  const core = await loadCore();
+  const { document, window } = createMockDom({
+    htmlBackgroundColor: "rgb(255, 255, 255)",
+    bodyBackgroundColor: "rgb(255, 255, 255)",
+    bodyColor: "rgb(17, 17, 17)"
+  });
+  const engine = core.createEngine({ document, window });
+  const settings = {
+    enabled: true,
+    presetLight: "catppuccin",
+    presetDark: "tokyo-night",
+    appearance: "light",
+    disabledHosts: []
+  };
+
+  let result = engine.apply(settings);
+  assert.equal(result.theme, "catppuccin-light");
+  assert.equal(result.presetLight, "catppuccin");
+  assert.equal(result.presetDark, "tokyo-night");
+  assert.equal(
+    document.documentElement.style.getPropertyValue("--rosewash-base"),
+    core.PALETTES["catppuccin-light"].base
+  );
+
+  result = engine.apply({ ...settings, appearance: "dark" });
+  assert.equal(result.theme, "tokyo-night-dark");
+  assert.equal(
+    document.documentElement.style.getPropertyValue("--rosewash-base"),
+    core.PALETTES["tokyo-night-dark"].base
+  );
+});
+
+test("lists presets that expose the requested variant", async () => {
+  const core = await loadCore();
+  const lightIds = core.listPresets("light").map((preset) => preset.id);
+  const darkIds = core.listPresets("dark").map((preset) => preset.id);
+  assert.equal(lightIds[0], "rose-pine");
+  assert.equal(darkIds[0], "rose-pine");
+  assert.ok(lightIds.includes("proof"));
+  assert.ok(!lightIds.includes("dracula"));
+  assert.ok(darkIds.includes("dracula"));
+  assert.ok(!darkIds.includes("proof"));
+});
+
 test("plainSettings freezes a storage-safe settings blob", async () => {
   const core = await loadCore();
   assert.deepEqual(plain(core.plainSettings({
     enabled: true,
-    preset: "catppuccin",
+    presetLight: "catppuccin",
+    presetDark: "tokyo-night",
     appearance: "dark",
     disabledHosts: ["Example.COM"]
   })), {
     enabled: true,
-    preset: "catppuccin",
+    presetLight: "catppuccin",
+    presetDark: "tokyo-night",
     appearance: "dark",
     disabledHosts: ["example.com"]
   });
@@ -975,11 +1041,14 @@ test("normalizes settings and blocked hosts", async () => {
   const core = await loadCore();
   assert.deepEqual(plain(core.normalizeSettings({
     enabled: true,
-    preset: "rose-pine", appearance: "dark",
+    presetLight: "rose-pine",
+    presetDark: "rose-pine",
+    appearance: "dark",
     disabledHosts: [" Example.COM ", ".docs.example.com", "example.com"]
   })), {
     enabled: true,
-    preset: "rose-pine",
+    presetLight: "rose-pine",
+    presetDark: "rose-pine",
     appearance: "dark",
     disabledHosts: ["docs.example.com", "example.com"]
   });
@@ -991,8 +1060,22 @@ test("normalizes settings and blocked hosts", async () => {
     disabledHosts: []
   })), {
     enabled: true,
-    preset: "catppuccin",
+    presetLight: "catppuccin",
+    presetDark: "catppuccin",
     appearance: "light",
+    disabledHosts: []
+  });
+
+  assert.deepEqual(plain(core.normalizeSettings({
+    enabled: true,
+    preset: "dracula",
+    appearance: "auto",
+    disabledHosts: []
+  })), {
+    enabled: true,
+    presetLight: "rose-pine",
+    presetDark: "dracula",
+    appearance: "auto",
     disabledHosts: []
   });
 

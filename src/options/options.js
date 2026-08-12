@@ -10,13 +10,15 @@
   const DEFAULT_SETTINGS = core.plainSettings(core.DEFAULT_SETTINGS);
 
   const enabledInput = document.querySelector("#enabled");
-  const presetList = document.querySelector("#preset-list");
+  const lightList = document.querySelector("#preset-light-list");
+  const darkList = document.querySelector("#preset-dark-list");
   const hostTextarea = document.querySelector("#disabled-hosts");
   const saveButton = document.querySelector("#save");
   const resetButton = document.querySelector("#reset");
   const status = document.querySelector("#status");
 
-  let selectedPreset = DEFAULT_SETTINGS.preset;
+  let selectedLight = DEFAULT_SETTINGS.presetLight;
+  let selectedDark = DEFAULT_SETTINGS.presetDark;
 
   function normalizeHost(host) {
     return String(host || "").trim().toLowerCase().replace(/^\.+/, "");
@@ -42,32 +44,19 @@
     }, 1600);
   }
 
-  function sortedPresets() {
-    return Object.values(core.PRESETS).slice().sort((a, b) => {
-      if (a.id === "rose-pine") {
-        return -1;
-      }
-      if (b.id === "rose-pine") {
-        return 1;
-      }
-      return a.label.localeCompare(b.label);
-    });
-  }
-
-  function swatchColors(preset) {
-    const sample = preset.light || preset.dark;
+  function swatchColors(tokens) {
     return {
-      base: sample.base,
-      surface: sample.surface,
-      text: sample.text,
-      link: sample.link
+      base: tokens.base,
+      surface: tokens.surface,
+      text: tokens.text,
+      link: tokens.link
     };
   }
 
-  function fillPresetList() {
-    presetList.replaceChildren();
+  function fillPresetList(list, variant, onSelect) {
+    list.replaceChildren();
 
-    for (const preset of sortedPresets()) {
+    for (const preset of core.listPresets(variant)) {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "preset-card";
@@ -75,7 +64,7 @@
       button.setAttribute("role", "option");
       button.setAttribute("aria-selected", "false");
 
-      const colors = swatchColors(preset);
+      const colors = swatchColors(preset[variant]);
       button.innerHTML = `
         <span class="swatches" aria-hidden="true">
           <span style="background:${colors.base}"></span>
@@ -87,20 +76,29 @@
       `;
 
       button.addEventListener("click", () => {
-        selectPreset(preset.id);
+        onSelect(preset.id);
       });
 
-      presetList.appendChild(button);
+      list.appendChild(button);
     }
   }
 
-  function selectPreset(presetId) {
-    selectedPreset = presetId;
-    for (const button of presetList.querySelectorAll(".preset-card")) {
+  function markSelected(list, presetId) {
+    for (const button of list.querySelectorAll(".preset-card")) {
       const on = button.dataset.preset === presetId;
       button.setAttribute("aria-selected", String(on));
       button.classList.toggle("is-selected", on);
     }
+  }
+
+  function selectLight(presetId) {
+    selectedLight = presetId;
+    markSelected(lightList, presetId);
+  }
+
+  function selectDark(presetId) {
+    selectedDark = presetId;
+    markSelected(darkList, presetId);
   }
 
   function render(settings) {
@@ -108,33 +106,36 @@
     enabledInput.checked = normalized.enabled;
     document.querySelector(`input[name='appearance'][value='${normalized.appearance}']`).checked = true;
     hostTextarea.value = normalized.disabledHosts.join("\n");
-    selectPreset(normalized.preset);
+    selectLight(normalized.presetLight);
+    selectDark(normalized.presetDark);
   }
 
   async function load() {
     const raw = await chrome.storage.sync.get(null);
-    render({ ...DEFAULT_SETTINGS, ...raw });
+    render(raw);
   }
 
   saveButton.addEventListener("click", async () => {
     const next = core.plainSettings({
       enabled: enabledInput.checked,
-      preset: selectedPreset,
+      presetLight: selectedLight,
+      presetDark: selectedDark,
       appearance: selectedAppearance(),
       disabledHosts: hostsFromTextarea()
     });
     await chrome.storage.sync.set(next);
-    await chrome.storage.sync.remove("mode");
+    await chrome.storage.sync.remove(["mode", "preset"]);
     setStatus("Saved");
   });
 
   resetButton.addEventListener("click", async () => {
     await chrome.storage.sync.set(DEFAULT_SETTINGS);
-    await chrome.storage.sync.remove("mode");
+    await chrome.storage.sync.remove(["mode", "preset"]);
     render(DEFAULT_SETTINGS);
     setStatus("Reset");
   });
 
-  fillPresetList();
+  fillPresetList(lightList, "light", selectLight);
+  fillPresetList(darkList, "dark", selectDark);
   load();
 })();

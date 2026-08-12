@@ -12,7 +12,8 @@
   const enabledInput = document.querySelector("#enabled");
   const hostLabel = document.querySelector("#host");
   const appearanceButtons = Array.from(document.querySelectorAll("[data-appearance]"));
-  const presetSelect = document.querySelector("#preset");
+  const lightSelect = document.querySelector("#preset-light");
+  const darkSelect = document.querySelector("#preset-dark");
   const siteButton = document.querySelector("#site-toggle");
   const optionsButton = document.querySelector("#options");
   const refreshButton = document.querySelector("#refresh");
@@ -42,28 +43,18 @@
     });
   }
 
-  function fillPresetOptions() {
-    const presets = Object.values(core.PRESETS).slice().sort((a, b) => {
-      if (a.id === "rose-pine") {
-        return -1;
-      }
-      if (b.id === "rose-pine") {
-        return 1;
-      }
-      return a.label.localeCompare(b.label);
-    });
-
-    for (const preset of presets) {
+  function fillPresetOptions(select, variant) {
+    for (const preset of core.listPresets(variant)) {
       const option = document.createElement("option");
       option.value = preset.id;
       option.textContent = preset.label;
-      presetSelect.appendChild(option);
+      select.appendChild(option);
     }
   }
 
   function resolvedPalette() {
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const themeKey = core.resolveThemeKey(settings.preset, settings.appearance, prefersDark);
+    const themeKey = core.resolveSettingsThemeKey(settings, prefersDark);
     return { themeKey, palette: core.PALETTES[themeKey] };
   }
 
@@ -86,15 +77,15 @@
 
   async function storageGet() {
     const raw = await chrome.storage.sync.get(null);
-    return core.plainSettings({ ...DEFAULT_SETTINGS, ...raw });
+    return core.plainSettings(raw);
   }
 
   async function storageSet(nextSettings) {
     const normalized = core.plainSettings(nextSettings);
     settings = normalized;
     await chrome.storage.sync.set(normalized);
-    // Drop legacy key so it cannot fight the new schema on next read.
-    await chrome.storage.sync.remove("mode");
+    // Drop legacy keys so they cannot fight the new schema on next read.
+    await chrome.storage.sync.remove(["mode", "preset"]);
     return normalized;
   }
 
@@ -124,7 +115,8 @@
   function render() {
     enabledInput.checked = settings.enabled;
     hostLabel.textContent = activeHost || "unsupported page";
-    presetSelect.value = settings.preset;
+    lightSelect.value = settings.presetLight;
+    darkSelect.value = settings.presetDark;
 
     for (const button of appearanceButtons) {
       button.setAttribute(
@@ -158,8 +150,12 @@
     });
   }
 
-  presetSelect.addEventListener("change", () => {
-    updateSettings({ ...settings, preset: presetSelect.value });
+  lightSelect.addEventListener("change", () => {
+    updateSettings({ ...settings, presetLight: lightSelect.value });
+  });
+
+  darkSelect.addEventListener("change", () => {
+    updateSettings({ ...settings, presetDark: darkSelect.value });
   });
 
   siteButton.addEventListener("click", () => {
@@ -184,7 +180,8 @@
   });
 
   async function init() {
-    fillPresetOptions();
+    fillPresetOptions(lightSelect, "light");
+    fillPresetOptions(darkSelect, "dark");
     activeTab = await activeTabQuery();
     activeHost = activeTab ? hostFromUrl(activeTab.url) : "";
     settings = await storageGet();

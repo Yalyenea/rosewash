@@ -12,8 +12,10 @@ protected.
 
 ## Features
 
-- Palette preset selector (28 Codex-aligned families; default Rose Pine).
-- Appearance: Auto / Light / Dark.
+- Independent light and dark palette selectors (28 Codex-aligned families;
+  default Rose Pine for both).
+- Appearance: Auto / Light / Dark. Auto uses the light or dark palette from
+  the system color scheme.
 - Global enable switch.
 - Per-site block list.
 - Default shortcut `Alt+Shift+B` toggles blocked / allowed for the current site

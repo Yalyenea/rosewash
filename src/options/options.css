@@ -22,7 +22,7 @@ body {
 
 main {
   margin: 0 auto;
-  max-width: 680px;
+  max-width: 880px;
   padding: 32px 20px;
 }
 
@@ -57,10 +57,22 @@ section {
   gap: 14px;
 }
 
+.palettes {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 1fr 1fr;
+}
+
+@media (max-width: 720px) {
+  .palettes {
+    grid-template-columns: 1fr;
+  }
+}
+
 .preset-list {
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(auto-fill, minmax(196px, 1fr));
+  grid-template-columns: 1fr;
 }
 
 .preset-card {

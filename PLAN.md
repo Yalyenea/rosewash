@@ -57,9 +57,10 @@ code protected), then grows into a small set of curated theme presets.
 2. Add a strength slider that blends original white with the selected preset's
    paper tones.
 3. ~~Add a theme preset selector.~~ Shipped: 28 Codex-aligned presets (Rose Pine
-   default) with popup/options selector.
-4. ~~Refactor settings from `mode` alone to `preset + appearance`.~~ Shipped with
-   legacy `mode` migration.
+   default) with popup/options selector. Light and dark slots are independent.
+4. ~~Refactor settings from `mode` alone to `preset + appearance`.~~ Shipped, then
+   split to `presetLight` + `presetDark` + `appearance` with legacy `preset` /
+   `mode` migration.
 5. ~~Add keyboard shortcuts for global toggle and site toggle.~~ Site toggle
    shipped (`Alt+Shift+B`). Global enable shortcut still open.
 6. Split browser packaging into target-specific manifests and archives:

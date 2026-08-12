@@ -6,6 +6,8 @@
     const params = new URLSearchParams(window.location.search);
     const mode = params.get("mode") || params.get("appearance") || "dawn";
     const preset = params.get("preset") || "rose-pine";
+    const presetLight = params.get("presetLight") || preset;
+    const presetDark = params.get("presetDark") || preset;
     const system = params.get("system");
     if (system === "dark" || system === "light") {
       window.matchMedia = (query) => ({
@@ -25,7 +27,8 @@
       // Accept legacy mode tokens (auto/dawn/moon) and new appearance tokens.
       result = engine.apply({
         enabled: true,
-        preset,
+        presetLight,
+        presetDark,
         mode: entry,
         appearance: entry,
         disabledHosts: []

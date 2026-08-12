@@ -6,7 +6,8 @@
   const storageDelayFrames = Number(params.get("storageDelayFrames") || "0");
   const settings = {
     enabled: true,
-    preset: params.get("preset") || "rose-pine",
+    presetLight: params.get("presetLight") || params.get("preset") || "rose-pine",
+    presetDark: params.get("presetDark") || params.get("preset") || "rose-pine",
     appearance: params.get("appearance") || params.get("mode") || "auto",
     disabledHosts: []
   };
@@ -15,7 +16,8 @@
   if (params.has("mode") && !params.has("appearance") && !params.has("preset")) {
     settings.mode = params.get("mode");
     delete settings.appearance;
-    delete settings.preset;
+    delete settings.presetLight;
+    delete settings.presetDark;
   }
 
   const listeners = new Set();

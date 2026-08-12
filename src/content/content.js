@@ -40,11 +40,7 @@
       return;
     }
 
-    const theme = core.resolveThemeKey(
-      settingsCache.preset,
-      settingsCache.appearance,
-      darkQuery.matches
-    );
+    const theme = core.resolveSettingsThemeKey(settingsCache, darkQuery.matches);
     core.applyThemeTokens(document.documentElement, theme);
   }
 
@@ -52,7 +48,7 @@
     // Read raw keys then merge defaults so we do not invent values that hide
     // a legacy `mode` field before normalizeSettings can migrate it.
     const raw = await chrome.storage.sync.get(null);
-    return core.plainSettings({ ...core.DEFAULT_SETTINGS, ...raw });
+    return core.plainSettings(raw);
   }
 
   async function loadSettings() {
@@ -74,7 +70,15 @@
       return;
     }
 
-    const watched = ["enabled", "preset", "appearance", "mode", "disabledHosts"];
+    const watched = [
+      "enabled",
+      "preset",
+      "presetLight",
+      "presetDark",
+      "appearance",
+      "mode",
+      "disabledHosts"
+    ];
     if (!watched.some((key) => Object.prototype.hasOwnProperty.call(changes, key))) {
       return;
     }
@@ -130,7 +134,7 @@
       paintProvisionalRoot();
       // 2) Default full cover immediately (document_start DOM is small).
       applyCachedSettings();
-      // 3) Storage refines enabled/preset/appearance/blocklist without a blank gap.
+      // 3) Storage refines enabled/presets/appearance/blocklist without a blank gap.
       loadSettings();
     } catch {
       dispose();

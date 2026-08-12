@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Light and dark can use different palettes. Settings are now
+  `presetLight` + `presetDark` + `appearance`; a legacy single `preset` still
+  loads and fills both slots. Popup has two selectors; settings has two
+  palette grids. Auto picks the matching slot from `prefers-color-scheme`.
 - Renamed popup footer action from Sites to Settings; settings page lists every
   palette as a selectable card (color swatches + label) instead of a dropdown.
 - Removed informal UI copy (Codex/hint text, L/D labels, status debug lines).

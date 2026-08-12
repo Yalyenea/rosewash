@@ -17,8 +17,8 @@ extension. Package with `just package` → `.tmp/rosewash.zip`.
 
 ```text
 manifest.json              MV3 entry: permissions, content scripts, SW, commands
-popup.html + src/popup/    Action popup (enable, appearance, preset, site block)
-options.html + src/options/ Settings (palette grid, appearance, block list)
+popup.html + src/popup/    Action popup (enable, appearance, light/dark palettes, site block)
+options.html + src/options/ Settings (light/dark palette grids, appearance, block list)
 src/background/            Service worker (keyboard commands)
 src/content/
   core.js                  Pure engine + host helpers (testable via vm)
@@ -56,7 +56,7 @@ justfile                   test · validate · check · package
 | CSS cover | `src/content/theme.css` | First-frame canvas / SPA roots / known shells |
 | Background | `src/background/background.js` | `toggle-current-site` command |
 | Popup | `src/popup/popup.js` | Daily controls + push message to active tab |
-| Options | `src/options/options.js` | Palette grid, appearance, block list |
+| Options | `src/options/options.js` | Light/dark palette grids, appearance, block list |
 
 ## Settings schema
 
@@ -65,7 +65,8 @@ Stored in **`chrome.storage.sync`**.
 ```json
 {
   "enabled": true,
-  "preset": "rose-pine",
+  "presetLight": "rose-pine",
+  "presetDark": "rose-pine",
   "appearance": "auto",
   "disabledHosts": []
 }
@@ -74,23 +75,28 @@ Stored in **`chrome.storage.sync`**.
 | Field | Values | Meaning |
 | --- | --- | --- |
 | `enabled` | boolean | Global off clears all tints |
-| `preset` | preset id (e.g. `rose-pine`, `catppuccin`) | Color family from `PRESETS` |
+| `presetLight` | preset id with a light variant | Palette used when appearance resolves to light |
+| `presetDark` | preset id with a dark variant | Palette used when appearance resolves to dark |
 | `appearance` | `auto` \| `light` \| `dark` | `auto` follows `prefers-color-scheme` |
 | `disabledHosts` | string[] | Hostnames (and parents) where Rosewash is blocked |
 
 Normalization lives in `RosewashCore.normalizeSettings()`:
 
 - Hosts lowercased, leading dots stripped, deduped, sorted.
-- Unknown `preset` falls back to `rose-pine`.
+- Unknown or variant-missing `presetLight` / `presetDark` become `rose-pine`.
 - Unknown `appearance` falls back to `auto`.
+- Legacy blobs with only `preset` copy that family into both slots when the
+  family has that variant; otherwise the missing slot is `rose-pine`.
 - Legacy blobs with only `mode: auto|dawn|moon` migrate to
-  `appearance: auto|light|dark` (preset stays `rose-pine`).
+  `appearance: auto|light|dark` (presets stay `rose-pine`).
 - `enabled !== false` counts as true.
 
-`resolveThemeKey(preset, appearance, prefersDark)` picks
-`{preset}-{light|dark}`. Dark-only / light-only presets fall back to the
-available variant. Tokens are applied as `--rosewash-*` CSS variables plus
-`data-rosewash-theme` on `documentElement`.
+`resolveSettingsThemeKey(settings, prefersDark)` picks
+`{presetLight|presetDark}-{light|dark}` from the resolved appearance.
+`resolveThemeKey(preset, appearance, prefersDark)` still builds a key for one
+family. Dark-only / light-only families fall back to the available variant.
+Tokens are applied as `--rosewash-*` CSS variables plus `data-rosewash-theme`
+on `documentElement`.
 
 Host matching (`isHostDisabled`): exact match or subdomain of a listed host
 (`news.example.com` matches entry `example.com`).
@@ -118,11 +124,12 @@ On every page match, roughly:
 2. **`paintProvisionalRoot()`** sets `data-rosewash-theme` from system Auto
    preference so theme.css paints the canvas on the first frame.
 3. **`applyCachedSettings()`** with in-memory defaults (`enabled: true`,
-   `appearance: auto`, `preset: rose-pine`) runs a full engine apply on the
+   `appearance: auto`, both presets `rose-pine`) runs a full engine apply on the
    (still small) document_start DOM — intentional FOUC mitigation; not a blank
    wait for storage.
-4. **`loadSettings()`** reads `chrome.storage.sync`, replaces the cache, re-
-   applies (may clear if disabled / blocked host).
+4. **`loadSettings()`** reads raw `chrome.storage.sync` (no default merge,
+   so a legacy `preset` is not hidden by default `presetLight`/`presetDark`),
+   replaces the cache, re-applies (may clear if disabled / blocked host).
 5. Later: `storage.onChanged`, `matchMedia` dark changes, `DOMContentLoaded`,
    `load`, `pageshow`, `visibilitychange`, and popup messages all re-apply from
    the **in-page settings cache** (no extra storage read on system theme
@@ -266,6 +273,8 @@ No direct message to the content script is required; pages listen to
 **Popup**
 
 - Reads active tab host; toggles that host in `disabledHosts`.
+- Two palette selects (`presetLight` / `presetDark`); lists only families
+  that expose that variant.
 - On change: write storage + `chrome.tabs.sendMessage` with
   `{ type: "rosewash:settings-updated", settings }` (best-effort; storage
   path still works if the content script is missing).
@@ -273,11 +282,12 @@ No direct message to the content script is required; pages listen to
 
 **Options**
 
-- Edit enabled / appearance / preset / full host list (one host per line).
+- Edit enabled / appearance / light and dark palette grids / full host list
+  (one host per line). Each grid only lists families with that variant.
 - Mentions the site-toggle shortcut.
 
-Popup and options load `src/content/core.js` for `PRESETS` / `normalizeSettings`.
-Engine + background also share `core.js`.
+Popup and options load `src/content/core.js` for `PRESETS` / `listPresets` /
+`normalizeSettings`. Engine + background also share `core.js`.
 
 ## Messaging contract
 

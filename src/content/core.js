@@ -168,6 +168,20 @@
 
   const PRESET_IDS = Object.freeze(Object.keys(PRESETS));
 
+  function listPresets(variant) {
+    return Object.values(PRESETS)
+      .filter((preset) => !variant || preset[variant])
+      .sort((a, b) => {
+        if (a.id === "rose-pine") {
+          return -1;
+        }
+        if (b.id === "rose-pine") {
+          return 1;
+        }
+        return a.label.localeCompare(b.label);
+      });
+  }
+
   const PALETTES = Object.freeze((() => {
     const map = {};
     for (const preset of Object.values(PRESETS)) {
@@ -186,7 +200,8 @@
 
   const DEFAULT_SETTINGS = Object.freeze({
     enabled: true,
-    preset: "rose-pine",
+    presetLight: "rose-pine",
+    presetDark: "rose-pine",
     appearance: "auto",
     disabledHosts: []
   });
@@ -620,7 +635,6 @@
       ? source.disabledHosts.map(normalizeHost).filter(Boolean)
       : [];
 
-    const preset = PRESETS[source.preset] ? source.preset : DEFAULT_SETTINGS.preset;
     let appearance = DEFAULT_SETTINGS.appearance;
     if (VALID_APPEARANCES.has(source.appearance)) {
       appearance = source.appearance;
@@ -631,10 +645,21 @@
 
     return {
       enabled: source.enabled !== false,
-      preset,
+      presetLight: presetIdForVariant(source.presetLight, source.preset, "light"),
+      presetDark: presetIdForVariant(source.presetDark, source.preset, "dark"),
       appearance,
       disabledHosts: Array.from(new Set(disabledHosts)).sort()
     };
+  }
+
+  function presetIdForVariant(value, legacyPreset, variant) {
+    if (PRESETS[value] && PRESETS[value][variant]) {
+      return value;
+    }
+    if (PRESETS[legacyPreset] && PRESETS[legacyPreset][variant]) {
+      return legacyPreset;
+    }
+    return variant === "dark" ? DEFAULT_SETTINGS.presetDark : DEFAULT_SETTINGS.presetLight;
   }
 
   function resolveAppearance(appearance, prefersDark) {
@@ -645,17 +670,23 @@
   }
 
   function resolveThemeKey(preset, appearance, prefersDark) {
-    const presetId = PRESETS[preset] ? preset : DEFAULT_SETTINGS.preset;
+    const presetId = PRESETS[preset] ? preset : DEFAULT_SETTINGS.presetLight;
     const desired = resolveAppearance(appearance, prefersDark);
     const entry = PRESETS[presetId];
     if (entry[desired]) {
       return `${presetId}-${desired}`;
     }
-    // Dark-only / light-only presets fall back to the available variant.
     if (entry.dark) {
       return `${presetId}-dark`;
     }
     return `${presetId}-light`;
+  }
+
+  function resolveSettingsThemeKey(settings, prefersDark) {
+    const normalized = normalizeSettings(settings);
+    const desired = resolveAppearance(normalized.appearance, prefersDark);
+    const presetId = desired === "dark" ? normalized.presetDark : normalized.presetLight;
+    return `${presetId}-${desired}`;
   }
 
   // Legacy helper: maps old mode strings onto rose-pine theme keys.
@@ -667,8 +698,7 @@
       return resolveThemeKey("rose-pine", LEGACY_MODE_TO_APPEARANCE[mode], prefersDark);
     }
     if (typeof mode === "object" && mode) {
-      const normalized = normalizeSettings(mode);
-      return resolveThemeKey(normalized.preset, normalized.appearance, prefersDark);
+      return resolveSettingsThemeKey(mode, prefersDark);
     }
     return resolveThemeKey("rose-pine", "auto", prefersDark);
   }
@@ -707,7 +737,8 @@
     const normalized = normalizeSettings(settings);
     return {
       enabled: normalized.enabled,
-      preset: normalized.preset,
+      presetLight: normalized.presetLight,
+      presetDark: normalized.presetDark,
       appearance: normalized.appearance,
       disabledHosts: normalized.disabledHosts.slice()
     };
@@ -927,7 +958,8 @@
     let observer = null;
     let pendingRoots = new Set();
     let pendingFrame = null;
-    let activePreset = null;
+    let activePresetLight = null;
+    let activePresetDark = null;
     let activeAppearance = null;
     let activeTheme = null;
     let activePageTone = "mixed";
@@ -1305,7 +1337,8 @@
       disconnectObserver();
       restoreTintedElements();
       restoreCssVarOverrides();
-      activePreset = null;
+      activePresetLight = null;
+      activePresetDark = null;
       activeAppearance = null;
       activeTheme = null;
       activePageTone = "mixed";
@@ -1325,14 +1358,15 @@
       }
 
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const theme = resolveThemeKey(normalized.preset, normalized.appearance, prefersDark);
+      const theme = resolveSettingsThemeKey(normalized, prefersDark);
       const nextPalette = PALETTES[theme];
       const currentBase = document.documentElement.style.getPropertyValue("--rosewash-base").trim();
       const themeChanged = Boolean(
         activeTheme
         && (
           activeTheme !== theme
-          || activePreset !== normalized.preset
+          || activePresetLight !== normalized.presetLight
+          || activePresetDark !== normalized.presetDark
           || activeAppearance !== normalized.appearance
           || (nextPalette && currentBase && currentBase !== nextPalette.base)
         )
@@ -1348,7 +1382,8 @@
       const pageTone = !activeTheme || themeChanged || activePageTone === "mixed"
         ? detectPageTone()
         : activePageTone;
-      activePreset = normalized.preset;
+      activePresetLight = normalized.presetLight;
+      activePresetDark = normalized.presetDark;
       activeAppearance = normalized.appearance;
       activeTheme = theme;
       activePageTone = pageTone;
@@ -1360,7 +1395,8 @@
       return {
         enabled: true,
         theme,
-        preset: normalized.preset,
+        presetLight: normalized.presetLight,
+        presetDark: normalized.presetDark,
         appearance: normalized.appearance,
         tinted: tintedElements.size
       };
@@ -1368,7 +1404,8 @@
 
     function stats() {
       return {
-        preset: activePreset,
+        presetLight: activePresetLight,
+        presetDark: activePresetDark,
         appearance: activeAppearance,
         theme: activeTheme,
         pageTone: activePageTone,
@@ -1384,6 +1421,7 @@
     PRESETS,
     PRESET_IDS,
     PALETTES,
+    listPresets,
     createEngine,
     classifyPageTone,
     hostFromUrl,
@@ -1415,6 +1453,7 @@
     readRootThemeSamples,
     resolveAppearance,
     resolveThemeKey,
+    resolveSettingsThemeKey,
     resolveThemeMode,
     applyThemeTokens,
     clearThemeTokens,
