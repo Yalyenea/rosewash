@@ -332,14 +332,17 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
     presetLight: "catppuccin",
     presetDark: "tokyo-night",
     appearance: "dark",
+    xCompactLayout: true,
     disabledHosts: ["Example.COM"]
   })), {
     enabled: true,
     presetLight: "catppuccin",
     presetDark: "tokyo-night",
     appearance: "dark",
+    xCompactLayout: true,
     disabledHosts: ["example.com"]
   });
+  assert.equal(core.plainSettings({ xCompactLayout: "true" }).xCompactLayout, false);
 });
 
 test("covers opaque text colors in both dawn and moon", async () => {
@@ -1050,6 +1053,7 @@ test("normalizes settings and blocked hosts", async () => {
     presetLight: "rose-pine",
     presetDark: "rose-pine",
     appearance: "dark",
+    xCompactLayout: false,
     disabledHosts: ["docs.example.com", "example.com"]
   });
 
@@ -1063,6 +1067,7 @@ test("normalizes settings and blocked hosts", async () => {
     presetLight: "catppuccin",
     presetDark: "catppuccin",
     appearance: "light",
+    xCompactLayout: false,
     disabledHosts: []
   });
 
@@ -1076,6 +1081,7 @@ test("normalizes settings and blocked hosts", async () => {
     presetLight: "rose-pine",
     presetDark: "dracula",
     appearance: "auto",
+    xCompactLayout: false,
     disabledHosts: []
   });
 

@@ -37,7 +37,6 @@ button {
 }
 
 .topline,
-.site,
 footer {
   align-items: center;
   display: flex;
@@ -154,8 +153,34 @@ p {
   background: var(--surface);
   border: 1px solid rgba(152, 147, 165, 0.22);
   border-radius: 8px;
+  padding: 0 8px;
+}
+
+.site-row {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
   min-height: 38px;
-  padding: 0 8px 0 10px;
+  padding-left: 2px;
+}
+
+.x-layout {
+  border-top: 1px solid rgba(152, 147, 165, 0.18);
+}
+
+.x-layout > span:first-child {
+  display: grid;
+  gap: 1px;
+}
+
+.x-layout strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.x-layout small {
+  color: var(--muted);
+  font-size: 11px;
 }
 
 #site-toggle {
@@ -179,4 +204,3 @@ footer button {
 footer button:last-child {
   color: var(--accent);
 }
-

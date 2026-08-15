@@ -37,8 +37,20 @@
       </section>
 
       <section class="site">
-        <span>Site</span>
-        <button id="site-toggle" type="button" title="Alt+Shift+B">Allowed</button>
+        <div class="site-row">
+          <span>Site</span>
+          <button id="site-toggle" type="button" title="Alt+Shift+B">Allowed</button>
+        </div>
+        <label id="x-layout-row" class="site-row x-layout" hidden>
+          <span>
+            <strong>Compact layout</strong>
+            <small>X · desktop</small>
+          </span>
+          <span class="switch" aria-label="Use compact X layout">
+            <input id="x-compact-layout" type="checkbox">
+            <span></span>
+          </span>
+        </label>
       </section>
 
       <footer>

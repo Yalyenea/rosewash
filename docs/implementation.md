@@ -18,12 +18,13 @@ extension. Package with `just package` → `.tmp/rosewash.zip`.
 ```text
 manifest.json              MV3 entry: permissions, content scripts, SW, commands
 popup.html + src/popup/    Action popup (enable, appearance, light/dark palettes, site block)
-options.html + src/options/ Settings (light/dark palette grids, appearance, block list)
+options.html + src/options/ Settings (palettes, appearance, site layouts, block list)
 src/background/            Service worker (keyboard commands)
 src/content/
   core.js                  Pure engine + host helpers (testable via vm)
   content.js               Chrome wiring for content world
   theme.css                Immediate CSS cover when data-rosewash-theme is set
+src/sites/                 Optional site-specific layout runtimes and styles
 test/                      Node tests + HTML fixtures
 scripts/validate.mjs       Manifest / file presence / syntax checks
 justfile                   test · validate · check · package
@@ -56,7 +57,8 @@ justfile                   test · validate · check · package
 | CSS cover | `src/content/theme.css` | First-frame canvas / SPA roots / known shells |
 | Background | `src/background/background.js` | `toggle-current-site` command |
 | Popup | `src/popup/popup.js` | Daily controls + push message to active tab |
-| Options | `src/options/options.js` | Light/dark palette grids, appearance, block list |
+| Options | `src/options/options.js` | Palettes, appearance, site layouts, block list |
+| X layout | `src/sites/x-core.js`, `x.js`, `x.css` | Optional wide-screen compact navigation and two-column timelines |
 
 ## Settings schema
 
@@ -68,6 +70,7 @@ Stored in **`chrome.storage.sync`**.
   "presetLight": "rose-pine",
   "presetDark": "rose-pine",
   "appearance": "auto",
+  "xCompactLayout": false,
   "disabledHosts": []
 }
 ```
@@ -78,6 +81,7 @@ Stored in **`chrome.storage.sync`**.
 | `presetLight` | preset id with a light variant | Palette used when appearance resolves to light |
 | `presetDark` | preset id with a dark variant | Palette used when appearance resolves to dark |
 | `appearance` | `auto` \| `light` \| `dark` | `auto` follows `prefers-color-scheme` |
+| `xCompactLayout` | boolean | Enables Rosewash's wide-screen compact layout on X |
 | `disabledHosts` | string[] | Hostnames (and parents) where Rosewash is blocked |
 
 Normalization lives in `RosewashCore.normalizeSettings()`:
@@ -273,6 +277,7 @@ No direct message to the content script is required; pages listen to
 **Popup**
 
 - Reads active tab host; toggles that host in `disabledHosts`.
+- On X, exposes the `xCompactLayout` switch for the desktop layout.
 - Two palette selects (`presetLight` / `presetDark`); lists only families
   that expose that variant.
 - On change: write storage + `chrome.tabs.sendMessage` with
@@ -282,9 +287,22 @@ No direct message to the content script is required; pages listen to
 
 **Options**
 
-- Edit enabled / appearance / light and dark palette grids / full host list
-  (one host per line). Each grid only lists families with that variant.
+- Edit enabled / appearance / light and dark palette grids / site layouts /
+  full host list (one host per line). Each grid only lists families with that
+  variant.
 - Mentions the site-toggle shortcut.
+
+## X compact layout
+
+`manifest.json` injects `src/sites/x.css`, then `x-core.js` and `x.js`, on
+`https://x.com/*` at `document_start`. The runtime enables its root marker only
+when Rosewash is enabled, X is not blocked, and `xCompactLayout` is true.
+
+- `x-core.js` owns the pure masonry, stack, cache, and scroll-offset helpers.
+- `x.js` observes X's virtualized timelines and writes layout coordinates.
+- `x.css` collapses the navigation rail, retains search, and applies the
+  wide-screen home/thread layouts at `min-width: 1280px`.
+- `test/x-layout.test.js` covers the pure layout math and critical CSS rules.
 
 Popup and options load `src/content/core.js` for `PRESETS` / `listPresets` /
 `normalizeSettings`. Engine + background also share `core.js`.

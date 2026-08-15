@@ -10,6 +10,7 @@
   const DEFAULT_SETTINGS = core.plainSettings(core.DEFAULT_SETTINGS);
 
   const enabledInput = document.querySelector("#enabled");
+  const xCompactInput = document.querySelector("#x-compact-layout");
   const lightList = document.querySelector("#preset-light-list");
   const darkList = document.querySelector("#preset-dark-list");
   const hostTextarea = document.querySelector("#disabled-hosts");
@@ -104,6 +105,7 @@
   function render(settings) {
     const normalized = core.plainSettings(settings);
     enabledInput.checked = normalized.enabled;
+    xCompactInput.checked = normalized.xCompactLayout;
     document.querySelector(`input[name='appearance'][value='${normalized.appearance}']`).checked = true;
     hostTextarea.value = normalized.disabledHosts.join("\n");
     selectLight(normalized.presetLight);
@@ -121,6 +123,7 @@
       presetLight: selectedLight,
       presetDark: selectedDark,
       appearance: selectedAppearance(),
+      xCompactLayout: xCompactInput.checked,
       disabledHosts: hostsFromTextarea()
     });
     await chrome.storage.sync.set(next);

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added an optional compact layout for X on wide screens: collapsed navigation,
+  retained search, two-column home timelines, and split thread views. The
+  setting is available in both Settings and the X popup, and restores X's
+  native layout when disabled or blocked.
 - Light and dark can use different palettes. Settings are now
   `presetLight` + `presetDark` + `appearance`; a legacy single `preset` still
   loads and fills both slots. Popup has two selectors; settings has two

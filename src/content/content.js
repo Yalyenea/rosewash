@@ -4,6 +4,8 @@
   const core = globalThis.RosewashCore;
   const engine = core.createEngine({ document, window });
   const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  const X_COMPACT_ATTRIBUTE = "data-rosewash-x-compact";
+  const X_COMPACT_EVENT = "rosewash:x-compact-change";
   let settingsCache = core.plainSettings(core.DEFAULT_SETTINGS);
   let disposed = false;
 
@@ -22,7 +24,28 @@
     window.removeEventListener("load", applyCachedSettings);
     window.removeEventListener("pageshow", applyCachedSettings);
     document.removeEventListener("visibilitychange", handleVisibilityChange);
+    if (document.documentElement?.hasAttribute(X_COMPACT_ATTRIBUTE)) {
+      document.documentElement.removeAttribute(X_COMPACT_ATTRIBUTE);
+      document.dispatchEvent(new CustomEvent(X_COMPACT_EVENT));
+    }
     engine.disconnect();
+  }
+
+  function syncSiteLayout() {
+    if (!document.documentElement) {
+      return;
+    }
+
+    const settings = core.normalizeSettings(settingsCache);
+    const host = window.location.hostname.toLowerCase();
+    const active = host === "x.com"
+      && settings.enabled
+      && settings.xCompactLayout
+      && !core.isHostDisabled(host, settings.disabledHosts);
+    if (document.documentElement.hasAttribute(X_COMPACT_ATTRIBUTE) !== active) {
+      document.documentElement.toggleAttribute(X_COMPACT_ATTRIBUTE, active);
+      document.dispatchEvent(new CustomEvent(X_COMPACT_EVENT));
+    }
   }
 
   function applyCachedSettings() {
@@ -30,6 +53,7 @@
       return;
     }
 
+    syncSiteLayout();
     engine.apply(settingsCache);
   }
 
@@ -77,6 +101,7 @@
       "presetDark",
       "appearance",
       "mode",
+      "xCompactLayout",
       "disabledHosts"
     ];
     if (!watched.some((key) => Object.prototype.hasOwnProperty.call(changes, key))) {
@@ -104,7 +129,7 @@
     }
 
     settingsCache = core.plainSettings(message.settings);
-    engine.apply(settingsCache);
+    applyCachedSettings();
     sendResponse({ ok: true, stats: engine.stats() });
     return true;
   }

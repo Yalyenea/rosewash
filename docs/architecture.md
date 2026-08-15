@@ -104,8 +104,8 @@ Users can rebind the shortcut under `chrome://extensions/shortcuts`.
 ## UI
 
 `popup.html` is the daily control surface. `options.html` is the full settings
-page (appearance, light/dark palette grids, block list). Both are plain HTML/CSS/JS
-and share the same storage schema:
+page (appearance, light/dark palette grids, site layouts, block list). Both are
+plain HTML/CSS/JS and share the same storage schema:
 
 ```json
 {
@@ -113,6 +113,7 @@ and share the same storage schema:
   "presetLight": "rose-pine",
   "presetDark": "rose-pine",
   "appearance": "auto",
+  "xCompactLayout": false,
   "disabledHosts": []
 }
 ```
@@ -122,6 +123,15 @@ content engine resolves `presetLight` or `presetDark` from appearance into a
 concrete palette before scanning, so adding another curated family does not add
 branching inside DOM processing. Legacy `preset` and `mode: auto|dawn|moon`
 storage still normalize cleanly.
+
+## Site Layouts
+
+Optional site-specific layouts are isolated under `src/sites/`. The X content
+script reads the shared settings blob and, when `xCompactLayout` is enabled,
+marks wide X pages for a compact navigation rail and two-column home or thread
+layout. `x-core.js` keeps its virtualized timeline calculations testable without
+the browser runtime; disabling Rosewash, blocking X, or disabling the option
+restores the native layout.
 
 ## Performance Boundary
 

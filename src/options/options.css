@@ -124,6 +124,29 @@ section {
   min-width: 0;
 }
 
+.site-layout {
+  align-items: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--overlay);
+  border-radius: 10px;
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+}
+
+.site-layout input {
+  margin: 3px 0 0;
+}
+
+.site-layout span {
+  display: grid;
+  gap: 2px;
+}
+
+.site-layout small {
+  color: var(--muted);
+}
+
 textarea {
   background: var(--surface);
   border: 1px solid var(--overlay);
@@ -156,4 +179,3 @@ button {
   color: var(--muted);
   margin-left: auto;
 }
-

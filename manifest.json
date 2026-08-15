@@ -39,6 +39,19 @@
         "src/content/content.js"
       ],
       "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://x.com/*"
+      ],
+      "css": [
+        "src/sites/x.css"
+      ],
+      "js": [
+        "src/sites/x-core.js",
+        "src/sites/x.js"
+      ],
+      "run_at": "document_start"
     }
   ]
 }

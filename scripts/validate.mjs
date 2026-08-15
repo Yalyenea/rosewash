@@ -14,8 +14,10 @@ const requiredFiles = [
   "popup.html",
   "options.html",
   ...(manifest.background?.service_worker ? [manifest.background.service_worker] : []),
-  ...(manifest.content_scripts?.[0]?.css || []),
-  ...(manifest.content_scripts?.[0]?.js || [])
+  ...(manifest.content_scripts || []).flatMap((entry) => [
+    ...(entry.css || []),
+    ...(entry.js || [])
+  ])
 ];
 
 const missing = requiredFiles.filter((file) => !existsSync(join(root, file)));
@@ -45,8 +47,9 @@ const scriptFiles = [
   "src/background/background.js",
   "src/popup/popup.js",
   "src/options/options.js",
+  ...(manifest.content_scripts || []).flatMap((entry) => entry.js || []),
   "scripts/validate.mjs"
-];
+].filter((file, index, files) => files.indexOf(file) === index);
 
 if (!manifest.commands?.["toggle-current-site"]?.suggested_key?.default) {
   throw new Error("toggle-current-site command with suggested_key.default is required");

@@ -203,6 +203,7 @@
     presetLight: "rose-pine",
     presetDark: "rose-pine",
     appearance: "auto",
+    xCompactLayout: false,
     disabledHosts: []
   });
 
@@ -648,6 +649,7 @@
       presetLight: presetIdForVariant(source.presetLight, source.preset, "light"),
       presetDark: presetIdForVariant(source.presetDark, source.preset, "dark"),
       appearance,
+      xCompactLayout: source.xCompactLayout === true,
       disabledHosts: Array.from(new Set(disabledHosts)).sort()
     };
   }
@@ -740,6 +742,7 @@
       presetLight: normalized.presetLight,
       presetDark: normalized.presetDark,
       appearance: normalized.appearance,
+      xCompactLayout: normalized.xCompactLayout,
       disabledHosts: normalized.disabledHosts.slice()
     };
   }

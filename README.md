@@ -18,6 +18,8 @@ protected.
   the system color scheme.
 - Global enable switch.
 - Per-site block list.
+- Optional compact two-column layout for X on wide screens, with a collapsed
+  navigation rail and retained search.
 - Default shortcut `Alt+Shift+B` toggles blocked / allowed for the current site
   (rebind under `chrome://extensions/shortcuts`).
 - Full-page paper cover for light, dark, and cool-paper sites.
