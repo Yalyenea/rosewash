@@ -84,6 +84,14 @@ test("covers any opaque surface and transparent page roots", async () => {
   assert.equal(core.surfaceColorFor(coolPaper, dawn, { pageElement: false }), dawn.surface);
   assert.equal(core.surfaceColorFor(darkShell, dawn, { pageElement: false }), dawn.surface);
   assert.equal(core.surfaceColorFor(midGray, dawn, { pageElement: false }), dawn.overlay);
+  for (const palette of [dawn, core.PALETTES.moon]) {
+    for (const role of ["base", "surface", "overlay"]) {
+      assert.equal(
+        core.surfaceColorFor(core.parseColor(palette[role]), palette, { pageElement: false }),
+        palette[role]
+      );
+    }
+  }
 });
 
 test("detects dark-only page tone from root surfaces and theme signals", async () => {
@@ -604,6 +612,12 @@ function createMockDom(nodes) {
 
   const window = {
     getComputedStyle(element) {
+      if (nodes.trackInlineBackground) {
+        const inlineBackground = element.style.getPropertyValue("background-color");
+        if (inlineBackground) {
+          return { ...element._computed, backgroundColor: inlineBackground };
+        }
+      }
       return element._computed;
     },
     matchMedia() {
@@ -625,6 +639,39 @@ function createMockDom(nodes) {
 
   return { document, window, byId, all };
 }
+
+test("engine preserves surface roles across repeated scans", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({
+    trackInlineBackground: true,
+    tree: [
+      {
+        id: "mid-surface",
+        backgroundColor: "rgb(150, 150, 150)",
+        color: "rgb(17, 17, 17)"
+      }
+    ]
+  });
+  const engine = core.createEngine({ document, window });
+  const settings = {
+    enabled: true,
+    preset: "rose-pine",
+    appearance: "light",
+    disabledHosts: []
+  };
+
+  engine.apply(settings);
+  assert.equal(
+    byId.get("mid-surface").style.getPropertyValue("background-color"),
+    core.PALETTES.dawn.overlay
+  );
+
+  engine.apply(settings);
+  assert.equal(
+    byId.get("mid-surface").style.getPropertyValue("background-color"),
+    core.PALETTES.dawn.overlay
+  );
+});
 
 test("engine tints colored and near-white page chrome to base with forced text", async () => {
   const core = await loadCore();

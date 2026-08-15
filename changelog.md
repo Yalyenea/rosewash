@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed horizontal background seams exposed while scrolling SPA and
+  infinite-scroll pages: repeated scans now preserve existing `base`,
+  `surface`, and `overlay` roles instead of remapping old and newly inserted
+  regions to different palette layers.
 - Refined Settings into compact General, Theme, and Sites panels with denser
   full-width palette grids, a page-level enable switch, responsive site
   columns, and an always-available save bar.

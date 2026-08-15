@@ -468,6 +468,30 @@
     return theme === "moon" || String(theme).endsWith("-dark");
   }
 
+  const paletteSurfaceColors = new WeakMap();
+
+  function paletteSurfaceTokenFor(color, palette) {
+    if (!isOpaqueColor(color)) {
+      return null;
+    }
+
+    let entries = paletteSurfaceColors.get(palette);
+    if (!entries) {
+      entries = ["base", "surface", "overlay"].map((role) => [
+        palette[role],
+        parseColor(palette[role])
+      ]);
+      paletteSurfaceColors.set(palette, entries);
+    }
+
+    const match = entries.find(([, token]) => token
+      && Math.abs(color.red - token.red) < 0.5
+      && Math.abs(color.green - token.green) < 0.5
+      && Math.abs(color.blue - token.blue) < 0.5
+      && Math.abs(color.alpha - token.alpha) < 0.001);
+    return match ? match[0] : null;
+  }
+
   function surfaceColorFor(color, palette, { pageElement = false, theme = "rose-pine-light", tagName = "" } = {}) {
     if (pageElement) {
       return palette.base;
@@ -477,6 +501,10 @@
     }
     if (!isOpaqueColor(color)) {
       return palette.surface;
+    }
+    const paletteToken = paletteSurfaceTokenFor(color, palette);
+    if (paletteToken) {
+      return paletteToken;
     }
     const level = luminance(color);
     if (level >= 90 && level < 200) {

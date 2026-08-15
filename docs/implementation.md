@@ -207,7 +207,9 @@ For each non-skipped element:
 2. **Surfaces**: any opaque background (or CSS gradient) maps via
    `surfaceColorFor` to `base` / `surface` / `overlay`. Transparent
    `html`/`body` still count as the default canvas. `url()` backgrounds are
-   left alone.
+   left alone. Colors already matching one of the active palette's three
+   surface tokens keep that role, so repeated scans cannot turn a page shell
+   or elevated region into a different layer.
 3. **Text**: opaque colors → `palette.text`; anchors → `palette.link`.
 4. **Borders**: low-chroma borders → `palette.overlay`.
 

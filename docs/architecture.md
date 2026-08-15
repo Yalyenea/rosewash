@@ -32,6 +32,8 @@ painted surface becomes Rose Pine:
 
 - Opaque backgrounds map to `base` (page roots), `surface`, or `overlay`
   (mid-luminance boxes keep a little hierarchy).
+- Existing palette surface colors retain their role across repeated scans, so
+  SPA roots and lazy-loaded regions do not develop `base` / `surface` seams.
 - Transparent `html`/`body` roots are treated as the default document canvas.
 - Opaque text maps to `palette.text`; anchors map to `palette.link`.
 - Low-chroma borders map to `palette.overlay`.
