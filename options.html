@@ -8,54 +8,88 @@
   </head>
   <body>
     <main>
-      <header>
-        <h1>Rosewash</h1>
-        <label>
-          <input id="enabled" type="checkbox">
-          Enabled
+      <header class="page-header">
+        <div>
+          <p class="eyebrow">Settings</p>
+          <h1>Rosewash</h1>
+        </div>
+        <label class="master-toggle">
+          <span>Enabled</span>
+          <span class="toggle">
+            <input id="enabled" type="checkbox">
+            <span class="toggle-track"></span>
+          </span>
         </label>
       </header>
 
-      <section>
-        <h2>Appearance</h2>
-        <div class="modes">
-          <label><input name="appearance" type="radio" value="auto"> Auto</label>
-          <label><input name="appearance" type="radio" value="light"> Light</label>
-          <label><input name="appearance" type="radio" value="dark"> Dark</label>
+      <section class="panel general-panel">
+        <div class="section-heading">
+          <h2>General</h2>
+        </div>
+        <div class="setting-row">
+          <span class="setting-label">Appearance</span>
+          <div class="modes" aria-label="Appearance">
+            <label>
+              <input name="appearance" type="radio" value="auto">
+              <span>Auto</span>
+            </label>
+            <label>
+              <input name="appearance" type="radio" value="light">
+              <span>Light</span>
+            </label>
+            <label>
+              <input name="appearance" type="radio" value="dark">
+              <span>Dark</span>
+            </label>
+          </div>
         </div>
       </section>
 
-      <section class="palettes">
-        <div>
-          <h2>Light palette</h2>
-          <div id="preset-light-list" class="preset-list" role="listbox" aria-label="Light palette"></div>
+      <section class="panel theme-panel">
+        <div class="section-heading">
+          <h2>Theme</h2>
         </div>
-        <div>
-          <h2>Dark palette</h2>
-          <div id="preset-dark-list" class="preset-list" role="listbox" aria-label="Dark palette"></div>
+        <div class="palette-columns">
+          <div class="palette-group">
+            <h3>Light palette</h3>
+            <div id="preset-light-list" class="preset-list" role="listbox" aria-label="Light palette"></div>
+          </div>
+          <div class="palette-group">
+            <h3>Dark palette</h3>
+            <div id="preset-dark-list" class="preset-list" role="listbox" aria-label="Dark palette"></div>
+          </div>
         </div>
       </section>
 
-      <section>
-        <h2>Site layouts</h2>
-        <label class="site-layout">
-          <input id="x-compact-layout" type="checkbox">
-          <span>
-            <strong>X · Compact two-column</strong>
-            <small>Collapse navigation, keep search, and use a centered two-column home timeline.</small>
-          </span>
-        </label>
+      <section class="panel sites-panel">
+        <div class="section-heading">
+          <h2>Sites</h2>
+        </div>
+        <div class="site-columns">
+          <div class="site-group">
+            <h3>Site layouts</h3>
+            <label class="site-layout">
+              <span>
+                <strong>X · Compact two-column</strong>
+                <small>Collapse navigation, keep search, and use a centered two-column timeline on desktop.</small>
+              </span>
+              <span class="toggle">
+                <input id="x-compact-layout" type="checkbox">
+                <span class="toggle-track"></span>
+              </span>
+            </label>
+          </div>
+          <label class="site-group blocked-sites">
+            <h3>Blocked sites</h3>
+            <textarea id="disabled-hosts" spellcheck="false" placeholder="example.com"></textarea>
+          </label>
+        </div>
       </section>
 
-      <section>
-        <h2>Blocked Sites</h2>
-        <textarea id="disabled-hosts" spellcheck="false" placeholder="example.com"></textarea>
-      </section>
-
-      <footer>
-        <button id="save" type="button">Save</button>
-        <button id="reset" type="button">Reset</button>
+      <footer class="actions">
         <span id="status" role="status"></span>
+        <button id="reset" type="button">Reset</button>
+        <button id="save" type="button">Save</button>
       </footer>
     </main>
     <script src="src/content/core.js"></script>

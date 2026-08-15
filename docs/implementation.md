@@ -290,6 +290,9 @@ No direct message to the content script is required; pages listen to
 - Edit enabled / appearance / light and dark palette grids / site layouts /
   full host list (one host per line). Each grid only lists families with that
   variant.
+- Groups controls into General, Theme, and Sites panels. Palette cards use a
+  four-column desktop layout and two columns on narrow screens; Save / Reset
+  remain fixed at the bottom of the viewport.
 - Mentions the site-toggle shortcut.
 
 ## X compact layout
