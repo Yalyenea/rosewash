@@ -3,8 +3,8 @@
 ## Unreleased
 
 - Refined Settings into compact General, Theme, and Sites panels with denser
-  palette grids, a page-level enable switch, responsive site columns, and an
-  always-available save bar.
+  full-width palette grids, a page-level enable switch, responsive site
+  columns, and an always-available save bar.
 - Added an optional compact layout for X on wide screens: collapsed navigation,
   retained search, two-column home timelines, and split thread views. The
   setting is available in both Settings and the X popup, and restores X's
