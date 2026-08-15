@@ -68,16 +68,31 @@
         <div class="site-columns">
           <div class="site-group">
             <h3>Site layouts</h3>
-            <label class="site-layout">
-              <span>
-                <strong>X · Compact two-column</strong>
-                <small>Collapse navigation, keep search, and use a centered two-column timeline on desktop.</small>
-              </span>
-              <span class="toggle">
-                <input id="x-compact-layout" type="checkbox">
-                <span class="toggle-track"></span>
-              </span>
-            </label>
+            <div class="site-layout">
+              <label class="site-layout-toggle">
+                <span>
+                  <strong>X · Compact layout</strong>
+                  <small>Compact navigation, center single-column streams, and split thread pages on desktop.</small>
+                </span>
+                <span class="toggle">
+                  <input id="x-compact-layout" type="checkbox">
+                  <span class="toggle-track"></span>
+                </span>
+              </label>
+              <label class="x-width-control" for="x-single-column-width">
+                <span class="x-width-heading">
+                  <strong>Single-column width</strong>
+                  <output id="x-single-column-width-value" for="x-single-column-width">600 px</output>
+                </span>
+                <input id="x-single-column-width" type="range" min="0" max="3" step="1" value="1">
+                <span class="x-width-stops" aria-hidden="true">
+                  <span>520</span>
+                  <span>600</span>
+                  <span>680</span>
+                  <span>760</span>
+                </span>
+              </label>
+            </div>
           </div>
           <label class="site-group blocked-sites">
             <h3>Blocked sites</h3>

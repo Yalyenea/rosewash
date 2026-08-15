@@ -6,6 +6,7 @@
   const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
   const X_COMPACT_ATTRIBUTE = "data-rosewash-x-compact";
   const X_COMPACT_EVENT = "rosewash:x-compact-change";
+  const X_SINGLE_WIDTH_PROPERTY = "--rosewash-x-single";
   let settingsCache = core.plainSettings(core.DEFAULT_SETTINGS);
   let disposed = false;
 
@@ -26,6 +27,7 @@
     document.removeEventListener("visibilitychange", handleVisibilityChange);
     if (document.documentElement?.hasAttribute(X_COMPACT_ATTRIBUTE)) {
       document.documentElement.removeAttribute(X_COMPACT_ATTRIBUTE);
+      document.documentElement.style.removeProperty(X_SINGLE_WIDTH_PROPERTY);
       document.dispatchEvent(new CustomEvent(X_COMPACT_EVENT));
     }
     engine.disconnect();
@@ -42,6 +44,14 @@
       && settings.enabled
       && settings.xCompactLayout
       && !core.isHostDisabled(host, settings.disabledHosts);
+    if (active) {
+      document.documentElement.style.setProperty(
+        X_SINGLE_WIDTH_PROPERTY,
+        `${settings.xSingleColumnWidth}px`
+      );
+    } else {
+      document.documentElement.style.removeProperty(X_SINGLE_WIDTH_PROPERTY);
+    }
     if (document.documentElement.hasAttribute(X_COMPACT_ATTRIBUTE) !== active) {
       document.documentElement.toggleAttribute(X_COMPACT_ATTRIBUTE, active);
       document.dispatchEvent(new CustomEvent(X_COMPACT_EVENT));
@@ -102,6 +112,7 @@
       "appearance",
       "mode",
       "xCompactLayout",
+      "xSingleColumnWidth",
       "disabledHosts"
     ];
     if (!watched.some((key) => Object.prototype.hasOwnProperty.call(changes, key))) {

@@ -5,12 +5,16 @@
     --rosewash-x-rail: 88px;
     --rosewash-x-feed: 1100px;
     --rosewash-x-gap: 12px;
+    --rosewash-x-single: 600px;
   }
 
   /* Compact the native navigation without changing its links or ARIA names. */
+  html[data-rosewash-x-compact] header[role="banner"] {
+    flex: 0 0 var(--rosewash-x-rail) !important;
+  }
+
   html[data-rosewash-x-compact] header[role="banner"],
   html[data-rosewash-x-compact] header[role="banner"] div:has(nav) {
-    flex: 0 0 var(--rosewash-x-rail) !important;
     max-width: var(--rosewash-x-rail) !important;
     min-width: var(--rosewash-x-rail) !important;
     width: var(--rosewash-x-rail) !important;
@@ -155,80 +159,29 @@
     display: none !important;
   }
 
-  /* The home composer is a stable SPA route signal. Other X pages remain
-     single-column even while the compact rail and trimmed sidebar stay active. */
-  html[data-rosewash-x-compact][data-rosewash-x-home]
+  /* Native single-column pages stay centered while X keeps ownership of their
+     virtualized timelines, wheel events, and interactive hit areas. */
+  html[data-rosewash-x-compact]:not([data-rosewash-x-detail])
     main[role="main"] > div:has([data-testid="primaryColumn"]) {
-    flex: 0 0 var(--rosewash-x-feed) !important;
+    flex: 0 0 var(--rosewash-x-single) !important;
     inset-inline-start: calc(var(--rosewash-x-rail) / -2) !important;
     margin-inline: auto !important;
-    max-width: var(--rosewash-x-feed) !important;
-    width: var(--rosewash-x-feed) !important;
+    max-width: var(--rosewash-x-single) !important;
+    width: var(--rosewash-x-single) !important;
   }
 
-  html[data-rosewash-x-compact][data-rosewash-x-home]
+  html[data-rosewash-x-compact]:not([data-rosewash-x-detail])
     [data-testid="primaryColumn"] {
-    max-width: none !important;
-    width: var(--rosewash-x-feed) !important;
+    max-width: var(--rosewash-x-single) !important;
+    width: var(--rosewash-x-single) !important;
   }
 
-  html[data-rosewash-x-compact][data-rosewash-x-home]
+  html[data-rosewash-x-compact]:not([data-rosewash-x-detail])
     main[role="main"] :has(> [data-testid="primaryColumn"]):has(> [data-testid="sidebarColumn"]) {
     display: block !important;
     margin-inline: auto !important;
-    max-width: none !important;
-    width: var(--rosewash-x-feed) !important;
-  }
-
-  html[data-rosewash-x-compact][data-rosewash-x-home]
-    [data-testid="primaryColumn"] [role="tablist"] {
-    padding-inline-end: 362px !important;
-  }
-
-  html[data-rosewash-x-compact][data-rosewash-x-home]
-    [data-testid="primaryColumn"] div:has(> section[role="region"] [data-testid="cellInnerDiv"]),
-  html[data-rosewash-x-compact][data-rosewash-x-home]
-    [data-testid="primaryColumn"] section[role="region"]:has([data-testid="cellInnerDiv"]),
-  html[data-rosewash-x-compact][data-rosewash-x-home]
-    [data-testid="primaryColumn"] section[role="region"]:has([data-testid="cellInnerDiv"])
-    > div,
-  html[data-rosewash-x-compact][data-rosewash-x-home]
-    [data-testid="primaryColumn"] section[role="region"]:has([data-testid="cellInnerDiv"])
-    > div > div {
-    align-self: stretch !important;
-    max-width: none !important;
-    width: 100% !important;
-  }
-
-  /* X virtualizes the home stream with absolute cells and an estimated scroll
-     height. x.js preserves that scroll model and only supplies two-column
-     coordinates for the currently rendered cells. */
-  html[data-rosewash-x-compact][data-rosewash-x-home]
-    [data-testid="primaryColumn"] [data-rosewash-x-timeline] {
-    box-sizing: border-box !important;
-    max-width: none !important;
-    position: relative !important;
-    width: 100% !important;
-  }
-
-  html[data-rosewash-x-compact][data-rosewash-x-home]
-    [data-testid="primaryColumn"] [data-rosewash-x-cell] {
-    border: 1px solid var(--rosewash-overlay) !important;
-    border-radius: 14px !important;
-    height: auto !important;
-    overflow: hidden !important;
-    position: absolute !important;
-    top: 0 !important;
-    transform: translate(
-      var(--rosewash-x-cell-x),
-      calc(var(--rosewash-x-cell-y) + var(--rosewash-x-scroll-shift, 0px))
-    ) !important;
-    width: var(--rosewash-x-cell-width) !important;
-  }
-
-  html[data-rosewash-x-compact][data-rosewash-x-home]
-    [data-testid="primaryColumn"] article[data-testid="tweet"] {
-    height: 100% !important;
+    max-width: var(--rosewash-x-single) !important;
+    width: var(--rosewash-x-single) !important;
   }
 
   /* Thread pages use the same centered canvas, with the original post on the
@@ -285,6 +238,8 @@
     border: 1px solid var(--rosewash-overlay) !important;
     border-radius: 14px !important;
     box-sizing: border-box !important;
+    contain-intrinsic-block-size: auto var(--rosewash-x-detail-height) !important;
+    content-visibility: auto !important;
     height: calc(100vh - 76px) !important;
     left: auto !important;
     margin-inline: auto !important;
@@ -308,6 +263,14 @@
   }
 
   html[data-rosewash-x-compact][data-rosewash-x-detail]
+    [data-rosewash-x-detail-snapshot] {
+    left: calc((100vw - var(--rosewash-x-feed)) / 2 + var(--rosewash-x-gap)) !important;
+    margin: 0 !important;
+    position: fixed !important;
+    width: calc(var(--rosewash-x-feed) * 0.6 - 18px) !important;
+  }
+
+  html[data-rosewash-x-compact][data-rosewash-x-detail]
     [data-rosewash-x-detail-reply] {
     border: 1px solid var(--rosewash-overlay) !important;
     border-radius: 14px !important;
@@ -316,10 +279,8 @@
     left: calc(60% + 6px) !important;
     overflow: hidden !important;
     position: absolute !important;
-    top: 0 !important;
-    transform: translateY(
-      calc(var(--rosewash-x-detail-y) + var(--rosewash-x-scroll-shift, 0px))
-    ) !important;
+    top: var(--rosewash-x-detail-y) !important;
+    transform: none !important;
     width: calc(40% - 18px) !important;
   }
 

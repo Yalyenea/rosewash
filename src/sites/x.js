@@ -3,12 +3,10 @@
 
   const ROOT_ATTRIBUTE = "data-rosewash-x-compact";
   const ROOT_CHANGE_EVENT = "rosewash:x-compact-change";
-  const HOME_ATTRIBUTE = "data-rosewash-x-home";
   const DETAIL_ATTRIBUTE = "data-rosewash-x-detail";
-  const TIMELINE_ATTRIBUTE = "data-rosewash-x-timeline";
   const DETAIL_TIMELINE_ATTRIBUTE = "data-rosewash-x-detail-timeline";
-  const CELL_ATTRIBUTE = "data-rosewash-x-cell";
   const DETAIL_MAIN_ATTRIBUTE = "data-rosewash-x-detail-main";
+  const DETAIL_SNAPSHOT_ATTRIBUTE = "data-rosewash-x-detail-snapshot";
   const DETAIL_REPLY_ATTRIBUTE = "data-rosewash-x-detail-reply";
   const DETAIL_REPLIES_ATTRIBUTE = "data-rosewash-x-detail-has-replies";
   const RAIL_CONTROL_ATTRIBUTE = "data-rosewash-x-rail-control";
@@ -16,27 +14,25 @@
   const LAYOUT_TARGET_SELECTOR = [
     "[data-testid='primaryColumn']",
     "[data-testid='cellInnerDiv']",
-    "[data-testid='tweetTextarea_0']",
     "[data-testid='SideNav_NewTweet_Button']",
     "[data-testid='SideNav_AccountSwitcher_Button']"
   ].join(",");
   const GAP = 12;
   const MAX_RECORDS = 400;
   const {
-    compactOffsetAt,
-    computeLayout,
     computeStack,
     reconcileRecords
   } = globalThis.RosewashXCore;
 
   let timeline = null;
   let timer = 0;
-  let timelineTop = 0;
   let documentWatching = false;
-  let layoutMode = null;
   let layoutRoute = null;
   let layoutAnchor = null;
-  let scrollPoints = [];
+  let detailMainCell = null;
+  let detailMainTemplate = null;
+  let detailMainSnapshot = null;
+  let snapshotTimer = 0;
   const observedCells = new Set();
   const records = new Map();
 
@@ -49,18 +45,8 @@
       && window.matchMedia("(min-width: 1280px)").matches;
   }
 
-  function isHome() {
-    return window.location.pathname === "/home"
-      && Boolean(document.querySelector(
-        "[data-testid='primaryColumn'] [data-testid='tweetTextarea_0']"
-      ));
-  }
-
   function isDetail() {
-    return /^\/[^/]+\/status\/\d+/.test(window.location.pathname)
-      && Boolean(document.querySelector(
-        "[data-testid='primaryColumn'] article[data-testid='tweet']"
-      ));
+    return /^\/[^/]+\/status\/\d+/.test(window.location.pathname);
   }
 
   function parseTranslateY(cell) {
@@ -96,24 +82,18 @@
     }
   }
 
-  function placeCell(cell, x, y, width) {
-    cell.setAttribute(CELL_ATTRIBUTE, "");
-    setProperty(cell, "--rosewash-x-cell-x", x);
-    setProperty(cell, "--rosewash-x-cell-y", `${y}px`);
-    setProperty(cell, "--rosewash-x-cell-width", width);
-  }
-
   function clearCell(cell) {
-    cell.removeAttribute(CELL_ATTRIBUTE);
     cell.removeAttribute(DETAIL_MAIN_ATTRIBUTE);
     cell.removeAttribute(DETAIL_REPLY_ATTRIBUTE);
-    cell.style.removeProperty("--rosewash-x-cell-x");
-    cell.style.removeProperty("--rosewash-x-cell-y");
-    cell.style.removeProperty("--rosewash-x-cell-width");
+    cell.style.removeProperty("--rosewash-x-detail-height");
     cell.style.removeProperty("--rosewash-x-detail-y");
   }
 
   function clearLayout() {
+    if (snapshotTimer) {
+      window.clearTimeout(snapshotTimer);
+      snapshotTimer = 0;
+    }
     resizeObserver.disconnect();
     for (const cell of observedCells) {
       clearCell(cell);
@@ -121,14 +101,11 @@
     observedCells.clear();
     records.clear();
     layoutAnchor = null;
-    scrollPoints = [];
     if (timeline) {
-      timeline.removeAttribute(TIMELINE_ATTRIBUTE);
       timeline.removeAttribute(DETAIL_TIMELINE_ATTRIBUTE);
       timeline.removeAttribute(DETAIL_REPLIES_ATTRIBUTE);
-      timeline.style.removeProperty("--rosewash-x-scroll-shift");
+      timeline.style.removeProperty("transform");
       const markedCells = [
-        `[${CELL_ATTRIBUTE}]`,
         `[${DETAIL_MAIN_ATTRIBUTE}]`,
         `[${DETAIL_REPLY_ATTRIBUTE}]`
       ].join(",");
@@ -136,9 +113,12 @@
         clearCell(cell);
       }
     }
+    detailMainSnapshot?.remove();
     timeline = null;
-    layoutMode = null;
     layoutRoute = null;
+    detailMainCell = null;
+    detailMainTemplate = null;
+    detailMainSnapshot = null;
   }
 
   function nodeContainsLayoutTarget(node) {
@@ -148,7 +128,7 @@
   }
 
   function handleDocumentMutations(mutations) {
-    if (layoutRoute && layoutRoute !== currentRouteKey(layoutMode)) {
+    if (layoutRoute && layoutRoute !== currentRouteKey()) {
       scheduleLayout();
       return;
     }
@@ -156,10 +136,23 @@
       const target = mutation.target.nodeType === Node.ELEMENT_NODE
         ? mutation.target
         : mutation.target.parentElement;
-      if (mutation.target === timeline
-        || (mutation.type === "attributes" && target?.matches(CELL_SELECTOR))
-        || (mutation.type === "childList" && Boolean(target?.closest(CELL_SELECTOR)))
-        || Array.from(mutation.addedNodes).some(nodeContainsLayoutTarget)
+      if (mutation.target === timeline) {
+        scheduleLayout();
+        return;
+      }
+      const cell = target?.closest(CELL_SELECTOR);
+      if (cell === detailMainCell) {
+        scheduleMainSnapshot();
+        continue;
+      }
+      if (target?.matches(CELL_SELECTOR)) {
+        scheduleLayout();
+        return;
+      }
+      if (cell) {
+        continue;
+      }
+      if (Array.from(mutation.addedNodes).some(nodeContainsLayoutTarget)
         || Array.from(mutation.removedNodes).some(nodeContainsLayoutTarget)) {
         scheduleLayout();
         return;
@@ -172,8 +165,6 @@
       return;
     }
     documentObserver.observe(document.documentElement, {
-      attributeFilter: ["style"],
-      attributes: true,
       childList: true,
       subtree: true
     });
@@ -186,24 +177,6 @@
     }
     documentObserver.disconnect();
     documentWatching = false;
-  }
-
-  function updateScrollShift() {
-    if (!timeline) {
-      return;
-    }
-    if (scrollPoints.length === 0) {
-      setProperty(timeline, "--rosewash-x-scroll-shift", "0px");
-      return;
-    }
-
-    const relativeScroll = Math.max(0, window.scrollY - timelineTop);
-    const compactScroll = compactOffsetAt(relativeScroll, scrollPoints);
-    setProperty(
-      timeline,
-      "--rosewash-x-scroll-shift",
-      `${relativeScroll - compactScroll}px`
-    );
   }
 
   function cellKey(cell, originalY, tweet) {
@@ -262,66 +235,6 @@
     }
   }
 
-  function computeCurrentLayout(cells) {
-    const sorted = Array.from(records.values()).sort((left, right) => {
-      return left.originalY - right.originalY || left.key.localeCompare(right.key);
-    });
-    if (layoutAnchor?.key !== sorted[0]?.key) {
-      layoutAnchor = null;
-    }
-
-    let result = computeLayout(sorted, GAP, layoutAnchor);
-    syncColumns(result);
-    if (sorted.length <= MAX_RECORDS) {
-      return result;
-    }
-
-    const currentKeys = new Set(cells.map(({ key }) => key));
-    const currentIndexes = sorted.flatMap((record, index) => {
-      return currentKeys.has(record.key) ? [index] : [];
-    });
-    if (currentIndexes.length === 0) {
-      return result;
-    }
-    const firstCurrent = Math.min(...currentIndexes);
-    const lastCurrent = Math.max(...currentIndexes);
-    let start = Math.max(0, Math.min(firstCurrent - 80, sorted.length - MAX_RECORDS));
-    if (lastCurrent >= start + MAX_RECORDS) {
-      start = lastCurrent - MAX_RECORDS + 1;
-    }
-
-    const checkpoints = new Map(result.checkpoints.map((entry) => [entry.key, entry]));
-    const end = Math.max(start + MAX_RECORDS, lastCurrent + 1);
-    const retained = sorted.slice(start, end);
-    const first = retained[0];
-    const checkpoint = checkpoints.get(first.key);
-    layoutAnchor = start === 0 ? null : {
-      compactY: checkpoint.compactY,
-      key: first.key,
-      leftY: checkpoint.leftY,
-      rightY: checkpoint.rightY
-    };
-    records.clear();
-    for (const record of retained) {
-      records.set(record.key, record);
-    }
-    result = computeLayout(retained, GAP, layoutAnchor);
-    syncColumns(result);
-    return result;
-  }
-
-  function syncColumns(result) {
-    for (const placement of result.placements) {
-      if (placement.column === "full") {
-        continue;
-      }
-      const record = records.get(placement.key);
-      if (record && !record.column) {
-        record.column = placement.column;
-      }
-    }
-  }
-
   function computeCurrentStack(cells) {
     const sorted = Array.from(records.values()).sort((left, right) => {
       return left.originalY - right.originalY || left.key.localeCompare(right.key);
@@ -354,7 +267,6 @@
       result.checkpoints.map((entry) => [entry.key, entry])
     ).get(retained[0].key);
     layoutAnchor = start === 0 ? null : {
-      compactY: checkpoint.compactY,
       key: checkpoint.key,
       y: checkpoint.y
     };
@@ -372,25 +284,20 @@
     );
   }
 
-  function currentRouteKey(mode) {
-    if (mode === "detail") {
-      const match = window.location.pathname.match(/^\/[^/]+\/status\/(\d+)/);
-      return match ? `status:${match[1]}` : null;
-    }
-    return mode === "home" && window.location.pathname === "/home" ? "/home" : null;
+  function currentRouteKey() {
+    const match = window.location.pathname.match(/^\/[^/]+\/status\/(\d+)/);
+    return match ? `status:${match[1]}` : null;
   }
 
-  function prepareTimeline(nextTimeline, mode) {
-    const nextRoute = currentRouteKey(mode);
-    if ((timeline && timeline !== nextTimeline)
-      || layoutMode !== mode
-      || (layoutRoute && layoutRoute !== nextRoute)) {
+  function prepareTimeline(nextTimeline) {
+    const nextRoute = currentRouteKey();
+    const changed = timeline !== nextTimeline
+      || layoutRoute !== nextRoute;
+    if (changed) {
       clearLayout();
     }
     timeline = nextTimeline;
-    layoutMode = mode;
     layoutRoute = nextRoute;
-    timelineTop = timeline.getBoundingClientRect().top + window.scrollY;
   }
 
   function statusPath(cell) {
@@ -404,73 +311,120 @@
     return null;
   }
 
-  function layoutHome() {
-    const nextTimeline = findTimeline();
-    if (!nextTimeline) {
-      clearLayout();
+  function captureMainCell(cell) {
+    detailMainTemplate = {
+      className: cell.className,
+      dir: cell.getAttribute("dir"),
+      html: cell.innerHTML,
+      scrollTop: cell.scrollTop,
+      tagName: cell.tagName.toLowerCase()
+    };
+  }
+
+  function createMainSnapshot() {
+    if (!detailMainTemplate) {
+      return null;
+    }
+    const snapshot = document.createElement(detailMainTemplate.tagName);
+    snapshot.className = detailMainTemplate.className;
+    snapshot.innerHTML = detailMainTemplate.html;
+    if (detailMainTemplate.dir) {
+      snapshot.setAttribute("dir", detailMainTemplate.dir);
+    }
+    snapshot.removeAttribute("data-testid");
+    clearCell(snapshot);
+    snapshot.setAttribute(DETAIL_MAIN_ATTRIBUTE, "");
+    snapshot.setAttribute(DETAIL_SNAPSHOT_ATTRIBUTE, "");
+    for (const frame of snapshot.querySelectorAll("iframe")) {
+      frame.remove();
+    }
+    for (const video of snapshot.querySelectorAll("video")) {
+      const media = document.createElement(video.poster ? "img" : "div");
+      if (video.poster) {
+        media.src = video.poster;
+        media.alt = "";
+      }
+      media.style.cssText = [
+        "background:var(--rosewash-overlay)",
+        "display:block",
+        "height:100%",
+        "object-fit:cover",
+        "width:100%"
+      ].join(";");
+      video.replaceWith(media);
+    }
+    snapshot.scrollTop = detailMainTemplate.scrollTop;
+    return snapshot;
+  }
+
+  function scheduleMainSnapshot() {
+    if (snapshotTimer || !detailMainCell?.isConnected) {
       return;
     }
-
-    prepareTimeline(nextTimeline, "home");
-    timeline.setAttribute(TIMELINE_ATTRIBUTE, "");
-
-    const cells = collectCells();
-    syncCells(cells);
-    const result = computeCurrentLayout(cells);
-    scrollPoints = result.scrollPoints;
-    const placements = new Map(result.placements.map((entry) => [entry.key, entry]));
-    const halfWidth = `calc((100% - ${GAP * 3}px) / 2)`;
-    const fullWidth = `calc(100% - ${GAP * 2}px)`;
-    for (const { cell, key } of cells) {
-      const placement = placements.get(key);
-      if (placement.column === "full") {
-        placeCell(cell, `${GAP}px`, placement.y, fullWidth);
-      } else {
-        const x = placement.column === "right"
-          ? `calc(100% + ${GAP * 2}px)`
-          : `${GAP}px`;
-        placeCell(cell, x, placement.y, halfWidth);
+    snapshotTimer = window.setTimeout(() => {
+      snapshotTimer = 0;
+      if (!detailMainCell?.isConnected) {
+        return;
       }
-    }
-    updateScrollShift();
+      captureMainCell(detailMainCell);
+    }, 300);
   }
 
   function layoutDetail() {
-    const nextTimeline = findTimeline();
+    const nextTimeline = findTimeline() || (timeline?.isConnected ? timeline : null);
     if (!nextTimeline) {
-      clearLayout();
       return;
     }
 
-    prepareTimeline(nextTimeline, "detail");
+    prepareTimeline(nextTimeline);
     timeline.setAttribute(DETAIL_TIMELINE_ATTRIBUTE, "");
     const cells = collectCells();
-    const route = currentRouteKey("detail");
+    const route = currentRouteKey();
     const main = cells.find(({ cell }) => statusPath(cell) === route);
-    if (!main) {
-      clearLayout();
+    if (main && detailMainCell !== main.cell) {
+      if (detailMainCell?.isConnected) {
+        clearCell(detailMainCell);
+      }
+      detailMainCell = main.cell;
+      captureMainCell(detailMainCell);
+      scheduleMainSnapshot();
+    }
+    if (!detailMainCell && !detailMainTemplate) {
       return;
     }
 
-    const replies = cells.filter((entry) => entry !== main);
+    const activeMain = detailMainCell?.isConnected
+      && timeline.contains(detailMainCell)
+      ? detailMainCell
+      : null;
+    const replies = cells.filter(({ cell }) => cell !== activeMain);
     syncCells(replies);
-    clearCell(main.cell);
-    main.cell.setAttribute(DETAIL_MAIN_ATTRIBUTE, "");
+    if (activeMain) {
+      detailMainSnapshot?.remove();
+      detailMainSnapshot = null;
+      clearCell(activeMain);
+      activeMain.setAttribute(DETAIL_MAIN_ATTRIBUTE, "");
+    } else {
+      detailMainCell = null;
+      detailMainSnapshot ||= createMainSnapshot();
+      if (detailMainSnapshot && !detailMainSnapshot.isConnected) {
+        timeline.append(detailMainSnapshot);
+      }
+    }
     timeline.toggleAttribute(DETAIL_REPLIES_ATTRIBUTE, replies.length > 0);
     const result = computeCurrentStack(replies);
-    scrollPoints = result.scrollPoints;
     const placements = new Map(result.placements.map((entry) => [entry.key, entry]));
-    for (const { cell, key } of replies) {
+    for (const { cell, height, key } of replies) {
       cell.setAttribute(DETAIL_REPLY_ATTRIBUTE, "");
+      setProperty(cell, "--rosewash-x-detail-height", `${height}px`);
       setProperty(cell, "--rosewash-x-detail-y", `${placements.get(key).y}px`);
     }
-    updateScrollShift();
+    timeline.style.removeProperty("transform");
   }
 
   function layout() {
     timer = 0;
     if (!isEnabled()) {
-      document.documentElement.removeAttribute(HOME_ATTRIBUTE);
       document.documentElement.removeAttribute(DETAIL_ATTRIBUTE);
       stopDocumentObserver();
       clearLayout();
@@ -478,17 +432,14 @@
       return;
     }
 
-    startDocumentObserver();
     prepareRailControls();
-    const home = isHome();
-    const detail = !home && isDetail();
-    document.documentElement.toggleAttribute(HOME_ATTRIBUTE, home);
+    const detail = isDetail();
     document.documentElement.toggleAttribute(DETAIL_ATTRIBUTE, detail);
-    if (home) {
-      layoutHome();
-    } else if (detail) {
+    if (detail) {
+      startDocumentObserver();
       layoutDetail();
     } else {
+      stopDocumentObserver();
       clearLayout();
     }
   }
@@ -508,9 +459,6 @@
     layout();
   }
 
-  window.addEventListener("scroll", () => {
-    updateScrollShift();
-  }, { passive: true });
   window.addEventListener("resize", scheduleLayout, { passive: true });
   window.addEventListener("popstate", scheduleLayout, { passive: true });
   document.addEventListener(ROOT_CHANGE_EVENT, handleRootChange);

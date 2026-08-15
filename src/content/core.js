@@ -198,12 +198,15 @@
     return Object.freeze(map);
   })());
 
+  const X_SINGLE_COLUMN_WIDTHS = Object.freeze([520, 600, 680, 760]);
+
   const DEFAULT_SETTINGS = Object.freeze({
     enabled: true,
     presetLight: "rose-pine",
     presetDark: "rose-pine",
     appearance: "auto",
     xCompactLayout: false,
+    xSingleColumnWidth: 600,
     disabledHosts: []
   });
 
@@ -650,6 +653,9 @@
       presetDark: presetIdForVariant(source.presetDark, source.preset, "dark"),
       appearance,
       xCompactLayout: source.xCompactLayout === true,
+      xSingleColumnWidth: X_SINGLE_COLUMN_WIDTHS.includes(source.xSingleColumnWidth)
+        ? source.xSingleColumnWidth
+        : DEFAULT_SETTINGS.xSingleColumnWidth,
       disabledHosts: Array.from(new Set(disabledHosts)).sort()
     };
   }
@@ -743,6 +749,7 @@
       presetDark: normalized.presetDark,
       appearance: normalized.appearance,
       xCompactLayout: normalized.xCompactLayout,
+      xSingleColumnWidth: normalized.xSingleColumnWidth,
       disabledHosts: normalized.disabledHosts.slice()
     };
   }
@@ -1424,6 +1431,7 @@
     PRESETS,
     PRESET_IDS,
     PALETTES,
+    X_SINGLE_COLUMN_WIDTHS,
     listPresets,
     createEngine,
     classifyPageTone,

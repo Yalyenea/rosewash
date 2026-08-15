@@ -11,6 +11,8 @@
 
   const enabledInput = document.querySelector("#enabled");
   const xCompactInput = document.querySelector("#x-compact-layout");
+  const xSingleWidthInput = document.querySelector("#x-single-column-width");
+  const xSingleWidthValue = document.querySelector("#x-single-column-width-value");
   const lightList = document.querySelector("#preset-light-list");
   const darkList = document.querySelector("#preset-dark-list");
   const hostTextarea = document.querySelector("#disabled-hosts");
@@ -36,6 +38,16 @@
 
   function selectedAppearance() {
     return document.querySelector("input[name='appearance']:checked").value;
+  }
+
+  function selectedXSingleColumnWidth() {
+    return core.X_SINGLE_COLUMN_WIDTHS[Number(xSingleWidthInput.value)];
+  }
+
+  function renderXSingleColumnWidth(width) {
+    const index = core.X_SINGLE_COLUMN_WIDTHS.indexOf(width);
+    xSingleWidthInput.value = String(index);
+    xSingleWidthValue.value = `${width} px`;
   }
 
   function setStatus(text) {
@@ -106,6 +118,7 @@
     const normalized = core.plainSettings(settings);
     enabledInput.checked = normalized.enabled;
     xCompactInput.checked = normalized.xCompactLayout;
+    renderXSingleColumnWidth(normalized.xSingleColumnWidth);
     document.querySelector(`input[name='appearance'][value='${normalized.appearance}']`).checked = true;
     hostTextarea.value = normalized.disabledHosts.join("\n");
     selectLight(normalized.presetLight);
@@ -124,6 +137,7 @@
       presetDark: selectedDark,
       appearance: selectedAppearance(),
       xCompactLayout: xCompactInput.checked,
+      xSingleColumnWidth: selectedXSingleColumnWidth(),
       disabledHosts: hostsFromTextarea()
     });
     await chrome.storage.sync.set(next);
@@ -136,6 +150,10 @@
     await chrome.storage.sync.remove(["mode", "preset"]);
     render(DEFAULT_SETTINGS);
     setStatus("Reset");
+  });
+
+  xSingleWidthInput.addEventListener("input", () => {
+    renderXSingleColumnWidth(selectedXSingleColumnWidth());
   });
 
   fillPresetList(lightList, "light", selectLight);
