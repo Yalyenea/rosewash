@@ -17,7 +17,7 @@ Guidance for coding agents working in the Rosewash repository.
 - Manifest V3 Chromium extension, **no build step**, no runtime dependencies.
 - Testable engine: `src/content/core.js` → `globalThis.RosewashCore`.
 - Chrome wiring: `src/content/content.js`, `src/background/background.js`, popup, options.
-- Load unpacked from the repo root (`manifest.json`).
+- Load unpacked from `dist/` after `just dist` (not the repo root).
 
 ## Working rules
 
@@ -37,7 +37,9 @@ Guidance for coding agents working in the Rosewash repository.
 just test
 just validate
 just check
+just dist
 just package
+just clean
 ```
 
 ## Where to edit (quick map)

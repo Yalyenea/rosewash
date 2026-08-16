@@ -10,8 +10,9 @@ Rosewash is a **zero-build Manifest V3** Chromium extension. It covers page
 surfaces, text, and neutral borders with Rose Pine Dawn / Moon tokens. There is
 no bundler, no runtime npm dependency, and no TypeScript compile step.
 
-Load the repo root (the folder containing `manifest.json`) as an unpacked
-extension. Package with `just package` → `.tmp/rosewash.zip`.
+Stage with `just dist` and load the `dist/` folder as an unpacked extension
+(not the repo root). Package with `just package` → `dist/` plus
+`.tmp/rosewash.zip`.
 
 ## Repository layout
 
@@ -27,7 +28,8 @@ src/content/
 src/sites/                 Optional site-specific layout runtimes and styles
 test/                      Node tests + HTML fixtures
 scripts/validate.mjs       Manifest / file presence / syntax checks
-justfile                   test · validate · check · package
+justfile                   test · validate · check · dist · package · clean
+dist/                      Generated loadable extension (`just dist`, gitignored)
 ```
 
 ## Runtime topology
@@ -58,7 +60,7 @@ justfile                   test · validate · check · package
 | Background | `src/background/background.js` | `toggle-current-site` command |
 | Popup | `src/popup/popup.js` | Daily controls + push message to active tab |
 | Options | `src/options/options.js` | Palettes, appearance, site layouts, block list |
-| X layout | `src/sites/x-core.js`, `x.js`, `x.css` | Optional wide-screen compact navigation and two-column timelines |
+| X layout | `src/sites/x-core.js`, `x.js`, `x.css` | Responsive compact navigation and wide-screen split timelines |
 
 ## Settings schema
 
@@ -81,7 +83,7 @@ Stored in **`chrome.storage.sync`**.
 | `presetLight` | preset id with a light variant | Palette used when appearance resolves to light |
 | `presetDark` | preset id with a dark variant | Palette used when appearance resolves to dark |
 | `appearance` | `auto` \| `light` \| `dark` | `auto` follows `prefers-color-scheme` |
-| `xCompactLayout` | boolean | Enables Rosewash's wide-screen compact layout on X |
+| `xCompactLayout` | boolean | Enables Rosewash's responsive compact layout on X |
 | `disabledHosts` | string[] | Hostnames (and parents) where Rosewash is blocked |
 
 Normalization lives in `RosewashCore.normalizeSettings()`:
@@ -303,10 +305,14 @@ No direct message to the content script is required; pages listen to
 `https://x.com/*` at `document_start`. The runtime enables its root marker only
 when Rosewash is enabled, X is not blocked, and `xCompactLayout` is true.
 
-- `x-core.js` owns the pure masonry, stack, cache, and scroll-offset helpers.
-- `x.js` observes X's virtualized timelines and writes layout coordinates.
-- `x.css` collapses the navigation rail, retains search, and applies the
-  wide-screen home/thread layouts at `min-width: 1280px`.
+- `x-core.js` owns the pure reply-stack and virtual-record cache helpers.
+- `x.js` keeps observing X across SPA route changes, waits for the main post to
+  hydrate, and writes split-thread layout coordinates.
+- `x.css` collapses the navigation rail, keeps X's Explore/search entry in that
+  rail, hides the redundant right search column, stretches virtualized post
+  cells to the selected single-column width from `min-width: 720px`, shrinks that
+  width to the available viewport, and applies the split thread layout at
+  `min-width: 1280px`. Below 720px, X keeps its native mobile layout.
 - `test/x-layout.test.js` covers the pure layout math and critical CSS rules.
 
 Popup and options load `src/content/core.js` for `PRESETS` / `listPresets` /
@@ -326,7 +332,9 @@ Storage remains the source of truth across tabs and the service worker.
 just test       # node --test test/*.test.js
 just validate   # manifest + required files + --check scripts
 just check      # test + validate
-just package    # check then zip → .tmp/rosewash.zip
+just dist       # copy manifest + html + src → dist/ (Load unpacked)
+just package    # check + dist + zip → .tmp/rosewash.zip
+just clean      # remove .tmp and local debug leftovers
 ```
 
 | Area | How |

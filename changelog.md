@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Added `just dist` to stage a loadable `dist/` folder (manifest, HTML, and
+  `src/` only). Load unpacked from `dist/`, not the repo root, so Chrome does
+  not count `.git`, `.tmp`, docs, or tests. `just package` now zips that
+  folder; `just clean` removes local debug artifacts.
+- Fixed X compact-layout width changes that resized the outer column without
+  stretching virtualized posts. The redundant right search column is hidden;
+  search remains available from the compact navigation rail. Detail routes
+  remain observed across SPA navigation, retry while X hydrates the main post,
+  and enable the wide split view only after its layout is ready. Compact
+  navigation and centered timelines now remain active from 720px, with the
+  selected width shrinking to the available viewport; X keeps its native mobile
+  layout below that boundary.
 - Fixed horizontal background seams exposed while scrolling SPA and
   infinite-scroll pages: repeated scans now preserve existing `base`,
   `surface`, and `overlay` roles instead of remapping old and newly inserted
@@ -10,7 +22,7 @@
   full-width palette grids, a page-level enable switch, responsive site
   columns, and an always-available save bar.
 - Added an optional compact layout for X on wide screens: collapsed navigation,
-  retained search, two-column home timelines, and split thread views. The
+  retained search, adjustable centered timelines, and split thread views. The
   setting is available in both Settings and the X popup, and restores X's
   native layout when disabled or blocked.
 - Light and dark can use different palettes. Settings are now

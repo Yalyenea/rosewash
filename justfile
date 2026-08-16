@@ -9,7 +9,21 @@ validate:
 
 check: test validate
 
-package: check
+# Stage a Chrome-loadable folder (manifest + html + src only)
+dist:
+    mkdir -p dist
+    find dist -mindepth 1 -delete
+    cp manifest.json popup.html options.html dist/
+    cp -R src dist/src
+    find dist -name .DS_Store -delete
+    @echo "staged dist/ — Load unpacked this folder"
+
+# Check, stage dist/, and zip it
+package: check dist
     mkdir -p .tmp
     rm -f .tmp/rosewash.zip
-    zip -r .tmp/rosewash.zip manifest.json popup.html options.html src -x "*.DS_Store"
+    cd dist && zip -r ../.tmp/rosewash.zip . -x "*.DS_Store"
+
+# Remove local debug artifacts (Chrome profiles, screenshots, logs)
+clean:
+    rm -rf .tmp .playwright-cli

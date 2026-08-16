@@ -18,8 +18,9 @@ protected.
   the system color scheme.
 - Global enable switch.
 - Per-site block list.
-- Optional compact two-column layout for X on wide screens, with a collapsed
-  navigation rail and retained search.
+- Optional responsive compact layout for X from 720px, with a collapsed
+  navigation rail, adjustable centered timelines, rail-based search, and split
+  thread views on wide screens.
 - Default shortcut `Alt+Shift+B` toggles blocked / allowed for the current site
   (rebind under `chrome://extensions/shortcuts`).
 - Full-page paper cover for light, dark, and cool-paper sites.
@@ -72,10 +73,12 @@ expected for sideloaded extensions and is safe to dismiss.
 For local development:
 
 1. Clone this repository.
-2. Open `chrome://extensions` (or the equivalent page above).
-3. Enable **Developer mode**.
-4. **Load unpacked** and select this project folder (the one that contains
-   `manifest.json`).
+2. Run `just dist` to stage a loadable folder.
+3. Open `chrome://extensions` (or the equivalent page above).
+4. Enable **Developer mode**.
+5. **Load unpacked** and select the `dist/` folder (not the repo root).
+
+Re-run `just dist` after source changes, then reload the extension.
 
 After reloading the unpacked extension, reload any already-open test tabs once.
 Chrome leaves old content scripts in existing page contexts after extension
@@ -96,10 +99,14 @@ cannot be patched in place.
 just test
 just validate
 just check
+just dist
 just package
+just clean
 ```
 
-`just package` writes `.tmp/rosewash.zip`.
+`just dist` writes `dist/` for Load unpacked. `just package` runs the checks,
+refreshes `dist/`, and writes `.tmp/rosewash.zip`. `just clean` removes `.tmp`
+and local browser-debug leftovers.
 
 ## Publishing Releases
 
