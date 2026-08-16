@@ -51,7 +51,7 @@ Release](https://github.com/Yalyenea/rosewash/releases) instead. Works in
 Chrome, Edge, Brave, Helium, and other Chromium browsers.
 
 1. Open the [latest release](https://github.com/Yalyenea/rosewash/releases/latest).
-2. Download `rosewash-vX.Y.Z.zip` (for example `rosewash-v0.1.0.zip`).
+2. Download `rosewash-vX.Y.Z.zip` (for example `rosewash-v0.2.0.zip`).
 3. Extract the zip to a stable folder you will keep (do not delete it later;
    Chromium loads the extension from that path).
 4. Open the extensions page:
@@ -113,11 +113,11 @@ and local browser-debug leftovers.
 GitHub Actions publishes a release zip whenever a version tag is pushed:
 
 ```sh
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.2.0
+git push origin v0.2.0
 ```
 
-The workflow runs `just package`, then uploads `rosewash-v0.1.0.zip` to the
+The workflow runs `just package`, then uploads `rosewash-v0.2.0.zip` to the
 matching GitHub Release. It can also be run manually against an existing tag
 from the Actions tab.
 

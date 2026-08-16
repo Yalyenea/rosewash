@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.2.0 - 2026-08-16
+
 - Added `just dist` to stage a loadable `dist/` folder (manifest, HTML, and
   `src/` only). Load unpacked from `dist/`, not the repo root, so Chrome does
   not count `.git`, `.tmp`, docs, or tests. `just package` now zips that
