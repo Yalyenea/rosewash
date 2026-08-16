@@ -130,10 +130,13 @@ storage still normalize cleanly.
 
 Optional site-specific layouts are isolated under `src/sites/`. The X content
 script reads the shared settings blob and, when `xCompactLayout` is enabled,
-marks wide X pages for a compact navigation rail and two-column home or thread
-layout. `x-core.js` keeps its virtualized timeline calculations testable without
-the browser runtime; disabling Rosewash, blocking X, or disabling the option
-restores the native layout.
+marks X pages from 720px for a compact navigation rail and an adjustable centered
+timeline. The selected width shrinks to the available viewport; thread pages add
+the split view from 1280px. The runtime observes SPA route changes and waits for
+the main post before enabling the widened detail canvas. Below 720px, and when
+Rosewash is disabled, X is blocked, or the option is off, X keeps its native
+layout. `x-core.js` keeps reply-stack calculations testable without the browser
+runtime.
 
 ## Performance Boundary
 

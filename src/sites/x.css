@@ -1,11 +1,15 @@
 /* Optional X layout. The content runtime owns the root marker so disabling
    Rosewash, blocking x.com, or turning the preset off restores native layout. */
-@media (min-width: 1280px) {
+@media (min-width: 720px) {
   html[data-rosewash-x-compact] {
     --rosewash-x-rail: 88px;
     --rosewash-x-feed: 1100px;
     --rosewash-x-gap: 12px;
     --rosewash-x-single: 600px;
+    --rosewash-x-column: min(
+      var(--rosewash-x-single),
+      calc(100vw - var(--rosewash-x-rail) - 24px)
+    );
   }
 
   /* Compact the native navigation without changing its links or ARIA names. */
@@ -133,23 +137,8 @@
     -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27black%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3E%3Cpath d=%27M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4Z%27/%3E%3Cpath d=%27m13.5 6.5 4 4%27/%3E%3C/svg%3E") center / contain no-repeat;
   }
 
-  /* Keep the search control and remove the sibling recommendation modules. */
+  /* The compact rail already retains X's Explore/search entry. */
   html[data-rosewash-x-compact] [data-testid="sidebarColumn"] {
-    inset-block-start: 0 !important;
-    inset-inline-end: max(
-      24px,
-      calc((100vw - var(--rosewash-x-feed)) / 2)
-    ) !important;
-    margin-inline: 0 !important;
-    position: fixed !important;
-    width: 350px !important;
-    z-index: 4 !important;
-  }
-
-  html[data-rosewash-x-compact]
-    [data-testid="sidebarColumn"]
-    div:has(> :first-child form[role="search"])
-    > :not(:first-child) {
     display: none !important;
   }
 
@@ -161,29 +150,48 @@
 
   /* Native single-column pages stay centered while X keeps ownership of their
      virtualized timelines, wheel events, and interactive hit areas. */
-  html[data-rosewash-x-compact]:not([data-rosewash-x-detail])
+  html[data-rosewash-x-compact]
     main[role="main"] > div:has([data-testid="primaryColumn"]) {
-    flex: 0 0 var(--rosewash-x-single) !important;
+    flex: 0 0 var(--rosewash-x-column) !important;
     inset-inline-start: calc(var(--rosewash-x-rail) / -2) !important;
     margin-inline: auto !important;
-    max-width: var(--rosewash-x-single) !important;
-    width: var(--rosewash-x-single) !important;
+    max-width: var(--rosewash-x-column) !important;
+    width: var(--rosewash-x-column) !important;
   }
 
-  html[data-rosewash-x-compact]:not([data-rosewash-x-detail])
+  html[data-rosewash-x-compact]
     [data-testid="primaryColumn"] {
-    max-width: var(--rosewash-x-single) !important;
-    width: var(--rosewash-x-single) !important;
+    max-width: var(--rosewash-x-column) !important;
+    width: var(--rosewash-x-column) !important;
   }
 
-  html[data-rosewash-x-compact]:not([data-rosewash-x-detail])
+  html[data-rosewash-x-compact]
     main[role="main"] :has(> [data-testid="primaryColumn"]):has(> [data-testid="sidebarColumn"]) {
     display: block !important;
     margin-inline: auto !important;
-    max-width: var(--rosewash-x-single) !important;
-    width: var(--rosewash-x-single) !important;
+    max-width: var(--rosewash-x-column) !important;
+    width: var(--rosewash-x-column) !important;
   }
 
+  html[data-rosewash-x-compact]
+    [data-testid="primaryColumn"] div:has(> section[role="region"] [data-testid="cellInnerDiv"]),
+  html[data-rosewash-x-compact]
+    [data-testid="primaryColumn"] section[role="region"]:has([data-testid="cellInnerDiv"]),
+  html[data-rosewash-x-compact]
+    [data-testid="primaryColumn"] section[role="region"]:has([data-testid="cellInnerDiv"])
+    > div,
+  html[data-rosewash-x-compact]
+    [data-testid="primaryColumn"] section[role="region"]:has([data-testid="cellInnerDiv"])
+    > div > div,
+  html[data-rosewash-x-compact]
+    [data-testid="primaryColumn"] [data-testid="cellInnerDiv"] {
+    align-self: stretch !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+}
+
+@media (min-width: 1280px) {
   /* Thread pages use the same centered canvas, with the original post on the
      left and X's native virtual reply stream on the right. */
   html[data-rosewash-x-compact][data-rosewash-x-detail]
@@ -207,21 +215,6 @@
     margin-inline: auto !important;
     max-width: none !important;
     width: var(--rosewash-x-feed) !important;
-  }
-
-  html[data-rosewash-x-compact][data-rosewash-x-detail]
-    [data-testid="primaryColumn"] div:has(> section[role="region"] [data-testid="cellInnerDiv"]),
-  html[data-rosewash-x-compact][data-rosewash-x-detail]
-    [data-testid="primaryColumn"] section[role="region"]:has([data-testid="cellInnerDiv"]),
-  html[data-rosewash-x-compact][data-rosewash-x-detail]
-    [data-testid="primaryColumn"] section[role="region"]:has([data-testid="cellInnerDiv"])
-    > div,
-  html[data-rosewash-x-compact][data-rosewash-x-detail]
-    [data-testid="primaryColumn"] section[role="region"]:has([data-testid="cellInnerDiv"])
-    > div > div {
-    align-self: stretch !important;
-    max-width: none !important;
-    width: 100% !important;
   }
 
   html[data-rosewash-x-compact][data-rosewash-x-detail]

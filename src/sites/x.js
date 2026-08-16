@@ -35,6 +35,8 @@
   let snapshotTimer = 0;
   const observedCells = new Set();
   const records = new Map();
+  const compactQuery = window.matchMedia("(min-width: 720px)");
+  const detailQuery = window.matchMedia("(min-width: 1280px)");
 
   const resizeObserver = new ResizeObserver(scheduleLayout);
   const documentObserver = new MutationObserver(handleDocumentMutations);
@@ -42,7 +44,7 @@
 
   function isEnabled() {
     return document.documentElement.hasAttribute(ROOT_ATTRIBUTE)
-      && window.matchMedia("(min-width: 1280px)").matches;
+      && compactQuery.matches;
   }
 
   function isDetail() {
@@ -128,7 +130,7 @@
   }
 
   function handleDocumentMutations(mutations) {
-    if (layoutRoute && layoutRoute !== currentRouteKey()) {
+    if (layoutRoute !== currentRouteKey()) {
       scheduleLayout();
       return;
     }
@@ -150,6 +152,10 @@
         return;
       }
       if (cell) {
+        if (isDetail() && !detailMainTemplate) {
+          scheduleLayout();
+          return;
+        }
         continue;
       }
       if (Array.from(mutation.addedNodes).some(nodeContainsLayoutTarget)
@@ -165,6 +171,8 @@
       return;
     }
     documentObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["style"],
       childList: true,
       subtree: true
     });
@@ -300,15 +308,14 @@
     layoutRoute = nextRoute;
   }
 
-  function statusPath(cell) {
-    for (const link of cell.querySelectorAll("article[data-testid='tweet'] a[href*='/status/']")) {
+  function cellMatchesRoute(cell, route) {
+    return Array.from(
+      cell.querySelectorAll("article[data-testid='tweet'] a[href*='/status/']")
+    ).some((link) => {
       const path = new URL(link.href, window.location.href).pathname;
       const match = path.match(/^\/[^/]+\/status\/(\d+)/);
-      if (match) {
-        return `status:${match[1]}`;
-      }
-    }
-    return null;
+      return match && `status:${match[1]}` === route;
+    });
   }
 
   function captureMainCell(cell) {
@@ -373,24 +380,26 @@
   function layoutDetail() {
     const nextTimeline = findTimeline() || (timeline?.isConnected ? timeline : null);
     if (!nextTimeline) {
-      return;
+      return false;
     }
 
     prepareTimeline(nextTimeline);
     timeline.setAttribute(DETAIL_TIMELINE_ATTRIBUTE, "");
     const cells = collectCells();
     const route = currentRouteKey();
-    const main = cells.find(({ cell }) => statusPath(cell) === route);
-    if (main && detailMainCell !== main.cell) {
+    const mainCell = Array.from(timeline.children).find((cell) => {
+      return cell.matches(CELL_SELECTOR) && cellMatchesRoute(cell, route);
+    });
+    if (mainCell && detailMainCell !== mainCell) {
       if (detailMainCell?.isConnected) {
         clearCell(detailMainCell);
       }
-      detailMainCell = main.cell;
+      detailMainCell = mainCell;
       captureMainCell(detailMainCell);
       scheduleMainSnapshot();
     }
     if (!detailMainCell && !detailMainTemplate) {
-      return;
+      return false;
     }
 
     const activeMain = detailMainCell?.isConnected
@@ -420,6 +429,7 @@
       setProperty(cell, "--rosewash-x-detail-y", `${placements.get(key).y}px`);
     }
     timeline.style.removeProperty("transform");
+    return true;
   }
 
   function layout() {
@@ -433,13 +443,12 @@
     }
 
     prepareRailControls();
-    const detail = isDetail();
-    document.documentElement.toggleAttribute(DETAIL_ATTRIBUTE, detail);
+    startDocumentObserver();
+    const detail = isDetail() && detailQuery.matches;
     if (detail) {
-      startDocumentObserver();
-      layoutDetail();
+      document.documentElement.toggleAttribute(DETAIL_ATTRIBUTE, layoutDetail());
     } else {
-      stopDocumentObserver();
+      document.documentElement.removeAttribute(DETAIL_ATTRIBUTE);
       clearLayout();
     }
   }
@@ -462,7 +471,8 @@
   window.addEventListener("resize", scheduleLayout, { passive: true });
   window.addEventListener("popstate", scheduleLayout, { passive: true });
   document.addEventListener(ROOT_CHANGE_EVENT, handleRootChange);
-  window.matchMedia("(min-width: 1280px)").addEventListener("change", scheduleLayout);
+  compactQuery.addEventListener("change", scheduleLayout);
+  detailQuery.addEventListener("change", scheduleLayout);
   rootObserver.disconnect();
   rootObserver.observe(document.documentElement, {
     attributes: true,

@@ -85,13 +85,48 @@ test("leaves X home timelines and wheel behavior native", async () => {
 test("centers native single-column pages such as home and bookmarks", async () => {
   const css = await readFile(new URL("../src/sites/x.css", import.meta.url), "utf8");
   const rule = css.match(
-    /:not\(\[data-rosewash-x-detail\]\)\s*main\[role="main"\] > div:has\(\[data-testid="primaryColumn"\]\)\s*\{([^}]*)\}/
+    /html\[data-rosewash-x-compact\]\s*main\[role="main"\] > div:has\(\[data-testid="primaryColumn"\]\)\s*\{([^}]*)\}/
   )?.[1];
 
   assert.ok(rule);
-  assert.match(rule, /flex:\s*0 0 var\(--rosewash-x-single\) !important/);
+  assert.match(rule, /flex:\s*0 0 var\(--rosewash-x-column\) !important/);
   assert.match(rule, /margin-inline:\s*auto !important/);
-  assert.match(rule, /width:\s*var\(--rosewash-x-single\) !important/);
+  assert.match(rule, /width:\s*var\(--rosewash-x-column\) !important/);
+  assert.match(
+    css,
+    /html\[data-rosewash-x-compact\]\s*\[data-testid="primaryColumn"\] \[data-testid="cellInnerDiv"\]\s*\{[^}]*width:\s*100% !important/
+  );
+});
+
+test("keeps the compact single-column layout at medium viewport widths", async () => {
+  const css = await readFile(new URL("../src/sites/x.css", import.meta.url), "utf8");
+  const runtime = await readFile(new URL("../src/sites/x.js", import.meta.url), "utf8");
+  const compactStart = css.indexOf("@media (min-width: 720px)");
+  const singleColumn = css.indexOf("Native single-column pages");
+  const detailStart = css.indexOf("@media (min-width: 1280px)");
+  const detailLayout = css.indexOf("Thread pages use the same centered canvas");
+
+  assert.ok(compactStart >= 0);
+  assert.ok(compactStart < singleColumn);
+  assert.ok(singleColumn < detailStart);
+  assert.ok(detailStart < detailLayout);
+  assert.match(
+    css,
+    /--rosewash-x-column:\s*min\(\s*var\(--rosewash-x-single\),\s*calc\(100vw - var\(--rosewash-x-rail\) - 24px\)\s*\)/
+  );
+  assert.match(runtime, /const compactQuery = window\.matchMedia\("\(min-width: 720px\)"\)/);
+  assert.match(runtime, /const detailQuery = window\.matchMedia\("\(min-width: 1280px\)"\)/);
+  assert.match(runtime, /document\.documentElement\.hasAttribute\(ROOT_ATTRIBUTE\)\s*&& compactQuery\.matches/);
+  assert.match(runtime, /const detail = isDetail\(\) && detailQuery\.matches/);
+});
+
+test("hides the redundant X search column in compact mode", async () => {
+  const css = await readFile(new URL("../src/sites/x.css", import.meta.url), "utf8");
+  const rule = css.match(/\[data-testid="sidebarColumn"\]\s*\{([^}]*)\}/)?.[1];
+
+  assert.ok(rule);
+  assert.match(rule, /display:\s*none !important/);
+  assert.doesNotMatch(css, /inset-inline-start:\s*calc\([^)]*--rosewash-x-single/);
 });
 
 test("exposes snapped X single-column widths in settings", async () => {
@@ -121,6 +156,11 @@ test("keeps the detail route active while X virtualizes its main post", async ()
   assert.doesNotMatch(detailLayout, /clearLayout\(\)/);
   assert.match(detailLayout, /detailMainCell/);
   assert.match(detailLayout, /detailMainSnapshot/);
+  assert.match(detailLayout, /return false/);
+  assert.match(detailLayout, /return true/);
+  assert.match(runtime, /function cellMatchesRoute\(cell, route\)/);
+  assert.match(runtime, /\.some\(\(link\) =>/);
+  assert.match(detailLayout, /Array\.from\(timeline\.children\)\.find/);
 });
 
 test("pins the preserved main post outside X's virtualized cells", async () => {
@@ -137,11 +177,19 @@ test("pins the preserved main post outside X's virtualized cells", async () => {
   assert.match(runtime, /video\.replaceWith\(media\)/);
 });
 
-test("ignores nested card mutations that do not change X cell geometry", async () => {
+test("tracks SPA routes and retries detail layout while the main post hydrates", async () => {
   const runtime = await readFile(new URL("../src/sites/x.js", import.meta.url), "utf8");
   const mutations = runtime.match(/function handleDocumentMutations\(mutations\) \{([\s\S]*?)\n  \}/)?.[1];
+  const layout = runtime.match(/function layout\(\) \{([\s\S]*?)\n  \}\n\n  function scheduleLayout/)?.[1];
 
   assert.ok(mutations);
+  assert.ok(layout);
+  assert.match(mutations, /layoutRoute !== currentRouteKey\(\)/);
   assert.match(mutations, /target\?\.closest\(CELL_SELECTOR\)/);
+  assert.match(mutations, /isDetail\(\) && !detailMainTemplate/);
   assert.doesNotMatch(mutations, /Boolean\(target\?\.closest\(CELL_SELECTOR\)\)/);
+  assert.match(layout, /prepareRailControls\(\);\s*startDocumentObserver\(\);\s*const detail = isDetail\(\)/);
+  assert.match(layout, /toggleAttribute\(DETAIL_ATTRIBUTE, layoutDetail\(\)\)/);
+  assert.doesNotMatch(layout, /else \{\s*stopDocumentObserver\(\)/);
+  assert.match(runtime, /attributes:\s*true,\s*attributeFilter:\s*\["style"\]/);
 });
