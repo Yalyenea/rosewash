@@ -110,16 +110,22 @@ and local browser-debug leftovers.
 
 ## Publishing Releases
 
-GitHub Actions publishes a release zip whenever a version tag is pushed:
+GitHub Actions publishes a release zip whenever a version tag is pushed.
+The release notes are the matching section from `changelog.md`; keep that
+section short and user-facing.
+
+1. Rewrite `## Unreleased` into a dated `## X.Y.Z` section of brief bullets.
+2. Set the same version in `package.json` and `manifest.json`.
+3. Tag and push:
 
 ```sh
 git tag v0.2.0
 git push origin v0.2.0
 ```
 
-The workflow runs `just package`, then uploads `rosewash-v0.2.0.zip` to the
-matching GitHub Release. It can also be run manually against an existing tag
-from the Actions tab.
+The workflow runs `just package`, then uploads `rosewash-v0.2.0.zip` and the
+changelog notes to the matching GitHub Release. It can also be run manually
+against an existing tag from the Actions tab.
 
 ## Palette
 

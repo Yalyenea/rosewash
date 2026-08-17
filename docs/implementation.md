@@ -29,6 +29,7 @@ src/sites/                 Optional site-specific layout runtimes and styles
 test/                      Node tests + HTML fixtures
 scripts/validate.mjs       Manifest / file presence / syntax checks
 justfile                   test · validate · check · dist · package · clean
+scripts/release-notes.mjs  GitHub Release notes from the version section in changelog.md
 dist/                      Generated loadable extension (`just dist`, gitignored)
 ```
 

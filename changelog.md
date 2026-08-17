@@ -4,123 +4,18 @@
 
 ## 0.2.0 - 2026-08-16
 
-- Added `just dist` to stage a loadable `dist/` folder (manifest, HTML, and
-  `src/` only). Load unpacked from `dist/`, not the repo root, so Chrome does
-  not count `.git`, `.tmp`, docs, or tests. `just package` now zips that
-  folder; `just clean` removes local debug artifacts.
-- Fixed X compact-layout width changes that resized the outer column without
-  stretching virtualized posts. The redundant right search column is hidden;
-  search remains available from the compact navigation rail. Detail routes
-  remain observed across SPA navigation, retry while X hydrates the main post,
-  and enable the wide split view only after its layout is ready. Compact
-  navigation and centered timelines now remain active from 720px, with the
-  selected width shrinking to the available viewport; X keeps its native mobile
-  layout below that boundary.
-- Fixed horizontal background seams exposed while scrolling SPA and
-  infinite-scroll pages: repeated scans now preserve existing `base`,
-  `surface`, and `overlay` roles instead of remapping old and newly inserted
-  regions to different palette layers.
-- Refined Settings into compact General, Theme, and Sites panels with denser
-  full-width palette grids, a page-level enable switch, responsive site
-  columns, and an always-available save bar.
-- Added an optional compact layout for X on wide screens: collapsed navigation,
-  retained search, adjustable centered timelines, and split thread views. The
-  setting is available in both Settings and the X popup, and restores X's
-  native layout when disabled or blocked.
-- Light and dark can use different palettes. Settings are now
-  `presetLight` + `presetDark` + `appearance`; a legacy single `preset` still
-  loads and fills both slots. Popup has two selectors; settings has two
-  palette grids. Auto picks the matching slot from `prefers-color-scheme`.
-- Renamed popup footer action from Sites to Settings; settings page lists every
-  palette as a selectable card (color swatches + label) instead of a dropdown.
-- Removed informal UI copy (Codex/hint text, L/D labels, status debug lines).
-- Shipped curated theme presets aligned with the Codex desktop app palette list
-  (28 families: Rose Pine, Catppuccin, Gruvbox, Nord, Solarized, Tokyo Night,
-  Dracula, One, GitHub, Linear, Notion, Raycast, Vercel, Codex, …). Settings are
-  now `preset + appearance` (`auto` / `light` / `dark`); legacy `mode`
-  (`auto` / `dawn` / `moon`) still loads and migrates. Engine resolves through a
-  single palette registry; CSS paper tokens are written as `--rosewash-*` vars.
-  Popup and options expose a palette selector plus Auto / Light / Dark.
-- Fixed preset switches that still painted Rose Pine: write paper tokens with
-  `!important`, re-read full storage on change, broadcast settings to all tabs,
-  and paint the popup chrome from the active palette. Status line shows the
-  resolved theme key (reload the page if it says `reload page`).
-- Fixed light Substack publications (e.g. gonzoml.substack.com) in Moon mode:
-  cover `div#main` / `#entry` / `.use-theme-bg` / intro popup shells in
-  `theme.css` before the DOM scan; remap publication tokens
-  (`--color-bg-primary`, `--background_contrast_*`, `--color-fg-primary`,
-  `--cover_bg_color`, …) instead of leaving pure white paper and dark ink.
-- Fixed ChatGPT dark-mode sticky footer / composer block that stayed native
-  dark while the page was Dawn/Moon paper: force known surface tokens
-  (`--main-surface-primary`, `--composer-surface-primary`, …) with `!important`
-  on root and `.dark` scopes via `theme.css`, pin
-  `[class*="thread-bottom-container"]::after` to `--rosewash-base`, and name-
-  force those tokens in the engine even when values are unparseable
-  (`color(display-p3 …)`).
-- Rejected invalid 3- and 6-digit hex colors in `parseColor` (return `null`
-  when channels are non-finite), matching the 8-digit hex branch.
-- Added agent-facing docs: `AGENTS.md` entry point and
-  `docs/implementation.md` (settings, content pipeline, engine, commands, tests).
-- Added default keyboard shortcut `Alt+Shift+B` to toggle blocked / allowed for
-  the current site (`chrome.commands` + background service worker). Rebind under
-  `chrome://extensions/shortcuts`.
-- Fixed full-cover FOUC and SPA white flashes: provisional `data-rosewash-theme`
-  at `document_start` so theme.css paints the canvas before storage returns;
-  dropped mixed-tone full restore on load; mutation scans run on the next
-  animation frame instead of a 250ms delay; CSS-var re-apply is diffed; surface
-  and text tints use `!important`; common SPA roots (`#react-root`, `main`, …)
-  get base paper from theme.css so x.com-style navigations do not flash white.
-- Switched from selective near-white tinting to full-page Rose Pine cover:
-  any opaque surface, text, and low-chroma border maps into the active Dawn or
-  Moon palette, so cool paper sites (e.g. mikaelhuuhtanen.com), dark-only
-  shells, and ordinary light pages all follow Auto / Dawn / Moon.
-- Remapped additional root design tokens (`--ground`, `--ink`, theme
-  backgrounds) so CSS-variable pages and pseudo-elements track the paper
-  palette.
-- Forced `html`/`body` canvas and link colors through `theme.css` for an
-  immediate base cover before the DOM scan finishes.
-- Fixed ChatGPT-style sticky footer fades painted on `::after` via design tokens
-  such as `--main-surface-primary`: Rosewash now remaps near-white root surface
-  CSS variables to the active paper palette so pseudo-elements and token-based
-  shadows follow the page base (inline styles cannot target `::before`/`::after`).
-- Expanded README install docs: Install From Release (download zip, extract,
-  load unpacked, update steps) and Install From Source for development.
-- Blended page-level headers and navigation bars into the page base, including
-  colored top bars on arXiv and similarly structured pages.
-- Included Zhihu-style `.AppHeader` shells in page-chrome tinting so white and
-  branded top bars map to the active page base.
-- Forced Zhihu top bars (`.AppHeader`, `.LeanAppHeaderBar`, `.MobileAppHeader`)
-  through extension CSS and `!important` inline fills so Emotion/CSS-in-JS
-  backgrounds cannot keep pure white chrome.
-- Fixed page-chrome restore tracking, near-white surface overwrites of chrome
-  base fills, and `tintText` stripping chrome `!important` text colors.
-- Tinted default transparent `html`/`body` canvases so legacy journal sites
-  such as jmlr.org (no explicit white background) receive the page base.
-- Planned companion Chromium theme packages that map Helium/Chrome chrome UI to
-  the same Rosewash base colors as the page canvas (official Rosé Pine themes
-  use overlay for the toolbar and look one step darker).
-- Planned the next roadmap around strength control, curated theme presets, and
-  target-specific Chromium, Firefox, and Safari packaging.
-- Documented the future `preset + appearance` settings direction for adding
-  non-Rose-Pine palettes without spreading theme-specific branches through the
-  content engine.
-- Added the MIT license file for public repository publishing.
-- Added a GitHub Actions release workflow that builds and uploads the extension
-  zip for version tags.
-- Added README screenshots for Dawn and Moon effects on public, account-free
-  pages.
-- Removed the local absolute install path from README.
-- Added dark-only page detection so Dawn and Auto-light can adapt sites that do
-  not provide a native light appearance.
-- Fixed dark-only detection for modern CSS Color 4 pages that expose colors as
-  `lab()`, `oklab()`, `lch()`, or `oklch()` and for SPA roots outside semantic
-  layout elements.
-- Fixed document-start dark-only pages so Dawn/Auto-light re-detects them after
-  the page body loads instead of requiring the popup switch to be toggled.
-- Fixed dark-only detection for branded publication shells such as Substack
-  pages that paint a dark theme through nested `#entry` / `div#main` wrappers
-  and CSS variables (`--theme_bg_is_dark`, `--web_bg_color`) without a
-  semantic `<main>` or `prefers-color-scheme` signal.
+- 28 Codex-aligned palettes; light and dark chosen independently; Auto follows
+  the system.
+- Settings and popup use palette cards, separate light/dark selectors, and a
+  compact General / Theme / Sites layout.
+- Full-page paper cover, including CSS Color 4 pages, dark-only sites, and
+  transparent canvases.
+- Optional compact X layout from 720px: collapsed rail, centered timeline,
+  search in the rail. Split threads from 1280px.
+- Site covers for ChatGPT, Substack, Zhihu, arXiv, and jmlr-style pages.
+- Fewer white flashes and background seams on SPA and infinite-scroll pages.
+- `Alt+Shift+B` toggles the current site. Load unpacked from `dist/` after
+  `just dist`; GitHub Releases ship a zip.
 
 ## 0.1.0 - 2026-04-29
 

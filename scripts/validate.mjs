@@ -48,7 +48,8 @@ const scriptFiles = [
   "src/popup/popup.js",
   "src/options/options.js",
   ...(manifest.content_scripts || []).flatMap((entry) => entry.js || []),
-  "scripts/validate.mjs"
+  "scripts/validate.mjs",
+  "scripts/release-notes.mjs"
 ].filter((file, index, files) => files.indexOf(file) === index);
 
 if (!manifest.commands?.["toggle-current-site"]?.suggested_key?.default) {
