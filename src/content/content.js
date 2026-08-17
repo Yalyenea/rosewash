@@ -7,6 +7,10 @@
   const X_COMPACT_ATTRIBUTE = "data-rosewash-x-compact";
   const X_COMPACT_EVENT = "rosewash:x-compact-change";
   const X_SINGLE_WIDTH_PROPERTY = "--rosewash-x-single";
+  const ZHIHU_LAYOUT_ATTRIBUTE = "data-rosewash-zhihu-layout";
+  const ZHIHU_LAYOUT_EVENT = "rosewash:zhihu-layout-change";
+  const ZHIHU_WIDTH_PROPERTY = "--rosewash-zhihu-article";
+  const ZHIHU_ARTICLE_ATTRIBUTE = "data-rosewash-zhihu-article";
   let settingsCache = core.plainSettings(core.DEFAULT_SETTINGS);
   let disposed = false;
 
@@ -30,6 +34,13 @@
       document.documentElement.style.removeProperty(X_SINGLE_WIDTH_PROPERTY);
       document.dispatchEvent(new CustomEvent(X_COMPACT_EVENT));
     }
+    if (document.documentElement?.hasAttribute(ZHIHU_LAYOUT_ATTRIBUTE)
+      || document.documentElement?.hasAttribute(ZHIHU_ARTICLE_ATTRIBUTE)) {
+      document.documentElement.removeAttribute(ZHIHU_LAYOUT_ATTRIBUTE);
+      document.documentElement.removeAttribute(ZHIHU_ARTICLE_ATTRIBUTE);
+      document.documentElement.style.removeProperty(ZHIHU_WIDTH_PROPERTY);
+      document.dispatchEvent(new CustomEvent(ZHIHU_LAYOUT_EVENT));
+    }
     engine.disconnect();
   }
 
@@ -40,11 +51,10 @@
 
     const settings = core.normalizeSettings(settingsCache);
     const host = window.location.hostname.toLowerCase();
-    const active = host === "x.com"
-      && settings.enabled
-      && settings.xCompactLayout
+    const allowed = settings.enabled
       && !core.isHostDisabled(host, settings.disabledHosts);
-    if (active) {
+    const xActive = allowed && host === "x.com" && settings.xCompactLayout;
+    if (xActive) {
       document.documentElement.style.setProperty(
         X_SINGLE_WIDTH_PROPERTY,
         `${settings.xSingleColumnWidth}px`
@@ -52,9 +62,23 @@
     } else {
       document.documentElement.style.removeProperty(X_SINGLE_WIDTH_PROPERTY);
     }
-    if (document.documentElement.hasAttribute(X_COMPACT_ATTRIBUTE) !== active) {
-      document.documentElement.toggleAttribute(X_COMPACT_ATTRIBUTE, active);
+    if (document.documentElement.hasAttribute(X_COMPACT_ATTRIBUTE) !== xActive) {
+      document.documentElement.toggleAttribute(X_COMPACT_ATTRIBUTE, xActive);
       document.dispatchEvent(new CustomEvent(X_COMPACT_EVENT));
+    }
+
+    const zhihuActive = allowed && core.isZhihuHost(host) && settings.zhihuArticleLayout;
+    if (zhihuActive) {
+      document.documentElement.style.setProperty(
+        ZHIHU_WIDTH_PROPERTY,
+        `${settings.zhihuArticleWidth}px`
+      );
+    } else {
+      document.documentElement.style.removeProperty(ZHIHU_WIDTH_PROPERTY);
+    }
+    if (document.documentElement.hasAttribute(ZHIHU_LAYOUT_ATTRIBUTE) !== zhihuActive) {
+      document.documentElement.toggleAttribute(ZHIHU_LAYOUT_ATTRIBUTE, zhihuActive);
+      document.dispatchEvent(new CustomEvent(ZHIHU_LAYOUT_EVENT));
     }
   }
 
@@ -113,6 +137,8 @@
       "mode",
       "xCompactLayout",
       "xSingleColumnWidth",
+      "zhihuArticleLayout",
+      "zhihuArticleWidth",
       "disabledHosts"
     ];
     if (!watched.some((key) => Object.prototype.hasOwnProperty.call(changes, key))) {

@@ -93,6 +93,31 @@
                 </span>
               </label>
             </div>
+            <div class="site-layout">
+              <label class="site-layout-toggle">
+                <span>
+                  <strong>Zhihu · Article layout</strong>
+                  <small>Hide page chrome, center the article, and stretch it to a reading width on desktop.</small>
+                </span>
+                <span class="toggle">
+                  <input id="zhihu-article-layout" type="checkbox">
+                  <span class="toggle-track"></span>
+                </span>
+              </label>
+              <label class="x-width-control" for="zhihu-article-width">
+                <span class="x-width-heading">
+                  <strong>Article width</strong>
+                  <output id="zhihu-article-width-value" for="zhihu-article-width">960 px</output>
+                </span>
+                <input id="zhihu-article-width" type="range" min="0" max="3" step="1" value="2">
+                <span class="x-width-stops" aria-hidden="true">
+                  <span>720</span>
+                  <span>840</span>
+                  <span>960</span>
+                  <span>1080</span>
+                </span>
+              </label>
+            </div>
           </div>
           <label class="site-group blocked-sites">
             <h3>Blocked sites</h3>

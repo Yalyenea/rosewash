@@ -275,6 +275,10 @@ h3,
   padding: 12px;
 }
 
+.site-layout + .site-layout {
+  margin-top: 10px;
+}
+
 .site-layout-toggle {
   align-items: center;
   cursor: pointer;

@@ -62,6 +62,7 @@ dist/                      Generated loadable extension (`just dist`, gitignored
 | Popup | `src/popup/popup.js` | Daily controls + push message to active tab |
 | Options | `src/options/options.js` | Palettes, appearance, site layouts, block list |
 | X layout | `src/sites/x-core.js`, `x.js`, `x.css` | Responsive compact navigation and wide-screen split timelines |
+| Zhihu layout | `src/sites/zhihu.js`, `zhihu.css` | Centered widescreen article column; hides page chrome |
 
 ## Settings schema
 
@@ -74,6 +75,9 @@ Stored in **`chrome.storage.sync`**.
   "presetDark": "rose-pine",
   "appearance": "auto",
   "xCompactLayout": false,
+  "xSingleColumnWidth": 600,
+  "zhihuArticleLayout": false,
+  "zhihuArticleWidth": 960,
   "disabledHosts": []
 }
 ```
@@ -85,6 +89,9 @@ Stored in **`chrome.storage.sync`**.
 | `presetDark` | preset id with a dark variant | Palette used when appearance resolves to dark |
 | `appearance` | `auto` \| `light` \| `dark` | `auto` follows `prefers-color-scheme` |
 | `xCompactLayout` | boolean | Enables Rosewash's responsive compact layout on X |
+| `xSingleColumnWidth` | 520 / 600 / 680 / 760 | Centered X timeline width |
+| `zhihuArticleLayout` | boolean | Enables the centered Zhihu article reading layout |
+| `zhihuArticleWidth` | 720 / 840 / 960 / 1080 | Centered Zhihu article width |
 | `disabledHosts` | string[] | Hostnames (and parents) where Rosewash is blocked |
 
 Normalization lives in `RosewashCore.normalizeSettings()`:
@@ -283,6 +290,7 @@ No direct message to the content script is required; pages listen to
 
 - Reads active tab host; toggles that host in `disabledHosts`.
 - On X, exposes the `xCompactLayout` switch for the desktop layout.
+- On Zhihu, exposes the `zhihuArticleLayout` switch for article pages.
 - Two palette selects (`presetLight` / `presetDark`); lists only families
   that expose that variant.
 - On change: write storage + `chrome.tabs.sendMessage` with
@@ -315,6 +323,19 @@ when Rosewash is enabled, X is not blocked, and `xCompactLayout` is true.
   width to the available viewport, and applies the split thread layout at
   `min-width: 1280px`. Below 720px, X keeps its native mobile layout.
 - `test/x-layout.test.js` covers the pure layout math and critical CSS rules.
+
+## Zhihu article layout
+
+`manifest.json` injects `src/sites/zhihu.css` and `zhihu.js` on `zhihu.com`,
+`www.zhihu.com`, and `zhuanlan.zhihu.com` at `document_start`. The content
+runtime marks Zhihu hosts with `data-rosewash-zhihu-layout` when Rosewash is
+enabled, Zhihu is not blocked, and `zhihuArticleLayout` is true. `zhihu.js`
+adds `data-rosewash-zhihu-article` only on `/p/{id}` routes from 720px.
+
+- `zhihu.css` hides the top bar, column header, right rail, and bottom
+  recommendations, then centers the article at the selected width. The width
+  shrinks to the available viewport.
+- `test/zhihu-layout.test.js` covers the hide/center rules and width setting.
 
 Popup and options load `src/content/core.js` for `PRESETS` / `listPresets` /
 `normalizeSettings`. Engine + background also share `core.js`.

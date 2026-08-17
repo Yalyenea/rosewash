@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Optional Zhihu article layout from 720px: hide the top bar and other
+  non-article chrome, center a widescreen column, and pick 720–1080px.
+
 ## 0.2.0 - 2026-08-16
 
 - 28 Codex-aligned palettes; light and dark chosen independently; Auto follows

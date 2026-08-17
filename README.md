@@ -21,6 +21,8 @@ protected.
 - Optional responsive compact layout for X from 720px, with a collapsed
   navigation rail, adjustable centered timelines, rail-based search, and split
   thread views on wide screens.
+- Optional Zhihu article layout from 720px: hide the top bar and side
+  chrome, center the article, and pick a reading width.
 - Default shortcut `Alt+Shift+B` toggles blocked / allowed for the current site
   (rebind under `chrome://extensions/shortcuts`).
 - Full-page paper cover for light, dark, and cool-paper sites.

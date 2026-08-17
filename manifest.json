@@ -52,6 +52,20 @@
         "src/sites/x.js"
       ],
       "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://zhihu.com/*",
+        "https://www.zhihu.com/*",
+        "https://zhuanlan.zhihu.com/*"
+      ],
+      "css": [
+        "src/sites/zhihu.css"
+      ],
+      "js": [
+        "src/sites/zhihu.js"
+      ],
+      "run_at": "document_start"
     }
   ]
 }

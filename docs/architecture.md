@@ -138,6 +138,11 @@ Rosewash is disabled, X is blocked, or the option is off, X keeps its native
 layout. `x-core.js` keeps reply-stack calculations testable without the browser
 runtime.
 
+The Zhihu article layout is the same kind of optional overlay. When
+`zhihuArticleLayout` is on, `/p/{id}` pages from 720px hide the top bar and
+other non-article chrome and center a widescreen column at the selected width.
+Homepage, questions, and mobile widths keep Zhihu's native layout.
+
 ## Performance Boundary
 
 The MVP scans the existing DOM once on load, then only scans newly added nodes.

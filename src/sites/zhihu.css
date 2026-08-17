@@ -1,0 +1,56 @@
+/* Optional Zhihu article layout. The content runtime owns the layout marker
+   so disabling Rosewash, blocking Zhihu, or turning the preset off restores
+   the native page. The article marker is added only on /p/{id} from 720px. */
+@media (min-width: 720px) {
+  html[data-rosewash-zhihu-article] {
+    --rosewash-zhihu-column: min(
+      var(--rosewash-zhihu-article, 960px),
+      calc(100vw - 48px)
+    );
+    --container-main-column-width: var(--rosewash-zhihu-column);
+    --container-width: var(--rosewash-zhihu-column);
+    --right-sidebar-width: 0px;
+  }
+
+  html[data-rosewash-zhihu-article] .AppHeader,
+  html[data-rosewash-zhihu-article] .LeanAppHeaderBar,
+  html[data-rosewash-zhihu-article] .MobileAppHeader,
+  html[data-rosewash-zhihu-article] .ColumnPageHeader,
+  html[data-rosewash-zhihu-article] .ColumnPageHeader-Wrapper,
+  html[data-rosewash-zhihu-article] .App > :not(.App-main),
+  html[data-rosewash-zhihu-article] .Post-content > :not(:has(.Post-Main)),
+  html[data-rosewash-zhihu-article] .Post-content > div:has(.Post-Main) > :not(:has(.Post-Main)),
+  html[data-rosewash-zhihu-article] .Recommendations-Main,
+  html[data-rosewash-zhihu-article] .CornerButtons,
+  html[data-rosewash-zhihu-article] .CornerButtonsGroup {
+    display: none !important;
+  }
+
+  html[data-rosewash-zhihu-article] .App-main,
+  html[data-rosewash-zhihu-article] .Post-content {
+    min-width: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  html[data-rosewash-zhihu-article] .Post-content > div:has(.Post-Main) {
+    margin-block: 24px 48px !important;
+    margin-inline: auto !important;
+    max-width: var(--rosewash-zhihu-column) !important;
+    width: var(--rosewash-zhihu-column) !important;
+  }
+
+  html[data-rosewash-zhihu-article] .Post-Main,
+  html[data-rosewash-zhihu-article] .Post-Header,
+  html[data-rosewash-zhihu-article] .Post-Title,
+  html[data-rosewash-zhihu-article] .Post-Author,
+  html[data-rosewash-zhihu-article] .Post-RichTextContainer,
+  html[data-rosewash-zhihu-article] .Post-RichText {
+    max-width: none !important;
+    width: 100% !important;
+  }
+
+  html[data-rosewash-zhihu-article] .Post-RichText img,
+  html[data-rosewash-zhihu-article] .Post-RichText figure {
+    max-width: 100% !important;
+  }
+}

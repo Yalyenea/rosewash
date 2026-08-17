@@ -199,6 +199,7 @@
   })());
 
   const X_SINGLE_COLUMN_WIDTHS = Object.freeze([520, 600, 680, 760]);
+  const ZHIHU_ARTICLE_WIDTHS = Object.freeze([720, 840, 960, 1080]);
 
   const DEFAULT_SETTINGS = Object.freeze({
     enabled: true,
@@ -207,6 +208,8 @@
     appearance: "auto",
     xCompactLayout: false,
     xSingleColumnWidth: 600,
+    zhihuArticleLayout: false,
+    zhihuArticleWidth: 960,
     disabledHosts: []
   });
 
@@ -684,8 +687,23 @@
       xSingleColumnWidth: X_SINGLE_COLUMN_WIDTHS.includes(source.xSingleColumnWidth)
         ? source.xSingleColumnWidth
         : DEFAULT_SETTINGS.xSingleColumnWidth,
+      zhihuArticleLayout: source.zhihuArticleLayout === true,
+      zhihuArticleWidth: ZHIHU_ARTICLE_WIDTHS.includes(source.zhihuArticleWidth)
+        ? source.zhihuArticleWidth
+        : DEFAULT_SETTINGS.zhihuArticleWidth,
       disabledHosts: Array.from(new Set(disabledHosts)).sort()
     };
+  }
+
+  function isZhihuHost(host) {
+    const normalizedHost = normalizeHost(host);
+    return normalizedHost === "zhihu.com"
+      || normalizedHost === "www.zhihu.com"
+      || normalizedHost === "zhuanlan.zhihu.com";
+  }
+
+  function isZhihuArticlePath(pathname) {
+    return /^\/p\/\d+/.test(String(pathname || ""));
   }
 
   function presetIdForVariant(value, legacyPreset, variant) {
@@ -778,6 +796,8 @@
       appearance: normalized.appearance,
       xCompactLayout: normalized.xCompactLayout,
       xSingleColumnWidth: normalized.xSingleColumnWidth,
+      zhihuArticleLayout: normalized.zhihuArticleLayout,
+      zhihuArticleWidth: normalized.zhihuArticleWidth,
       disabledHosts: normalized.disabledHosts.slice()
     };
   }
@@ -1460,6 +1480,7 @@
     PRESET_IDS,
     PALETTES,
     X_SINGLE_COLUMN_WIDTHS,
+    ZHIHU_ARTICLE_WIDTHS,
     listPresets,
     createEngine,
     classifyPageTone,
@@ -1469,6 +1490,8 @@
     isDarkThemeKey,
     generatedBackgroundHasDarkSurface,
     isHostDisabled,
+    isZhihuHost,
+    isZhihuArticlePath,
     toggleHostDisabled,
     isLightNeutralColor,
     isGeneratedBackgroundImage,

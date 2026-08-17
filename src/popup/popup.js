@@ -17,6 +17,8 @@
   const siteButton = document.querySelector("#site-toggle");
   const xLayoutRow = document.querySelector("#x-layout-row");
   const xLayoutInput = document.querySelector("#x-compact-layout");
+  const zhihuLayoutRow = document.querySelector("#zhihu-layout-row");
+  const zhihuLayoutInput = document.querySelector("#zhihu-article-layout");
   const optionsButton = document.querySelector("#options");
   const refreshButton = document.querySelector("#refresh");
 
@@ -121,6 +123,8 @@
     darkSelect.value = settings.presetDark;
     xLayoutRow.hidden = activeHost !== "x.com";
     xLayoutInput.checked = settings.xCompactLayout;
+    zhihuLayoutRow.hidden = !core.isZhihuHost(activeHost);
+    zhihuLayoutInput.checked = settings.zhihuArticleLayout;
 
     for (const button of appearanceButtons) {
       button.setAttribute(
@@ -177,6 +181,10 @@
 
   xLayoutInput.addEventListener("change", () => {
     updateSettings({ ...settings, xCompactLayout: xLayoutInput.checked });
+  });
+
+  zhihuLayoutInput.addEventListener("change", () => {
+    updateSettings({ ...settings, zhihuArticleLayout: zhihuLayoutInput.checked });
   });
 
   optionsButton.addEventListener("click", () => {

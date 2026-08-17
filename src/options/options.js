@@ -13,6 +13,9 @@
   const xCompactInput = document.querySelector("#x-compact-layout");
   const xSingleWidthInput = document.querySelector("#x-single-column-width");
   const xSingleWidthValue = document.querySelector("#x-single-column-width-value");
+  const zhihuLayoutInput = document.querySelector("#zhihu-article-layout");
+  const zhihuWidthInput = document.querySelector("#zhihu-article-width");
+  const zhihuWidthValue = document.querySelector("#zhihu-article-width-value");
   const lightList = document.querySelector("#preset-light-list");
   const darkList = document.querySelector("#preset-dark-list");
   const hostTextarea = document.querySelector("#disabled-hosts");
@@ -48,6 +51,16 @@
     const index = core.X_SINGLE_COLUMN_WIDTHS.indexOf(width);
     xSingleWidthInput.value = String(index);
     xSingleWidthValue.value = `${width} px`;
+  }
+
+  function selectedZhihuArticleWidth() {
+    return core.ZHIHU_ARTICLE_WIDTHS[Number(zhihuWidthInput.value)];
+  }
+
+  function renderZhihuArticleWidth(width) {
+    const index = core.ZHIHU_ARTICLE_WIDTHS.indexOf(width);
+    zhihuWidthInput.value = String(index);
+    zhihuWidthValue.value = `${width} px`;
   }
 
   function setStatus(text) {
@@ -119,6 +132,8 @@
     enabledInput.checked = normalized.enabled;
     xCompactInput.checked = normalized.xCompactLayout;
     renderXSingleColumnWidth(normalized.xSingleColumnWidth);
+    zhihuLayoutInput.checked = normalized.zhihuArticleLayout;
+    renderZhihuArticleWidth(normalized.zhihuArticleWidth);
     document.querySelector(`input[name='appearance'][value='${normalized.appearance}']`).checked = true;
     hostTextarea.value = normalized.disabledHosts.join("\n");
     selectLight(normalized.presetLight);
@@ -138,6 +153,8 @@
       appearance: selectedAppearance(),
       xCompactLayout: xCompactInput.checked,
       xSingleColumnWidth: selectedXSingleColumnWidth(),
+      zhihuArticleLayout: zhihuLayoutInput.checked,
+      zhihuArticleWidth: selectedZhihuArticleWidth(),
       disabledHosts: hostsFromTextarea()
     });
     await chrome.storage.sync.set(next);
@@ -154,6 +171,10 @@
 
   xSingleWidthInput.addEventListener("input", () => {
     renderXSingleColumnWidth(selectedXSingleColumnWidth());
+  });
+
+  zhihuWidthInput.addEventListener("input", () => {
+    renderZhihuArticleWidth(selectedZhihuArticleWidth());
   });
 
   fillPresetList(lightList, "light", selectLight);
