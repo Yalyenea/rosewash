@@ -100,13 +100,31 @@ left by an older orphaned script after extension reload.
 - `toggle-current-site` (default `Alt+Shift+B`) toggles the active tab's host
   in `disabledHosts` and writes `chrome.storage.sync`. Content scripts pick up
   the change through `storage.onChanged`.
+- `open-pdf-locally` (default `Alt+Shift+P`) recognizes a narrow set of PDF
+  URLs, downloads the source file with `chrome.downloads`, persists pending
+  state in `chrome.storage.session`, and requests the configured local URL
+  Scheme after completion.
+
+Pure helpers in `src/shared/pdf-open.js` own PDF URL normalization, restricted
+opener-template validation, percent-encoding, and pending map transitions. The
+background service worker owns only Chrome API orchestration. Opener templates
+accept the downloaded `{fileURL}` or `{filePath}` and reject browser/Web
+schemes, keeping the feature scoped to PDFs rather than arbitrary process
+launching.
+
+There is no system-default opener option. `chrome.downloads.open()` requires a
+user gesture when it is called; an asynchronous completion event cannot
+reliably satisfy that contract. A pure extension also cannot enumerate local
+apps or confirm a custom scheme handler. The Serein preset therefore documents
+an external contract—`serein://open?file=<encoded file URL>`—that Serein still
+needs to register and implement.
 
 Users can rebind the shortcut under `chrome://extensions/shortcuts`.
 
 ## UI
 
 `popup.html` is the daily control surface. `options.html` is the full settings
-page (appearance, light/dark palette grids, site layouts, block list). Both are
+page (appearance, light/dark palette grids, PDF opener, site layouts, block list). Both are
 plain HTML/CSS/JS and share the same storage schema:
 
 ```json

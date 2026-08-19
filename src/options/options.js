@@ -2,7 +2,8 @@
   "use strict";
 
   const core = globalThis.RosewashCore;
-  if (!core) {
+  const pdfOpen = globalThis.RosewashPdfOpen;
+  if (!core || !pdfOpen) {
     document.body.innerHTML = "<p>Rosewash core failed to load.</p>";
     return;
   }
@@ -22,6 +23,8 @@
   const saveButton = document.querySelector("#save");
   const resetButton = document.querySelector("#reset");
   const status = document.querySelector("#status");
+  const pdfTemplateRow = document.querySelector("#pdf-template-row");
+  const pdfCustomTemplateInput = document.querySelector("#pdf-custom-template");
 
   let selectedLight = DEFAULT_SETTINGS.presetLight;
   let selectedDark = DEFAULT_SETTINGS.presetDark;
@@ -41,6 +44,17 @@
 
   function selectedAppearance() {
     return document.querySelector("input[name='appearance']:checked").value;
+  }
+
+  function selectedPdfOpener() {
+    return document.querySelector("input[name='pdf-opener']:checked").value;
+  }
+
+  function renderPdfSettings(raw) {
+    const settings = pdfOpen.normalizeOpenerSettings(raw);
+    document.querySelector(`input[name='pdf-opener'][value='${settings.pdfOpener}']`).checked = true;
+    pdfCustomTemplateInput.value = settings.pdfCustomOpenerTemplate;
+    pdfTemplateRow.hidden = settings.pdfOpener !== "custom";
   }
 
   function selectedXSingleColumnWidth() {
@@ -138,6 +152,7 @@
     hostTextarea.value = normalized.disabledHosts.join("\n");
     selectLight(normalized.presetLight);
     selectDark(normalized.presetDark);
+    renderPdfSettings(settings);
   }
 
   async function load() {
@@ -146,6 +161,12 @@
   }
 
   saveButton.addEventListener("click", async () => {
+    const pdfOpener = selectedPdfOpener();
+    const pdfCustomOpenerTemplate = pdfCustomTemplateInput.value.trim();
+    if (pdfOpener === "custom" && !pdfOpen.validateOpenerTemplate(pdfCustomOpenerTemplate)) {
+      setStatus("Use a custom URL Scheme with {fileURL} or {filePath}");
+      return;
+    }
     const next = core.plainSettings({
       enabled: enabledInput.checked,
       presetLight: selectedLight,
@@ -157,15 +178,20 @@
       zhihuArticleWidth: selectedZhihuArticleWidth(),
       disabledHosts: hostsFromTextarea()
     });
-    await chrome.storage.sync.set(next);
+    await chrome.storage.sync.set({ ...next, pdfOpener, pdfCustomOpenerTemplate });
     await chrome.storage.sync.remove(["mode", "preset"]);
     setStatus("Saved");
   });
 
   resetButton.addEventListener("click", async () => {
-    await chrome.storage.sync.set(DEFAULT_SETTINGS);
+    const pdfDefaults = {
+      pdfOpener: pdfOpen.DEFAULT_OPENER,
+      pdfCustomOpenerTemplate: ""
+    };
+    await chrome.storage.sync.set({ ...DEFAULT_SETTINGS, ...pdfDefaults });
     await chrome.storage.sync.remove(["mode", "preset"]);
     render(DEFAULT_SETTINGS);
+    renderPdfSettings(pdfDefaults);
     setStatus("Reset");
   });
 
@@ -176,6 +202,12 @@
   zhihuWidthInput.addEventListener("input", () => {
     renderZhihuArticleWidth(selectedZhihuArticleWidth());
   });
+
+  for (const input of document.querySelectorAll("input[name='pdf-opener']")) {
+    input.addEventListener("change", () => {
+      pdfTemplateRow.hidden = selectedPdfOpener() !== "custom";
+    });
+  }
 
   fillPresetList(lightList, "light", selectLight);
   fillPresetList(darkList, "dark", selectDark);

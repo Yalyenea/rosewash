@@ -21,6 +21,7 @@ manifest.json              MV3 entry: permissions, content scripts, SW, commands
 popup.html + src/popup/    Action popup (enable, appearance, light/dark palettes, site block)
 options.html + src/options/ Settings (palettes, appearance, site layouts, block list)
 src/background/            Service worker (keyboard commands)
+src/shared/pdf-open.js     Pure PDF URL, opener-template, and pending-state helpers
 src/content/
   core.js                  Pure engine + host helpers (testable via vm)
   content.js               Chrome wiring for content world
@@ -41,7 +42,7 @@ dist/                      Generated loadable extension (`just dist`, gitignored
 └─────────────────────┘                              └──────────┬───────────┘
                                                                │ onChanged
 ┌─────────────────────┐  commands.onCommand                    │
-│ background SW       │ ─── write disabledHosts ───────────────┤
+│ background SW       │ ─── settings + PDF download state ─────┤
 │ (importScripts core)│                                        │
 └─────────────────────┘                                        ▼
                                                     ┌──────────────────────┐
@@ -58,7 +59,8 @@ dist/                      Generated loadable extension (`just dist`, gitignored
 | Engine | `src/content/core.js` → `globalThis.RosewashCore` | Color parse, cover, restore, host helpers |
 | Content bootstrap | `src/content/content.js` | Storage cache, listeners, provisional paint |
 | CSS cover | `src/content/theme.css` | First-frame canvas / SPA roots / known shells |
-| Background | `src/background/background.js` | `toggle-current-site` command |
+| Background | `src/background/background.js` | Site toggle and PDF download/open commands |
+| PDF helpers | `src/shared/pdf-open.js` → `globalThis.RosewashPdfOpen` | PDF URL detection, opener templates, serializable pending state |
 | Popup | `src/popup/popup.js` | Daily controls + push message to active tab |
 | Options | `src/options/options.js` | Palettes, appearance, site layouts, block list |
 | X layout | `src/sites/x-core.js`, `x.js`, `x.css` | Responsive compact navigation and wide-screen split timelines |
@@ -81,6 +83,21 @@ Stored in **`chrome.storage.sync`**.
   "disabledHosts": []
 }
 ```
+
+PDF opener settings are stored alongside the theme settings in
+`chrome.storage.sync`:
+
+```json
+{
+  "pdfOpener": "serein",
+  "pdfCustomOpenerTemplate": ""
+}
+```
+
+`pdfOpener` is `serein` or `custom`. The Serein preset expands
+`serein://open?file={fileURL}`. A custom template must use a non-Web URL Scheme
+and contain `{fileURL}` or `{filePath}`; values are percent-encoded after the
+download API returns the final absolute filename.
 
 | Field | Values | Meaning |
 | --- | --- | --- |
@@ -122,12 +139,16 @@ the same algorithm inline.
 ## Manifest details
 
 - **MV3**, version must match `package.json` (`scripts/validate.mjs` enforces).
-- Permissions: `storage` only; host access via `"host_permissions": ["<all_urls>"]`.
+- Permissions: `storage` and `downloads`; host access via
+  `"host_permissions": ["<all_urls>"]`.
 - Content scripts at `document_start`: `theme.css`, then `core.js`, then
   `content.js` (order matters: engine must exist before bootstrap).
 - Background service worker: `src/background/background.js`.
 - Command `toggle-current-site`: suggested key **`Alt+Shift+B`** (Mac:
   Option+Shift+B). User-rebindable at `chrome://extensions/shortcuts`.
+- Command `open-pdf-locally`: suggested key **`Alt+Shift+P`** (Mac:
+  Option+Shift+P). Downloads a supported PDF before requesting the configured
+  local URL Scheme.
 
 ## Content pipeline (critical path)
 
@@ -284,6 +305,36 @@ importScripts("../content/core.js")
 No direct message to the content script is required; pages listen to
 `storage.onChanged`.
 
+The `open-pdf-locally` path is deliberately separate from the tint engine:
+
+```text
+active tab URL → normalize/detect PDF → chrome.downloads.download
+→ persist download id + opener template in chrome.storage.session
+→ downloads.onChanged complete → downloads.search final filename
+→ encode file URL/path → chrome.tabs.create(configured URL Scheme)
+```
+
+Supported URL detection is intentionally narrow: ordinary HTTP(S) URLs whose
+path ends in `.pdf`, arXiv `/pdf/{id}` URLs, and conservative arXiv
+`/abs/{id}` → `/pdf/{id}.pdf` normalization. It does not probe MIME types or
+introduce a PDF viewer. Google Scholar PDF Reader retains the source PDF tab
+URL, so it follows the ordinary URL path.
+
+Pending downloads live in `chrome.storage.session`, because MV3 service worker
+globals do not survive worker suspension. The command also checks the download
+immediately after persisting it, closing the fast-completion race. Per-tab
+action badge/title feedback reports unsupported URL, downloading, failure, or
+opener request.
+
+The pure extension cannot enumerate installed applications, choose an app from
+`/Applications`, launch an arbitrary executable, or verify that a URL Scheme
+handler exists. `chrome.downloads.open()` is not used: it requires the separate
+`downloads.open` permission and a user gesture at open time, which cannot be
+reliably retained until an asynchronous download completes. Serein must
+separately register and implement
+`serein://open?file=<percent-encoded file URL>`; that external interface remains
+a follow-up dependency.
+
 ## Popup & options
 
 **Popup**
@@ -307,6 +358,8 @@ No direct message to the content script is required; pages listen to
   responsive full-width grid for each variant; Save / Reset remain fixed at
   the bottom of the viewport.
 - Mentions the site-toggle shortcut.
+- Adds a compact PDF · Open in panel with a Serein preset and a constrained
+  custom URL Scheme template.
 
 ## X compact layout
 
@@ -362,8 +415,9 @@ just clean      # remove .tmp and local debug leftovers
 | Area | How |
 | --- | --- |
 | Engine unit tests | `test/core.test.js` loads `core.js` in `vm` |
+| PDF unit tests | `test/pdf-open.test.js` loads `pdf-open.js` in `vm` |
 | Browser fixtures | `test/fixtures/*` HTML + runners (manual / scripted) |
-| Validate | Requires background SW file, `toggle-current-site` command, storage + `<all_urls>` |
+| Validate | Requires background/PDF runtime files, both commands, storage + downloads + `<all_urls>` |
 
 No commit/push automation unless the user asks. Feature work should land on a
 branch other than `main`.
@@ -390,6 +444,7 @@ branch other than `main`.
 | New design-token names | `SURFACE_VAR_INCLUDE` / `TEXT_VAR_*` + unit tests |
 | New page-chrome shell | `PAGE_CHROME_CLASSES` + matching `theme.css` rules if CSS-in-JS |
 | New keyboard command | `manifest.json` `commands` + `background.js` handler + validate |
+| PDF opener behavior | `src/shared/pdf-open.js` + background orchestration + PDF tests |
 | Settings field | schema in all of: core defaults, content `handleStorageChanged`, popup, options, docs |
 
 ## Related docs

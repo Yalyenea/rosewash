@@ -13,6 +13,7 @@ const pkg = JSON.parse(await readFile(packagePath, "utf8"));
 const requiredFiles = [
   "popup.html",
   "options.html",
+  "src/shared/pdf-open.js",
   ...(manifest.background?.service_worker ? [manifest.background.service_worker] : []),
   ...(manifest.content_scripts || []).flatMap((entry) => [
     ...(entry.css || []),
@@ -37,6 +38,10 @@ if (!manifest.permissions.includes("storage")) {
   throw new Error("storage permission is required");
 }
 
+if (!manifest.permissions.includes("downloads")) {
+  throw new Error("downloads permission is required for PDF Open in");
+}
+
 if (!manifest.host_permissions?.includes("<all_urls>")) {
   throw new Error("<all_urls> host permission is required for page tinting");
 }
@@ -45,6 +50,7 @@ const scriptFiles = [
   "src/content/core.js",
   "src/content/content.js",
   "src/background/background.js",
+  "src/shared/pdf-open.js",
   "src/popup/popup.js",
   "src/options/options.js",
   ...(manifest.content_scripts || []).flatMap((entry) => entry.js || []),
@@ -54,6 +60,10 @@ const scriptFiles = [
 
 if (!manifest.commands?.["toggle-current-site"]?.suggested_key?.default) {
   throw new Error("toggle-current-site command with suggested_key.default is required");
+}
+
+if (!manifest.commands?.["open-pdf-locally"]?.suggested_key?.default) {
+  throw new Error("open-pdf-locally command with suggested_key.default is required");
 }
 
 if (!manifest.background?.service_worker) {

@@ -4,7 +4,8 @@
   "version": "0.2.0",
   "description": "A lightweight Rose Pine tint for harsh white web pages.",
   "permissions": [
-    "storage"
+    "storage",
+    "downloads"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -24,6 +25,13 @@
         "mac": "Alt+Shift+B"
       },
       "description": "Toggle blocked / allowed for the current site"
+    },
+    "open-pdf-locally": {
+      "suggested_key": {
+        "default": "Alt+Shift+P",
+        "mac": "Alt+Shift+P"
+      },
+      "description": "Download the current PDF and open it in a local app"
     }
   },
   "content_scripts": [

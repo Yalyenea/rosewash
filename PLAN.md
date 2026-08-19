@@ -31,6 +31,8 @@ code protected), then grows into a small set of curated theme presets.
 - [x] Transparent `html`/`body` canvas tinting for legacy sites such as jmlr.org.
 - [x] Root surface CSS-variable remapping so token-driven `::after` fades
   (ChatGPT thread footer) follow the paper palette.
+- [x] Lightweight PDF Open in: narrow URL detection, default-folder download,
+  session-persisted pending state, and configurable URL Scheme opener.
 
 ## Implementation Rules
 
@@ -74,3 +76,6 @@ code protected), then grows into a small set of curated theme presets.
    and manual permission/storage/content-script smoke checks.
 9. Add optional site presets for complex pages such as GitHub, arXiv, Notion,
    Overleaf, and Google Docs.
+10. Complete the external Serein handoff by registering and implementing
+    `serein://open?file=<percent-encoded file URL>` in Serein itself. This work
+    is outside the Rosewash extension.

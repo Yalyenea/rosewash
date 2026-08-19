@@ -15,6 +15,7 @@ dist:
     find dist -mindepth 1 -delete
     cp manifest.json popup.html options.html dist/
     cp -R src dist/src
+    test -f dist/src/shared/pdf-open.js
     find dist -name .DS_Store -delete
     @echo "staged dist/ — Load unpacked this folder"
 

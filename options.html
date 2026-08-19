@@ -45,6 +45,29 @@
         </div>
       </section>
 
+      <section class="panel pdf-panel">
+        <div class="section-heading">
+          <h2>PDF · Open in</h2>
+        </div>
+        <div class="pdf-settings">
+          <div class="modes pdf-opener" aria-label="PDF opener">
+            <label>
+              <input name="pdf-opener" type="radio" value="serein" checked>
+              <span>Serein</span>
+            </label>
+            <label>
+              <input name="pdf-opener" type="radio" value="custom">
+              <span>Custom scheme</span>
+            </label>
+          </div>
+          <label id="pdf-template-row" class="pdf-template" hidden>
+            <span>URL Scheme template</span>
+            <input id="pdf-custom-template" type="text" spellcheck="false" placeholder="reader://open?file={fileURL}">
+          </label>
+          <p class="pdf-note">Alt+Shift+P downloads a supported PDF, then opens the configured URL Scheme. Templates must contain <code>{fileURL}</code> or <code>{filePath}</code>.</p>
+        </div>
+      </section>
+
       <section class="panel theme-panel">
         <div class="section-heading">
           <h2>Theme</h2>
@@ -133,6 +156,7 @@
       </footer>
     </main>
     <script src="src/content/core.js"></script>
+    <script src="src/shared/pdf-open.js"></script>
     <script src="src/options/options.js"></script>
   </body>
 </html>

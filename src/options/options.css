@@ -110,7 +110,8 @@ h1 {
 .preset-card:focus-visible,
 button:focus-visible,
 textarea:focus-visible,
-.x-width-control input:focus-visible {
+.x-width-control input:focus-visible,
+.pdf-template input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
@@ -195,6 +196,57 @@ h3,
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 12px;
   padding-top: 14px;
+}
+
+.pdf-settings {
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.pdf-opener {
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  justify-self: start;
+}
+
+.pdf-template {
+  display: grid;
+  gap: 6px;
+}
+
+.pdf-template[hidden] {
+  display: none;
+}
+
+.pdf-template > span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pdf-template input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  min-height: 36px;
+  padding: 0 10px;
+  width: 100%;
+}
+
+.pdf-note {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0;
+}
+
+.pdf-note code {
+  color: var(--text);
 }
 
 .palette-columns {
