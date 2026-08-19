@@ -198,6 +198,7 @@
     return Object.freeze(map);
   })());
 
+  const X_SINGLE_COLUMN_WIDTHS = Object.freeze([520, 600, 680, 760]);
   const ZHIHU_ARTICLE_WIDTHS = Object.freeze([720, 840, 960, 1080]);
 
   const DEFAULT_SETTINGS = Object.freeze({
@@ -205,6 +206,8 @@
     presetLight: "rose-pine",
     presetDark: "rose-pine",
     appearance: "auto",
+    xCompactLayout: false,
+    xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
     zhihuArticleWidth: 960,
     disabledHosts: []
@@ -680,6 +683,10 @@
       presetLight: presetIdForVariant(source.presetLight, source.preset, "light"),
       presetDark: presetIdForVariant(source.presetDark, source.preset, "dark"),
       appearance,
+      xCompactLayout: source.xCompactLayout === true,
+      xSingleColumnWidth: X_SINGLE_COLUMN_WIDTHS.includes(source.xSingleColumnWidth)
+        ? source.xSingleColumnWidth
+        : DEFAULT_SETTINGS.xSingleColumnWidth,
       zhihuArticleLayout: source.zhihuArticleLayout === true,
       zhihuArticleWidth: ZHIHU_ARTICLE_WIDTHS.includes(source.zhihuArticleWidth)
         ? source.zhihuArticleWidth
@@ -787,6 +794,8 @@
       presetLight: normalized.presetLight,
       presetDark: normalized.presetDark,
       appearance: normalized.appearance,
+      xCompactLayout: normalized.xCompactLayout,
+      xSingleColumnWidth: normalized.xSingleColumnWidth,
       zhihuArticleLayout: normalized.zhihuArticleLayout,
       zhihuArticleWidth: normalized.zhihuArticleWidth,
       disabledHosts: normalized.disabledHosts.slice()
@@ -1470,6 +1479,7 @@
     PRESETS,
     PRESET_IDS,
     PALETTES,
+    X_SINGLE_COLUMN_WIDTHS,
     ZHIHU_ARTICLE_WIDTHS,
     listPresets,
     createEngine,

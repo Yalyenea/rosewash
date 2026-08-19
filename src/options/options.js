@@ -11,6 +11,9 @@
   const DEFAULT_SETTINGS = core.plainSettings(core.DEFAULT_SETTINGS);
 
   const enabledInput = document.querySelector("#enabled");
+  const xCompactInput = document.querySelector("#x-compact-layout");
+  const xSingleWidthInput = document.querySelector("#x-single-column-width");
+  const xSingleWidthValue = document.querySelector("#x-single-column-width-value");
   const zhihuLayoutInput = document.querySelector("#zhihu-article-layout");
   const zhihuWidthInput = document.querySelector("#zhihu-article-width");
   const zhihuWidthValue = document.querySelector("#zhihu-article-width-value");
@@ -52,6 +55,16 @@
     document.querySelector(`input[name='pdf-opener'][value='${settings.pdfOpener}']`).checked = true;
     pdfCustomTemplateInput.value = settings.pdfCustomOpenerTemplate;
     pdfTemplateRow.hidden = settings.pdfOpener !== "custom";
+  }
+
+  function selectedXSingleColumnWidth() {
+    return core.X_SINGLE_COLUMN_WIDTHS[Number(xSingleWidthInput.value)];
+  }
+
+  function renderXSingleColumnWidth(width) {
+    const index = core.X_SINGLE_COLUMN_WIDTHS.indexOf(width);
+    xSingleWidthInput.value = String(index);
+    xSingleWidthValue.value = `${width} px`;
   }
 
   function selectedZhihuArticleWidth() {
@@ -131,6 +144,8 @@
   function render(settings) {
     const normalized = core.plainSettings(settings);
     enabledInput.checked = normalized.enabled;
+    xCompactInput.checked = normalized.xCompactLayout;
+    renderXSingleColumnWidth(normalized.xSingleColumnWidth);
     zhihuLayoutInput.checked = normalized.zhihuArticleLayout;
     renderZhihuArticleWidth(normalized.zhihuArticleWidth);
     document.querySelector(`input[name='appearance'][value='${normalized.appearance}']`).checked = true;
@@ -157,6 +172,8 @@
       presetLight: selectedLight,
       presetDark: selectedDark,
       appearance: selectedAppearance(),
+      xCompactLayout: xCompactInput.checked,
+      xSingleColumnWidth: selectedXSingleColumnWidth(),
       zhihuArticleLayout: zhihuLayoutInput.checked,
       zhihuArticleWidth: selectedZhihuArticleWidth(),
       disabledHosts: hostsFromTextarea()
@@ -176,6 +193,10 @@
     render(DEFAULT_SETTINGS);
     renderPdfSettings(pdfDefaults);
     setStatus("Reset");
+  });
+
+  xSingleWidthInput.addEventListener("input", () => {
+    renderXSingleColumnWidth(selectedXSingleColumnWidth());
   });
 
   zhihuWidthInput.addEventListener("input", () => {

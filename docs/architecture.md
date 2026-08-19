@@ -146,6 +146,13 @@ storage still normalize cleanly.
 ## Site Layouts
 
 Optional site-specific layouts are isolated under `src/sites/`. When
+`xCompactLayout` is on, X pages from 720px get a compact navigation rail and
+an adjustable centered timeline. The selected width shrinks to the available
+viewport. Thread pages stay on that same single column; below 720px, and when
+Rosewash is disabled, X is blocked, or the option is off, X keeps its native
+layout.
+
+The Zhihu article layout is the same kind of optional overlay. When
 `zhihuArticleLayout` is on, `/p/{id}` pages from 720px hide the top bar and
 other non-article chrome and center a widescreen column at the selected width.
 Homepage, questions, and mobile widths keep Zhihu's native layout.

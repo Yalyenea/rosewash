@@ -63,6 +63,7 @@ dist/                      Generated loadable extension (`just dist`, gitignored
 | PDF helpers | `src/shared/pdf-open.js` → `globalThis.RosewashPdfOpen` | PDF URL detection, opener templates, serializable pending state |
 | Popup | `src/popup/popup.js` | Daily controls + push message to active tab |
 | Options | `src/options/options.js` | Palettes, appearance, site layouts, block list |
+| X layout | `src/sites/x.js`, `x.css` | Compact navigation rail and centered single-column streams |
 | Zhihu layout | `src/sites/zhihu.js`, `zhihu.css` | Centered widescreen article column; hides page chrome |
 
 ## Settings schema
@@ -75,6 +76,8 @@ Stored in **`chrome.storage.sync`**.
   "presetLight": "rose-pine",
   "presetDark": "rose-pine",
   "appearance": "auto",
+  "xCompactLayout": false,
+  "xSingleColumnWidth": 600,
   "zhihuArticleLayout": false,
   "zhihuArticleWidth": 960,
   "disabledHosts": []
@@ -102,6 +105,8 @@ download API returns the final absolute filename.
 | `presetLight` | preset id with a light variant | Palette used when appearance resolves to light |
 | `presetDark` | preset id with a dark variant | Palette used when appearance resolves to dark |
 | `appearance` | `auto` \| `light` \| `dark` | `auto` follows `prefers-color-scheme` |
+| `xCompactLayout` | boolean | Enables Rosewash's compact single-column layout on X |
+| `xSingleColumnWidth` | 520 / 600 / 680 / 760 | Centered X timeline width |
 | `zhihuArticleLayout` | boolean | Enables the centered Zhihu article reading layout |
 | `zhihuArticleWidth` | 720 / 840 / 960 / 1080 | Centered Zhihu article width |
 | `disabledHosts` | string[] | Hostnames (and parents) where Rosewash is blocked |
@@ -279,8 +284,9 @@ Active only under `html[data-rosewash-theme]`:
 
 - Sets `--rosewash-*` tokens and `color-scheme`.
 - Forces `html`/`body` base + body text.
-- Covers common SPA roots (`#react-root`, `#root`, `#app`, `#__next`, `main`, …)
-  and Substack shells (`#entry`, `#main`, `.use-theme-bg`, intro popup).
+- Covers common SPA roots (`#react-root`, `#root`, `#app`, `#__next`,
+  `[data-testid=primaryColumn]`, `main`, …) and Substack shells (`#entry`,
+  `#main`, `.use-theme-bg`, intro popup).
 - Forces Zhihu header shells and link colors with `!important`.
 - Selection and default link colors.
 
@@ -335,6 +341,7 @@ a follow-up dependency.
 **Popup**
 
 - Reads active tab host; toggles that host in `disabledHosts`.
+- On X, exposes the `xCompactLayout` switch for the desktop layout.
 - On Zhihu, exposes the `zhihuArticleLayout` switch for article pages.
 - Two palette selects (`presetLight` / `presetDark`); lists only families
   that expose that variant.
@@ -354,6 +361,22 @@ a follow-up dependency.
 - Mentions the site-toggle shortcut.
 - Adds a compact PDF · Open in panel with a Serein preset and a constrained
   custom URL Scheme template.
+
+## X compact layout
+
+`manifest.json` injects `src/sites/x.css` and `x.js` on `https://x.com/*` at
+`document_start`. The content runtime marks X with `data-rosewash-x-compact`
+when Rosewash is enabled, X is not blocked, and `xCompactLayout` is true.
+
+- `x.js` marks the compose and account-switcher controls so the tint engine
+  does not paint over the compact rail.
+- `x.css` collapses the navigation rail, keeps X's Explore/search entry in that
+  rail, hides the redundant right search column, and stretches virtualized post
+  cells to the selected single-column width from `min-width: 720px`. The width
+  shrinks to the available viewport. Home, bookmarks, profiles, search, and
+  thread pages share that column. Below 720px, X keeps its native mobile layout.
+- `test/x-layout.test.js` covers the rail, centering, width setting, and the
+  absence of a split-thread overlay.
 
 ## Zhihu article layout
 
