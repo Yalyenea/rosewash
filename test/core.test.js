@@ -340,6 +340,8 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
     presetLight: "catppuccin",
     presetDark: "tokyo-night",
     appearance: "dark",
+    xCompactLayout: true,
+    xSingleColumnWidth: 680,
     zhihuArticleLayout: true,
     zhihuArticleWidth: 1080,
     disabledHosts: ["Example.COM"]
@@ -348,12 +350,17 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
     presetLight: "catppuccin",
     presetDark: "tokyo-night",
     appearance: "dark",
+    xCompactLayout: true,
+    xSingleColumnWidth: 680,
     zhihuArticleLayout: true,
     zhihuArticleWidth: 1080,
     disabledHosts: ["example.com"]
   });
+  assert.equal(core.plainSettings({ xCompactLayout: "true" }).xCompactLayout, false);
+  assert.equal(core.plainSettings({ xSingleColumnWidth: 700 }).xSingleColumnWidth, 600);
   assert.equal(core.plainSettings({ zhihuArticleLayout: "true" }).zhihuArticleLayout, false);
   assert.equal(core.plainSettings({ zhihuArticleWidth: 900 }).zhihuArticleWidth, 960);
+  assert.deepEqual(plain(core.X_SINGLE_COLUMN_WIDTHS), [520, 600, 680, 760]);
   assert.deepEqual(plain(core.ZHIHU_ARTICLE_WIDTHS), [720, 840, 960, 1080]);
 });
 
@@ -1104,6 +1111,8 @@ test("normalizes settings and blocked hosts", async () => {
     presetLight: "rose-pine",
     presetDark: "rose-pine",
     appearance: "dark",
+    xCompactLayout: false,
+    xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
     zhihuArticleWidth: 960,
     disabledHosts: ["docs.example.com", "example.com"]
@@ -1119,6 +1128,8 @@ test("normalizes settings and blocked hosts", async () => {
     presetLight: "catppuccin",
     presetDark: "catppuccin",
     appearance: "light",
+    xCompactLayout: false,
+    xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
     zhihuArticleWidth: 960,
     disabledHosts: []
@@ -1134,6 +1145,8 @@ test("normalizes settings and blocked hosts", async () => {
     presetLight: "rose-pine",
     presetDark: "dracula",
     appearance: "auto",
+    xCompactLayout: false,
+    xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
     zhihuArticleWidth: 960,
     disabledHosts: []

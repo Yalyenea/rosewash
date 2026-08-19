@@ -18,6 +18,9 @@ protected.
   the system color scheme.
 - Global enable switch.
 - Per-site block list.
+- Optional compact layout for X from 720px: collapsed navigation rail,
+  adjustable centered timelines, and rail-based search. Thread pages stay
+  native single-column.
 - Optional Zhihu article layout from 720px: hide the top bar and side
   chrome, center the article, and pick a reading width.
 - Default shortcut `Alt+Shift+B` toggles blocked / allowed for the current site

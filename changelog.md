@@ -5,7 +5,9 @@
 - Added `Alt+Shift+P` PDF Open in: download ordinary/arXiv PDFs, preserve
   pending state across MV3 worker suspension, then request a configurable local
   URL Scheme. Settings include a Serein preset and constrained custom template.
-- Removed the optional X compact layout.
+- Optional X compact layout from 720px: collapse the navigation rail, hide the
+  right search column, and center a single-column stream at 520–760px. Thread
+  pages stay native single-column.
 - Optional Zhihu article layout from 720px: hide the top bar and other
   non-article chrome, center a widescreen column, and pick 720–1080px.
 

@@ -94,6 +94,31 @@
             <div class="site-layout">
               <label class="site-layout-toggle">
                 <span>
+                  <strong>X · Compact layout</strong>
+                  <small>Compact navigation and a centered single-column stream on desktop.</small>
+                </span>
+                <span class="toggle">
+                  <input id="x-compact-layout" type="checkbox">
+                  <span class="toggle-track"></span>
+                </span>
+              </label>
+              <label class="site-width-control" for="x-single-column-width">
+                <span class="site-width-heading">
+                  <strong>Single-column width</strong>
+                  <output id="x-single-column-width-value" for="x-single-column-width">600 px</output>
+                </span>
+                <input id="x-single-column-width" type="range" min="0" max="3" step="1" value="1">
+                <span class="site-width-stops" aria-hidden="true">
+                  <span>520</span>
+                  <span>600</span>
+                  <span>680</span>
+                  <span>760</span>
+                </span>
+              </label>
+            </div>
+            <div class="site-layout">
+              <label class="site-layout-toggle">
+                <span>
                   <strong>Zhihu · Article layout</strong>
                   <small>Hide page chrome, center the article, and stretch it to a reading width on desktop.</small>
                 </span>
