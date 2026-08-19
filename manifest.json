@@ -50,19 +50,6 @@
     },
     {
       "matches": [
-        "https://x.com/*"
-      ],
-      "css": [
-        "src/sites/x.css"
-      ],
-      "js": [
-        "src/sites/x-core.js",
-        "src/sites/x.js"
-      ],
-      "run_at": "document_start"
-    },
-    {
-      "matches": [
         "https://zhihu.com/*",
         "https://www.zhihu.com/*",
         "https://zhuanlan.zhihu.com/*"

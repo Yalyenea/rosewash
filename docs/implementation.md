@@ -63,7 +63,6 @@ dist/                      Generated loadable extension (`just dist`, gitignored
 | PDF helpers | `src/shared/pdf-open.js` → `globalThis.RosewashPdfOpen` | PDF URL detection, opener templates, serializable pending state |
 | Popup | `src/popup/popup.js` | Daily controls + push message to active tab |
 | Options | `src/options/options.js` | Palettes, appearance, site layouts, block list |
-| X layout | `src/sites/x-core.js`, `x.js`, `x.css` | Responsive compact navigation and wide-screen split timelines |
 | Zhihu layout | `src/sites/zhihu.js`, `zhihu.css` | Centered widescreen article column; hides page chrome |
 
 ## Settings schema
@@ -76,8 +75,6 @@ Stored in **`chrome.storage.sync`**.
   "presetLight": "rose-pine",
   "presetDark": "rose-pine",
   "appearance": "auto",
-  "xCompactLayout": false,
-  "xSingleColumnWidth": 600,
   "zhihuArticleLayout": false,
   "zhihuArticleWidth": 960,
   "disabledHosts": []
@@ -105,8 +102,6 @@ download API returns the final absolute filename.
 | `presetLight` | preset id with a light variant | Palette used when appearance resolves to light |
 | `presetDark` | preset id with a dark variant | Palette used when appearance resolves to dark |
 | `appearance` | `auto` \| `light` \| `dark` | `auto` follows `prefers-color-scheme` |
-| `xCompactLayout` | boolean | Enables Rosewash's responsive compact layout on X |
-| `xSingleColumnWidth` | 520 / 600 / 680 / 760 | Centered X timeline width |
 | `zhihuArticleLayout` | boolean | Enables the centered Zhihu article reading layout |
 | `zhihuArticleWidth` | 720 / 840 / 960 / 1080 | Centered Zhihu article width |
 | `disabledHosts` | string[] | Hostnames (and parents) where Rosewash is blocked |
@@ -267,7 +262,7 @@ Pseudo-elements cannot take per-element inline tints.
 - Observes the document for added nodes.
 - Scans **added subtrees only**, not the whole document every time.
 - Coalesces to **`requestAnimationFrame`** (not a multi-hundred-ms debounce)
-  so SPA navigations (e.g. x.com) cover before the next paint when possible.
+  so SPA navigations cover before the next paint when possible.
 
 ### Apply / clear rules
 
@@ -340,7 +335,6 @@ a follow-up dependency.
 **Popup**
 
 - Reads active tab host; toggles that host in `disabledHosts`.
-- On X, exposes the `xCompactLayout` switch for the desktop layout.
 - On Zhihu, exposes the `zhihuArticleLayout` switch for article pages.
 - Two palette selects (`presetLight` / `presetDark`); lists only families
   that expose that variant.
@@ -360,22 +354,6 @@ a follow-up dependency.
 - Mentions the site-toggle shortcut.
 - Adds a compact PDF · Open in panel with a Serein preset and a constrained
   custom URL Scheme template.
-
-## X compact layout
-
-`manifest.json` injects `src/sites/x.css`, then `x-core.js` and `x.js`, on
-`https://x.com/*` at `document_start`. The runtime enables its root marker only
-when Rosewash is enabled, X is not blocked, and `xCompactLayout` is true.
-
-- `x-core.js` owns the pure reply-stack and virtual-record cache helpers.
-- `x.js` keeps observing X across SPA route changes, waits for the main post to
-  hydrate, and writes split-thread layout coordinates.
-- `x.css` collapses the navigation rail, keeps X's Explore/search entry in that
-  rail, hides the redundant right search column, stretches virtualized post
-  cells to the selected single-column width from `min-width: 720px`, shrinks that
-  width to the available viewport, and applies the split thread layout at
-  `min-width: 1280px`. Below 720px, X keeps its native mobile layout.
-- `test/x-layout.test.js` covers the pure layout math and critical CSS rules.
 
 ## Zhihu article layout
 

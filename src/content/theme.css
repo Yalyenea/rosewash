@@ -23,13 +23,12 @@ html[data-rosewash-theme] body {
 }
 
 /* Common SPA shells paint white on deep roots, not body — cover them in CSS
-   so x.com-style navigations do not flash white before the mutation scan.
+   so client navigations do not flash white before the mutation scan.
    Substack uses div#main / #entry / .use-theme-bg (not <main>). */
 html[data-rosewash-theme] #react-root,
 html[data-rosewash-theme] #root,
 html[data-rosewash-theme] #app,
 html[data-rosewash-theme] #__next,
-html[data-rosewash-theme] [data-testid="primaryColumn"],
 html[data-rosewash-theme] main,
 html[data-rosewash-theme] #entry,
 html[data-rosewash-theme] #main,

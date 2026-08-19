@@ -164,21 +164,21 @@ p {
   padding-left: 2px;
 }
 
-.x-layout {
+.layout-row {
   border-top: 1px solid rgba(152, 147, 165, 0.18);
 }
 
-.x-layout > span:first-child {
+.layout-row > span:first-child {
   display: grid;
   gap: 1px;
 }
 
-.x-layout strong {
+.layout-row strong {
   font-size: 13px;
   font-weight: 500;
 }
 
-.x-layout small {
+.layout-row small {
   color: var(--muted);
   font-size: 11px;
 }

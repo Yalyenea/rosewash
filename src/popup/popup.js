@@ -15,8 +15,6 @@
   const lightSelect = document.querySelector("#preset-light");
   const darkSelect = document.querySelector("#preset-dark");
   const siteButton = document.querySelector("#site-toggle");
-  const xLayoutRow = document.querySelector("#x-layout-row");
-  const xLayoutInput = document.querySelector("#x-compact-layout");
   const zhihuLayoutRow = document.querySelector("#zhihu-layout-row");
   const zhihuLayoutInput = document.querySelector("#zhihu-article-layout");
   const optionsButton = document.querySelector("#options");
@@ -121,8 +119,6 @@
     hostLabel.textContent = activeHost || "unsupported page";
     lightSelect.value = settings.presetLight;
     darkSelect.value = settings.presetDark;
-    xLayoutRow.hidden = activeHost !== "x.com";
-    xLayoutInput.checked = settings.xCompactLayout;
     zhihuLayoutRow.hidden = !core.isZhihuHost(activeHost);
     zhihuLayoutInput.checked = settings.zhihuArticleLayout;
 
@@ -177,10 +173,6 @@
     }
 
     updateSettings({ ...settings, disabledHosts });
-  });
-
-  xLayoutInput.addEventListener("change", () => {
-    updateSettings({ ...settings, xCompactLayout: xLayoutInput.checked });
   });
 
   zhihuLayoutInput.addEventListener("change", () => {

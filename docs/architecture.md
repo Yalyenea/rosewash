@@ -133,7 +133,6 @@ plain HTML/CSS/JS and share the same storage schema:
   "presetLight": "rose-pine",
   "presetDark": "rose-pine",
   "appearance": "auto",
-  "xCompactLayout": false,
   "disabledHosts": []
 }
 ```
@@ -146,17 +145,7 @@ storage still normalize cleanly.
 
 ## Site Layouts
 
-Optional site-specific layouts are isolated under `src/sites/`. The X content
-script reads the shared settings blob and, when `xCompactLayout` is enabled,
-marks X pages from 720px for a compact navigation rail and an adjustable centered
-timeline. The selected width shrinks to the available viewport; thread pages add
-the split view from 1280px. The runtime observes SPA route changes and waits for
-the main post before enabling the widened detail canvas. Below 720px, and when
-Rosewash is disabled, X is blocked, or the option is off, X keeps its native
-layout. `x-core.js` keeps reply-stack calculations testable without the browser
-runtime.
-
-The Zhihu article layout is the same kind of optional overlay. When
+Optional site-specific layouts are isolated under `src/sites/`. When
 `zhihuArticleLayout` is on, `/p/{id}` pages from 720px hide the top bar and
 other non-article chrome and center a widescreen column at the selected width.
 Homepage, questions, and mobile widths keep Zhihu's native layout.

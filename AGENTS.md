@@ -48,7 +48,7 @@ just clean
 | --- | --- |
 | Tint / color / DOM cover | `src/content/core.js`, `src/content/theme.css`, `test/core.test.js` |
 | Storage / lifecycle / FOUC | `src/content/content.js` |
-| Site layouts (X, Zhihu) | `src/sites/`, `src/content/content.js`, popup / options |
+| Site layouts (Zhihu) | `src/sites/`, `src/content/content.js`, popup / options |
 | Keyboard shortcuts | `manifest.json`, `src/background/background.js` |
 | Popup / site toggle UI | `popup.html`, `src/popup/popup.js` |
 | Block list page | `options.html`, `src/options/options.js` |

@@ -5,6 +5,7 @@
 - Added `Alt+Shift+P` PDF Open in: download ordinary/arXiv PDFs, preserve
   pending state across MV3 worker suspension, then request a configurable local
   URL Scheme. Settings include a Serein preset and constrained custom template.
+- Removed the optional X compact layout.
 - Optional Zhihu article layout from 720px: hide the top bar and other
   non-article chrome, center a widescreen column, and pick 720–1080px.
 
@@ -16,8 +17,6 @@
   compact General / Theme / Sites layout.
 - Full-page paper cover, including CSS Color 4 pages, dark-only sites, and
   transparent canvases.
-- Optional compact X layout from 720px: collapsed rail, centered timeline,
-  search in the rail. Split threads from 1280px.
 - Site covers for ChatGPT, Substack, Zhihu, arXiv, and jmlr-style pages.
 - Fewer white flashes and background seams on SPA and infinite-scroll pages.
 - `Alt+Shift+B` toggles the current site. Load unpacked from `dist/` after
