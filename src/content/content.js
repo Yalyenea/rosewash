@@ -10,7 +10,11 @@
   const ZHIHU_LAYOUT_ATTRIBUTE = "data-rosewash-zhihu-layout";
   const ZHIHU_LAYOUT_EVENT = "rosewash:zhihu-layout-change";
   const ZHIHU_WIDTH_PROPERTY = "--rosewash-zhihu-article";
-  const ZHIHU_ARTICLE_ATTRIBUTE = "data-rosewash-zhihu-article";
+  const ZHIHU_PAGE_ATTRIBUTES = [
+    "data-rosewash-zhihu-article",
+    "data-rosewash-zhihu-home",
+    "data-rosewash-zhihu-question"
+  ];
   const LAYOUT_HINT_KEY = "rosewash:layout-hint";
   let settingsCache = core.plainSettings(core.DEFAULT_SETTINGS);
   let disposed = false;
@@ -55,11 +59,14 @@
       document.documentElement.style.removeProperty(X_SINGLE_WIDTH_PROPERTY);
       document.dispatchEvent(new CustomEvent(X_COMPACT_EVENT));
     }
-    if (document.documentElement?.hasAttribute(ZHIHU_LAYOUT_ATTRIBUTE)
-      || document.documentElement?.hasAttribute(ZHIHU_ARTICLE_ATTRIBUTE)) {
-      document.documentElement.removeAttribute(ZHIHU_LAYOUT_ATTRIBUTE);
-      document.documentElement.removeAttribute(ZHIHU_ARTICLE_ATTRIBUTE);
-      document.documentElement.style.removeProperty(ZHIHU_WIDTH_PROPERTY);
+    const zhihuRoot = document.documentElement;
+    if (zhihuRoot?.hasAttribute(ZHIHU_LAYOUT_ATTRIBUTE)
+      || ZHIHU_PAGE_ATTRIBUTES.some((attribute) => zhihuRoot?.hasAttribute(attribute))) {
+      zhihuRoot.removeAttribute(ZHIHU_LAYOUT_ATTRIBUTE);
+      for (const attribute of ZHIHU_PAGE_ATTRIBUTES) {
+        zhihuRoot.removeAttribute(attribute);
+      }
+      zhihuRoot.style.removeProperty(ZHIHU_WIDTH_PROPERTY);
       document.dispatchEvent(new CustomEvent(ZHIHU_LAYOUT_EVENT));
     }
     engine.disconnect();

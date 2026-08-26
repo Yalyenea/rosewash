@@ -45,29 +45,6 @@
         </div>
       </section>
 
-      <section class="panel pdf-panel">
-        <div class="section-heading">
-          <h2>PDF · Open in</h2>
-        </div>
-        <div class="pdf-settings">
-          <div class="modes pdf-opener" aria-label="PDF opener">
-            <label>
-              <input name="pdf-opener" type="radio" value="serein" checked>
-              <span>Serein</span>
-            </label>
-            <label>
-              <input name="pdf-opener" type="radio" value="custom">
-              <span>Custom scheme</span>
-            </label>
-          </div>
-          <label id="pdf-template-row" class="pdf-template" hidden>
-            <span>URL Scheme template</span>
-            <input id="pdf-custom-template" type="text" spellcheck="false" placeholder="reader://open?file={fileURL}">
-          </label>
-          <p class="pdf-note">Alt+Shift+P downloads a supported PDF, then opens the configured URL Scheme. Templates must contain <code>{fileURL}</code> or <code>{filePath}</code>.</p>
-        </div>
-      </section>
-
       <section class="panel theme-panel">
         <div class="section-heading">
           <h2>Theme</h2>
@@ -119,8 +96,8 @@
             <div class="site-layout">
               <label class="site-layout-toggle">
                 <span>
-                  <strong>Zhihu · Article layout</strong>
-                  <small>Hide page chrome, center the article, and stretch it to a reading width on desktop.</small>
+                  <strong>Zhihu · Clean layout</strong>
+                  <small>Hide page chrome and center a widescreen column on home, questions, and articles.</small>
                 </span>
                 <span class="toggle">
                   <input id="zhihu-article-layout" type="checkbox">
@@ -129,7 +106,7 @@
               </label>
               <label class="site-width-control" for="zhihu-article-width">
                 <span class="site-width-heading">
-                  <strong>Article width</strong>
+                  <strong>Column width</strong>
                   <output id="zhihu-article-width-value" for="zhihu-article-width">960 px</output>
                 </span>
                 <input id="zhihu-article-width" type="range" min="0" max="3" step="1" value="2">
@@ -156,7 +133,6 @@
       </footer>
     </main>
     <script src="src/content/core.js"></script>
-    <script src="src/shared/pdf-open.js"></script>
     <script src="src/options/options.js"></script>
   </body>
 </html>

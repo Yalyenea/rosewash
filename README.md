@@ -21,12 +21,10 @@ protected.
 - Optional compact layout for X from 720px: collapsed navigation rail,
   adjustable centered timelines, and rail-based search. Thread pages stay
   native single-column.
-- Optional Zhihu article layout from 720px: hide the top bar and side
-  chrome, center the article, and pick a reading width.
+- Optional Zhihu clean layout from 720px: hide the top bar and side chrome
+  on home, questions, and articles, then pick a reading width.
 - Default shortcut `Alt+Shift+B` toggles blocked / allowed for the current site
   (rebind under `chrome://extensions/shortcuts`).
-- `Alt+Shift+P` downloads the current PDF and requests a configured local
-  opener through a URL Scheme (rebind under `chrome://extensions/shortcuts`).
 - Full-page paper cover for light, dark, and cool-paper sites.
 - Default transparent `html`/`body` canvases (legacy pages such as jmlr.org).
 - Page-level headers and navigation bars blend into the active page base,
@@ -38,32 +36,6 @@ protected.
   `oklch()` authored pages.
 - Media, canvas, SVG, inputs, editors, and code block protection.
 - No runtime dependencies or build step.
-
-## PDF · Open in
-
-Rosewash can recognize ordinary `.pdf` URLs plus arXiv `/pdf/` and `/abs/`
-routes. Press `Alt+Shift+P` to download the original PDF to Chromium's default
-download location. After the download completes, Rosewash passes the final
-absolute file location to the opener configured under Settings → PDF · Open in.
-
-The settings include a Serein preset and a custom URL Scheme template. Custom
-templates must contain `{fileURL}` or `{filePath}`; Rosewash percent-encodes the
-value before expansion. The Serein contract is:
-
-```text
-serein://open?file=<percent-encoded file URL>
-```
-
-Serein must still register and implement that scheme. Until it does, the preset
-cannot complete the handoff. Chromium may also show an external-protocol
-confirmation the first time a registered scheme is used.
-
-Rosewash does not include a PDF reader, enumerate installed applications, or
-launch arbitrary executables. A reliable “system default PDF app” mode is not
-offered because Chromium requires a user gesture at the later
-`chrome.downloads.open()` call, after the asynchronous download has completed.
-The action badge reports unsupported pages, download progress, and handoff
-status.
 
 ## Screenshots
 
