@@ -55,8 +55,8 @@ per-element inline tints, so:
 
 1. **`theme.css`** forces ChatGPT-style surface tokens on `html` / `.dark` /
    `[data-theme=dark]` to `--rosewash-*`, and pins
-   `[class*="thread-bottom-container"]::after` (and related fades) to
-   `--rosewash-base`.
+   `[class*="thread-bottom-container"]::after` and
+   `[class*="threadFooterContentFade"]` to `--rosewash-base`.
 2. **Engine** remaps matching root custom properties (`main-surface*`,
    `composer-surface*`, `bg-primary`, `--ground`, sidebar canvas tokens, …)
    to `palette.base` / `surface` / `overlay`, and text tokens such as
@@ -144,9 +144,11 @@ keep the native layout.
 
 The MVP scans the existing DOM once on load, then only scans newly added nodes.
 If the resolved theme or raw mode changes, already-tinted elements are restored
-before the next scan so Auto dark and manual Moon use the same color path. It
-does not walk every element on each mutation and does not call
-`getComputedStyle()` inside a continuous loop.
+before the next scan so Auto dark and manual Moon use the same color path. A
+later apply with the same palette (tab focus, `load`) does not walk the document
+again. It does not walk every element on each mutation and does not call
+`getComputedStyle()` inside a continuous loop. Scan reads computed styles in one
+pass, then writes inline tints.
 
 System theme changes do not call `chrome.storage` again and do not wait for an
 extra animation frame. This avoids both the common MV3 reload/update failure

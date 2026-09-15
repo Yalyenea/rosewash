@@ -46,7 +46,27 @@ test("centers native single-column pages such as home and bookmarks", async () =
   assert.match(rule, /width:\s*var\(--rosewash-x-column\) !important/);
   assert.match(
     css,
-    /html\[data-rosewash-x-compact\]\s*\[data-testid="primaryColumn"\] \[data-testid="cellInnerDiv"\]\s*\{[^}]*width:\s*100% !important/
+    /html\[data-rosewash-x-compact\]\s*\[data-testid="primaryColumn"\] \[data-testid="cellInnerDiv"\]\s*,/
+  );
+  assert.match(
+    css,
+    /\[data-testid="cellInnerDiv"\] > div,/
+  );
+  assert.match(
+    css,
+    /\[data-testid="primaryColumn"\] article \{/
+  );
+  assert.match(
+    css,
+    /\[data-testid="primaryColumn"\] div:has\(> section\[role="region"\]\)/
+  );
+  assert.match(
+    css,
+    /section\[role="region"\]:has\(\[data-testid="cellInnerDiv"\]\) > div > div > div/
+  );
+  assert.doesNotMatch(
+    css,
+    /div:has\(> section\[role="region"\] \[data-testid="cellInnerDiv"\]\)/
   );
 });
 

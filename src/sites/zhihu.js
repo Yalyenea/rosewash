@@ -56,14 +56,26 @@
     sync();
   }
 
+  const historyRef = window.history;
+  const pushState = historyRef.pushState.bind(historyRef);
+  const replaceState = historyRef.replaceState.bind(historyRef);
+  historyRef.pushState = function (data, unused, url) {
+    const result = pushState(data, unused, url);
+    schedule();
+    return result;
+  };
+  historyRef.replaceState = function (data, unused, url) {
+    const result = replaceState(data, unused, url);
+    schedule();
+    return result;
+  };
+
   window.addEventListener("popstate", schedule, { passive: true });
   document.addEventListener(LAYOUT_EVENT, handleRootChange);
   compactQuery.addEventListener("change", schedule);
   rootObserver.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: [LAYOUT_ATTRIBUTE],
-    childList: true,
-    subtree: true
+    attributeFilter: [LAYOUT_ATTRIBUTE]
   });
   sync();
 })();

@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Cut content-engine work on idle tabs: drop detached tinted nodes, skip the
+  full DOM walk when the palette is unchanged, and batch computed-style reads
+  before writes. Zhihu layout watches `pushState` instead of the whole tree.
+  Theme CSS drops `:not(svg *)` and the broad `thread-bottom` substring.
+  X compact still stretches timeline cells when the column width changes.
 - Optional X compact layout from 720px: collapse the navigation rail, hide the
   right search column, and center a single-column stream at 520–760px. Thread
   pages stay native single-column.

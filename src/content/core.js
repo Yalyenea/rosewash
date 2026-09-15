@@ -1009,7 +1009,6 @@
 
   function createEngine({ document, window }) {
     const originalStyles = new WeakMap();
-    const tintedElements = new Set();
     let tintedPageChrome = new WeakSet();
     // name -> previous inline value (null if unset)
     let cssVarOverrides = new Map();
@@ -1045,7 +1044,6 @@
 
     function setStyle(element, property, value, priority = "") {
       remember(element);
-      tintedElements.add(element);
       // Full-cover uses !important so SPA/CSS-in-JS layers cannot flash
       // their original white between React commits.
       const nextPriority = priority || "important";
@@ -1060,18 +1058,26 @@
       element.setAttribute(TINT_ATTRIBUTE, activeTheme);
     }
 
+    function connectedTintedElements() {
+      const selector = `[${TINT_ATTRIBUTE}]`;
+      const root = document.documentElement;
+      const descendants = root ? [...document.querySelectorAll(selector)] : [];
+      if (root?.hasAttribute(TINT_ATTRIBUTE) && !descendants.includes(root)) {
+        descendants.unshift(root);
+      }
+      return descendants;
+    }
+
     function restoreElement(element) {
       const styles = originalStyles.get(element);
-      if (!styles) {
-        return;
-      }
-
-      for (const property of RESTORED_PROPERTIES) {
-        const item = styles[property];
-        if (item.value) {
-          element.style.setProperty(property, item.value, item.priority);
-        } else {
-          element.style.removeProperty(property);
+      if (styles) {
+        for (const property of RESTORED_PROPERTIES) {
+          const item = styles[property];
+          if (item.value) {
+            element.style.setProperty(property, item.value, item.priority);
+          } else {
+            element.style.removeProperty(property);
+          }
         }
       }
 
@@ -1081,10 +1087,9 @@
     }
 
     function restoreTintedElements() {
-      for (const element of tintedElements) {
+      for (const element of connectedTintedElements()) {
         restoreElement(element);
       }
-      tintedElements.clear();
       tintedPageChrome = new WeakSet();
     }
 
@@ -1106,12 +1111,12 @@
       }
     }
 
-    function tintBorders(element, computedStyle, palette) {
+    function tintBorders(element, snapshot, palette) {
       const borderPairs = [
-        ["border-top-color", computedStyle.borderTopColor],
-        ["border-right-color", computedStyle.borderRightColor],
-        ["border-bottom-color", computedStyle.borderBottomColor],
-        ["border-left-color", computedStyle.borderLeftColor]
+        ["border-top-color", snapshot.borderTopColor],
+        ["border-right-color", snapshot.borderRightColor],
+        ["border-bottom-color", snapshot.borderBottomColor],
+        ["border-left-color", snapshot.borderLeftColor]
       ];
 
       for (const [property, value] of borderPairs) {
@@ -1121,8 +1126,8 @@
       }
     }
 
-    function tintText(element, computedStyle, palette) {
-      const color = parseColor(computedStyle.color);
+    function tintText(element, snapshot, palette) {
+      const color = parseColor(snapshot.color);
       if (!shouldTintTextColor(activeTheme, color, true)) {
         return;
       }
@@ -1194,16 +1199,26 @@
       ]);
     }
 
-    function processElement(element, theme) {
-      if (shouldSkipElement(element)) {
-        return;
-      }
-
-      const palette = PALETTES[theme];
+    function readTintSnapshot(element) {
       const computedStyle = window.getComputedStyle(element);
-      const background = parseColor(computedStyle.backgroundColor);
-      const hasBackgroundImage = computedStyle.backgroundImage && computedStyle.backgroundImage !== "none";
-      const generatedBackground = isGeneratedBackgroundImage(computedStyle.backgroundImage);
+      return {
+        element,
+        backgroundColor: computedStyle.backgroundColor,
+        backgroundImage: computedStyle.backgroundImage,
+        color: computedStyle.color,
+        borderTopColor: computedStyle.borderTopColor,
+        borderRightColor: computedStyle.borderRightColor,
+        borderBottomColor: computedStyle.borderBottomColor,
+        borderLeftColor: computedStyle.borderLeftColor
+      };
+    }
+
+    function processSnapshot(snapshot, theme) {
+      const element = snapshot.element;
+      const palette = PALETTES[theme];
+      const background = parseColor(snapshot.backgroundColor);
+      const hasBackgroundImage = snapshot.backgroundImage && snapshot.backgroundImage !== "none";
+      const generatedBackground = isGeneratedBackgroundImage(snapshot.backgroundImage);
       const pageElement = isPageElement(element, document);
 
       const chromeCandidate = isPageChromeElement(element);
@@ -1247,17 +1262,29 @@
       }
 
       if (!insidePageChrome) {
-        tintText(element, computedStyle, palette);
+        tintText(element, snapshot, palette);
       }
-      tintBorders(element, computedStyle, palette);
+      tintBorders(element, snapshot, palette);
     }
 
     function scan(root, theme) {
       const start = isElementNode(root) ? root : document.documentElement;
-      processElement(start, theme);
-
+      const elements = [];
+      if (!shouldSkipElement(start)) {
+        elements.push(start);
+      }
       for (const element of start.querySelectorAll("*")) {
-        processElement(element, theme);
+        if (!shouldSkipElement(element)) {
+          elements.push(element);
+        }
+      }
+
+      const snapshots = [];
+      for (const element of elements) {
+        snapshots.push(readTintSnapshot(element));
+      }
+      for (const snapshot of snapshots) {
+        processSnapshot(snapshot, theme);
       }
     }
 
@@ -1437,18 +1464,18 @@
         restoreCssVarOverrides();
       }
 
-      const pageTone = !activeTheme || themeChanged || activePageTone === "mixed"
-        ? detectPageTone()
-        : activePageTone;
+      const redundant = Boolean(activeTheme) && !themeChanged;
+      if (!redundant) {
+        activePageTone = detectPageTone();
+      }
       activePresetLight = normalized.presetLight;
       activePresetDark = normalized.presetDark;
       activeAppearance = normalized.appearance;
       activeTheme = theme;
-      activePageTone = pageTone;
       applyRootTheme(theme);
-      // Always rescan on apply so preset switches repaint even if some nodes
-      // were only covered via CSS variables on the first pass.
-      scan(document.documentElement, theme);
+      if (!redundant) {
+        scan(document.documentElement, theme);
+      }
       observe();
       return {
         enabled: true,
@@ -1456,7 +1483,7 @@
         presetLight: normalized.presetLight,
         presetDark: normalized.presetDark,
         appearance: normalized.appearance,
-        tinted: tintedElements.size
+        tinted: connectedTintedElements().length
       };
     }
 
@@ -1467,7 +1494,7 @@
         appearance: activeAppearance,
         theme: activeTheme,
         pageTone: activePageTone,
-        tinted: tintedElements.size
+        tinted: connectedTintedElements().length
       };
     }
 

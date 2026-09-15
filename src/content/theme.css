@@ -58,9 +58,9 @@ html[data-rosewash-theme] .MobileAppHeader {
   color: var(--rosewash-text) !important;
 }
 
-html[data-rosewash-theme] .AppHeader :not(svg):not(svg *),
-html[data-rosewash-theme] .LeanAppHeaderBar :not(svg):not(svg *),
-html[data-rosewash-theme] .MobileAppHeader :not(svg):not(svg *) {
+html[data-rosewash-theme] .AppHeader :is(div, span, p, a, h1, h2, h3, li, button, label, strong, em, i, b),
+html[data-rosewash-theme] .LeanAppHeaderBar :is(div, span, p, a, h1, h2, h3, li, button, label, strong, em, i, b),
+html[data-rosewash-theme] .MobileAppHeader :is(div, span, p, a, h1, h2, h3, li, button, label, strong, em, i, b) {
   color: var(--rosewash-text) !important;
 }
 
@@ -115,9 +115,7 @@ html[data-rosewash-theme] [data-color-scheme="dark"] {
 html[data-rosewash-theme] [class*="thread-bottom-container"]::before,
 html[data-rosewash-theme] [class*="thread-bottom-container"]::after,
 html[data-rosewash-theme] [class*="threadFooterContentFade"]::before,
-html[data-rosewash-theme] [class*="threadFooterContentFade"]::after,
-html[data-rosewash-theme] [class*="thread-bottom"]::before,
-html[data-rosewash-theme] [class*="thread-bottom"]::after {
+html[data-rosewash-theme] [class*="threadFooterContentFade"]::after {
   background-color: var(--rosewash-base) !important;
   background-image: none !important;
 }

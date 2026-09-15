@@ -68,6 +68,11 @@ test("centers Zhihu home and question columns at the same width", async () => {
   assert.match(runtime, /path === "\/hot"/);
   assert.match(runtime, /data-rosewash-zhihu-home/);
   assert.match(runtime, /data-rosewash-zhihu-question/);
+  assert.match(runtime, /historyRef\.pushState/);
+  assert.match(runtime, /historyRef\.replaceState/);
+  assert.match(runtime, /attributeFilter: \[LAYOUT_ATTRIBUTE\]/);
+  assert.doesNotMatch(runtime, /subtree:\s*true/);
+  assert.doesNotMatch(runtime, /childList:\s*true/);
 });
 
 test("exposes snapped Zhihu article widths in settings", async () => {

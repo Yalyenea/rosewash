@@ -680,6 +680,50 @@ test("engine preserves surface roles across repeated scans", async () => {
   );
 });
 
+test("engine skips full scan when the resolved theme is unchanged", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({
+    tree: [
+      {
+        id: "card",
+        backgroundColor: "rgb(255, 255, 255)",
+        color: "rgb(17, 17, 17)"
+      }
+    ]
+  });
+  const engine = core.createEngine({ document, window });
+  const settings = {
+    enabled: true,
+    preset: "rose-pine",
+    appearance: "light",
+    disabledHosts: []
+  };
+  const readStyle = window.getComputedStyle;
+  let reads = 0;
+  window.getComputedStyle = (element) => {
+    reads += 1;
+    return readStyle(element);
+  };
+
+  engine.apply(settings);
+  const first = reads;
+  reads = 0;
+  engine.apply(settings);
+
+  assert.ok(first > 1);
+  assert.equal(reads, 1);
+  assert.equal(
+    byId.get("card").style.getPropertyValue("background-color"),
+    core.PALETTES.dawn.surface
+  );
+
+  engine.apply({ ...settings, appearance: "dark" });
+  assert.equal(
+    byId.get("card").style.getPropertyValue("background-color"),
+    core.PALETTES.moon.surface
+  );
+});
+
 test("engine tints colored and near-white page chrome to base with forced text", async () => {
   const core = await loadCore();
   const { document, window, byId } = createMockDom({

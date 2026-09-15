@@ -147,7 +147,8 @@ On every page match, roughly:
 5. Later: `storage.onChanged`, `matchMedia` dark changes, `DOMContentLoaded`,
    `load`, `pageshow`, `visibilitychange`, and popup messages all re-apply from
    the **in-page settings cache** (no extra storage read on system theme
-   switch).
+   switch). If the resolved palette did not change, the engine skips the full
+   DOM walk and only refreshes root CSS variables.
 
 ### Extension context safety
 
@@ -233,9 +234,9 @@ Pseudo-elements cannot take per-element inline tints.
 
 - **`theme.css`**: while `data-rosewash-theme` is set, force ChatGPT surface
   tokens and Substack publication tokens on root / `.dark` scopes; pin sticky
-  footer fade pseudos (`thread-bottom-container`, `threadFooterContentFade`) to
-  `--rosewash-base`; cover SPA roots plus Substack shells (`#entry`, `#main`,
-  `.use-theme-bg`, `.intro-popup`).
+  footer fade pseudos (`thread-bottom-container`, `threadFooterContentFade`)
+  to `--rosewash-base`; cover SPA roots plus Substack shells (`#entry`,
+  `#main`, `.use-theme-bg`, `.intro-popup`).
 - **Engine** (`SURFACE_VAR_*` / `TEXT_VAR_*` / `FORCED_SURFACE_VARS` in
   `core.js`): rewrite matching root custom properties to palette colors with
   `!important`. Known ChatGPT / Substack surface names are forced even for
@@ -247,15 +248,19 @@ Pseudo-elements cannot take per-element inline tints.
 - Scans **added subtrees only**, not the whole document every time.
 - Coalesces to **`requestAnimationFrame`** (not a multi-hundred-ms debounce)
   so SPA navigations cover before the next paint when possible.
+- Restore walks **connected** `[data-rosewash-tinted]` nodes. Detached feed
+  cells are not kept in a strong `Set`, so infinite-scroll pages can GC them.
 
 ### Apply / clear rules
 
 - Disabled or blocked host → `clear()` (restore inline styles, CSS vars, drop
   theme attribute, disconnect observer).
 - Theme/mode change → restore previous tints, then full rescan.
-- Page-tone re-detect when still `mixed` does **not** full-restore (avoids
-  white flash). Full cover no longer depends on page tone for surface choice;
-  tone sampling remains for diagnostics / mixed re-detect.
+- Same resolved theme (tab focus, `load`, `pageshow`) refreshes root CSS
+  variables and keeps the observer, but does **not** walk the whole document.
+  New nodes still arrive through the mutation scan.
+- Page-tone sampling runs on first apply and on palette change only. Full
+  cover does not use page tone for surface choice.
 
 ## theme.css
 
@@ -266,7 +271,8 @@ Active only under `html[data-rosewash-theme]`:
 - Covers common SPA roots (`#react-root`, `#root`, `#app`, `#__next`,
   `[data-testid=primaryColumn]`, `main`, …) and Substack shells (`#entry`,
   `#main`, `.use-theme-bg`, intro popup).
-- Forces Zhihu header shells and link colors with `!important`.
+- Forces Zhihu header shells and descendant text/links with `!important`
+  (`:is(div, span, a, …)`, not `:not(svg *)`).
 - Selection and default link colors.
 
 This is the first-frame layer; nested boxes still need the JS engine.
@@ -334,7 +340,9 @@ runtime marks Zhihu hosts with `data-rosewash-zhihu-layout` when Rosewash is
 enabled, Zhihu is not blocked, and `zhihuArticleLayout` is true. `zhihu.js`
 adds a page marker from 720px: `data-rosewash-zhihu-home` on `/`, `/follow`,
 and `/hot`; `data-rosewash-zhihu-question` on `/question/{id}`; and
-`data-rosewash-zhihu-article` on `/p/{id}`.
+`data-rosewash-zhihu-article` on `/p/{id}`. SPA route changes go through
+`history.pushState` / `replaceState` and `popstate`; the observer only watches
+the layout attribute on `html`.
 
 - `zhihu.css` hides the top bar, right rail, and other chrome, then centers
   the remaining column at the selected width. The width shrinks to the

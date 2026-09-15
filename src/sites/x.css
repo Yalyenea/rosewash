@@ -164,7 +164,7 @@
   }
 
   html[data-rosewash-x-compact]
-    main[role="main"] :has(> [data-testid="primaryColumn"]):has(> [data-testid="sidebarColumn"]) {
+    main[role="main"] > div > div:has(> [data-testid="primaryColumn"]) {
     display: block !important;
     margin-inline: auto !important;
     max-width: var(--rosewash-x-column) !important;
@@ -172,17 +172,21 @@
   }
 
   html[data-rosewash-x-compact]
-    [data-testid="primaryColumn"] div:has(> section[role="region"] [data-testid="cellInnerDiv"]),
+    [data-testid="primaryColumn"] div:has(> section[role="region"]),
   html[data-rosewash-x-compact]
     [data-testid="primaryColumn"] section[role="region"]:has([data-testid="cellInnerDiv"]),
   html[data-rosewash-x-compact]
-    [data-testid="primaryColumn"] section[role="region"]:has([data-testid="cellInnerDiv"])
-    > div,
+    [data-testid="primaryColumn"] section[role="region"]:has([data-testid="cellInnerDiv"]) > div,
   html[data-rosewash-x-compact]
-    [data-testid="primaryColumn"] section[role="region"]:has([data-testid="cellInnerDiv"])
-    > div > div,
+    [data-testid="primaryColumn"] section[role="region"]:has([data-testid="cellInnerDiv"]) > div > div,
   html[data-rosewash-x-compact]
-    [data-testid="primaryColumn"] [data-testid="cellInnerDiv"] {
+    [data-testid="primaryColumn"] section[role="region"]:has([data-testid="cellInnerDiv"]) > div > div > div,
+  html[data-rosewash-x-compact]
+    [data-testid="primaryColumn"] [data-testid="cellInnerDiv"],
+  html[data-rosewash-x-compact]
+    [data-testid="primaryColumn"] [data-testid="cellInnerDiv"] > div,
+  html[data-rosewash-x-compact]
+    [data-testid="primaryColumn"] article {
     align-self: stretch !important;
     max-width: none !important;
     width: 100% !important;
