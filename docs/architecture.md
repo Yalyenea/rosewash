@@ -106,12 +106,17 @@ Users can rebind the shortcut under `chrome://extensions/shortcuts`.
 ## UI
 
 `popup.html` is the daily control surface. `options.html` is the full settings
-page (appearance, light/dark palette grids, site layouts, block list). Both are
+page (appearance, palette grids, system fonts, site layouts, block list). Both are
 plain HTML/CSS/JS and share the same storage schema:
 
 ```json
 {
   "enabled": true,
+  "customFontsEnabled": false,
+  "fontEnglish": "",
+  "fontChinese": "",
+  "fontMath": "",
+  "fontMonospace": "",
   "presetLight": "rose-pine",
   "presetDark": "rose-pine",
   "appearance": "auto",
@@ -124,6 +129,12 @@ content engine resolves `presetLight` or `presetDark` from appearance into a
 concrete palette before scanning, so adding another curated family does not add
 branching inside DOM processing. Legacy `preset` and `mode: auto|dawn|moon`
 storage still normalize cleanly.
+
+The flat settings layout follows the selected palette and system appearance.
+Its font picker uses permission-gated Local Font Access to enumerate installed
+faces and save their PostScript names. The engine applies separate local faces
+for English, Chinese, native MathML, and monospace text, restoring original
+fonts when disabled. Renderer-managed formulas and code editors are protected.
 
 ## Site Layouts
 
@@ -143,7 +154,7 @@ keep the native layout.
 ## Performance Boundary
 
 The MVP scans the existing DOM once on load, then only scans newly added nodes.
-If the resolved theme or raw mode changes, already-tinted elements are restored
+If the resolved theme, raw mode, or custom font selection changes, already-tinted elements are restored
 before the next scan so Auto dark and manual Moon use the same color path. A
 later apply with the same palette (tab focus, `load`) does not walk the document
 again. It does not walk every element on each mutation and does not call

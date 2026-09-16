@@ -5,7 +5,7 @@ import vm from "node:vm";
 
 async function loadCore() {
   const source = await readFile(new URL("../src/content/core.js", import.meta.url), "utf8");
-  const context = { console };
+  const context = { console, URL };
   context.globalThis = context;
   vm.runInNewContext(source, context);
   return context.RosewashCore;
@@ -348,6 +348,11 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
   })), {
     enabled: true,
     presetLight: "catppuccin",
+    customFontsEnabled: false,
+    fontEnglish: "",
+    fontChinese: "",
+    fontMath: "",
+    fontMonospace: "",
     presetDark: "tokyo-night",
     appearance: "dark",
     xCompactLayout: true,
@@ -432,6 +437,7 @@ function createMockDom(nodes) {
       borderBottomColor: spec.borderBottomColor || "rgb(0, 0, 0)",
       borderLeftColor: spec.borderLeftColor || "rgb(0, 0, 0)",
       colorScheme: spec.colorScheme || "normal",
+      fontFamily: spec.fontFamily || "serif",
       length: computedNames.length,
       getPropertyValue(property) {
         if (customProperties.has(property)) {
@@ -576,6 +582,7 @@ function createMockDom(nodes) {
   }
 
   const document = {
+    fonts: new Set(),
     documentElement: html,
     body,
     location: { href: nodes.href || "https://example.com/" },
@@ -618,6 +625,13 @@ function createMockDom(nodes) {
   };
 
   const window = {
+    FontFace: class {
+      constructor(family, source, descriptors) {
+        this.family = family;
+        this.source = source;
+        this.unicodeRange = descriptors.unicodeRange;
+      }
+    },
     getComputedStyle(element) {
       if (nodes.trackInlineBackground) {
         const inlineBackground = element.style.getPropertyValue("background-color");
@@ -646,6 +660,188 @@ function createMockDom(nodes) {
 
   return { document, window, byId, all };
 }
+
+test("custom fonts update on the same theme and restore original inline typography", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [{ id: "text", tag: "p" }] });
+  const text = byId.get("text");
+  text.style.setProperty("font-family", "Georgia", "important");
+  text._computed.fontFamily = "Georgia";
+  const engine = core.createEngine({ document, window });
+  const settings = { customFontsEnabled: true, fontEnglish: "Arial", fontChinese: "PingFang SC" };
+
+  engine.apply(settings);
+  assert.equal(document.fonts.size, 2);
+  assert.equal(text.style.getPropertyValue("font-family"), '"RosewashEnglish", "RosewashChinese", Georgia');
+  const firstFaces = [...document.fonts];
+  engine.apply({ ...settings, fontEnglish: "Verdana" });
+  assert.equal(document.fonts.size, 2);
+  assert.equal([...document.fonts][0].source, 'local("Verdana")');
+  assert.ok(firstFaces.every((face) => !document.fonts.has(face)));
+
+  engine.apply({ ...settings, customFontsEnabled: false });
+  assert.equal(document.fonts.size, 0);
+  assert.equal(text.style.getPropertyValue("font-family"), "Georgia");
+  assert.equal(text.style.getPropertyPriority("font-family"), "important");
+
+  engine.apply(settings);
+  engine.apply({ ...settings, disabledHosts: ["example.com"] });
+  assert.equal(document.fonts.size, 0);
+  assert.equal(text.style.getPropertyValue("font-family"), "Georgia");
+  assert.equal(document.documentElement.hasAttribute("data-rosewash-theme"), false);
+
+  engine.apply(settings);
+  engine.apply({ ...settings, enabled: false });
+  assert.equal(document.fonts.size, 0);
+  assert.equal(text.style.getPropertyValue("font-family"), "Georgia");
+});
+
+test("blank font languages preserve the page stack and register only the selected script", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [{ id: "text", tag: "p", fontFamily: '"Page Font", serif' }] });
+  const engine = core.createEngine({ document, window });
+  engine.apply({ customFontsEnabled: true, fontChinese: "Songti SC" });
+  assert.equal(document.fonts.size, 1);
+  const face = [...document.fonts][0];
+  assert.equal(face.family, "RosewashChinese");
+  assert.ok(face.unicodeRange.includes("U+4E00-9FFF"));
+  assert.ok(!face.unicodeRange.includes("U+0000-024F"));
+  assert.equal(byId.get("text").style.getPropertyValue("font-family"), '"RosewashChinese", "Page Font", serif');
+
+  engine.apply({ customFontsEnabled: true, fontEnglish: "Georgia" });
+  assert.equal(document.fonts.size, 1);
+  assert.equal([...document.fonts][0].family, "RosewashEnglish");
+  assert.ok([...document.fonts][0].unicodeRange.includes("U+0000-024F"));
+  engine.apply({ customFontsEnabled: true });
+  assert.equal(document.fonts.size, 0);
+  assert.equal(byId.get("text").style.getPropertyValue("font-family"), "");
+});
+
+test("custom fonts leave code, editors, and icon typography intact", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [
+    { id: "code", tag: "code", fontFamily: "monospace" },
+    { tag: "pre", children: [{ id: "pre-child", fontFamily: "monospace" }] },
+    { id: "editor", attrs: { contenteditable: "true" }, fontFamily: "monospace" },
+    { id: "icon", fontFamily: '"Material Symbols Rounded"' },
+    { id: "role-icon", attrs: { role: "img" }, fontFamily: "serif" },
+    { id: "text", tag: "p", fontFamily: "Georgia" }
+  ] });
+  const engine = core.createEngine({ document, window });
+  engine.apply({ customFontsEnabled: true, fontEnglish: "Arial" });
+  for (const id of ["code", "pre-child", "editor", "icon", "role-icon"]) {
+    assert.ok(!byId.get(id).style.getPropertyValue("font-family").includes("Rosewash"), id);
+  }
+  assert.equal(byId.get("text").style.getPropertyValue("font-family"), '"RosewashEnglish", Georgia');
+});
+
+test("math and monospace fonts target their own content without replacing prose", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [
+    { id: "prose", tag: "p", fontFamily: "Georgia" },
+    { id: "math", tag: "math", fontFamily: "math", children: [
+      { tag: "mfrac", children: [{ id: "math-child", tag: "mi", fontFamily: "math" }] }
+    ] },
+    { id: "code", tag: "code", fontFamily: "Courier", children: [{ id: "code-child", fontFamily: "Courier" }] },
+    { id: "pre", tag: "pre", fontFamily: "Courier", children: [{ id: "pre-child", fontFamily: "Courier" }] },
+    { id: "kbd", tag: "kbd", fontFamily: "Courier" },
+    { id: "samp", tag: "samp", fontFamily: "Courier" },
+    { id: "computed-mono", fontFamily: '"Page Code", monospace' },
+    { id: "computed-ui-mono", fontFamily: "ui-monospace, serif" },
+    { id: "named-mono", fontFamily: '"Monospace Display", serif' }
+  ] });
+  const engine = core.createEngine({ document, window });
+  const settings = { customFontsEnabled: true, fontMath: "STIX Two Math", fontMonospace: "Menlo" };
+  engine.apply(settings);
+  assert.equal(document.fonts.size, 2);
+  assert.equal(byId.get("prose").style.getPropertyValue("font-family"), "Georgia");
+  assert.equal(byId.get("named-mono").style.getPropertyValue("font-family"), '"Monospace Display", serif');
+  for (const id of ["math", "math-child"]) {
+    assert.equal(byId.get(id).style.getPropertyValue("font-family"), '"RosewashMath", math', id);
+  }
+  for (const id of ["code", "code-child", "pre", "pre-child", "kbd", "samp", "computed-mono", "computed-ui-mono"]) {
+    const element = byId.get(id);
+    assert.equal(element.style.getPropertyValue("font-family"), '"RosewashMonospace", ' + element._computed.fontFamily, id);
+  }
+  engine.apply({ ...settings, fontEnglish: "Arial", fontChinese: "Songti SC" });
+  assert.equal(byId.get("prose").style.getPropertyValue("font-family"), '"RosewashEnglish", "RosewashChinese", Georgia');
+  assert.equal(byId.get("math-child").style.getPropertyValue("font-family"), '"RosewashMath", math');
+  assert.equal(byId.get("code-child").style.getPropertyValue("font-family"), '"RosewashMonospace", Courier');
+});
+
+test("math and monospace overrides preserve rendered formulas, editors, ignored content, and icons", async () => {
+  const core = await loadCore();
+  const protectedParents = [
+    { className: "katex" }, { className: "MathJax" }, { tag: "mjx-container" },
+    { tag: "svg" }, { className: "CodeMirror" }, { className: "cm-editor" },
+    { className: "monaco-editor" }, { attrs: { contenteditable: "true" } },
+    { attrs: { "data-rosewash-ignore": "" } }, { attrs: { role: "img" } }
+  ];
+  const { document, window, byId } = createMockDom({ tree: [
+    ...protectedParents.map((spec, index) => ({ ...spec, children: [
+      { id: "protected-code-" + index, tag: "code", fontFamily: "monospace" },
+      { tag: "math", children: [{ id: "protected-math-" + index, tag: "mi", fontFamily: "math" }] }
+    ] })),
+    { id: "icon", tag: "code", fontFamily: '"Material Symbols Rounded", monospace' }
+  ] });
+  const engine = core.createEngine({ document, window });
+  engine.apply({ customFontsEnabled: true, fontEnglish: "Arial", fontChinese: "Songti SC", fontMath: "STIX Two Math", fontMonospace: "Menlo" });
+  for (const [id, element] of byId) {
+    assert.ok(!element.style.getPropertyValue("font-family").includes("Rosewash"), id);
+    const value = element.style.getPropertyValue("font-family");
+    assert.ok(value === "" || value === element._computed.fontFamily, id);
+  }
+});
+
+test("changing only math or monospace settings rescans the same theme and restores inline fonts", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [
+    { id: "math", tag: "math", fontFamily: "Original Math" },
+    { id: "code", tag: "code", fontFamily: "Original Code" }
+  ] });
+  for (const element of byId.values()) {
+    element.style.setProperty("font-family", element._computed.fontFamily, "important");
+  }
+  const engine = core.createEngine({ document, window });
+  let settings = { customFontsEnabled: true };
+  engine.apply(settings);
+  for (const [setting, family, name, id] of [
+    ["fontMath", "RosewashMath", "STIX Two Math", "math"],
+    ["fontMonospace", "RosewashMonospace", "Menlo", "code"]
+  ]) {
+    settings = { ...settings, [setting]: name };
+    engine.apply(settings);
+    const element = byId.get(id);
+    assert.equal(element.style.getPropertyValue("font-family"), '"' + family + '", ' + element._computed.fontFamily);
+    const originalFace = [...document.fonts].find((face) => face.family === family);
+    settings = { ...settings, [setting]: name + " Alternate" };
+    engine.apply(settings);
+    assert.ok(!document.fonts.has(originalFace));
+    assert.equal([...document.fonts].find((face) => face.family === family).source, 'local("' + name + ' Alternate")');
+  }
+  for (const setting of ["fontMath", "fontMonospace"]) {
+    settings = { ...settings, [setting]: "" };
+    engine.apply(settings);
+  }
+  assert.equal(document.fonts.size, 0);
+  for (const element of byId.values()) {
+    assert.equal(element.style.getPropertyValue("font-family"), element._computed.fontFamily);
+    assert.equal(element.style.getPropertyPriority("font-family"), "important");
+  }
+});
+
+test("font names normalize and escape local font sources", async () => {
+  const core = await loadCore();
+  const normalized = core.plainSettings({ customFontsEnabled: "true", fontEnglish: "  Georgia\n ", fontChinese: 12 });
+  assert.equal(normalized.customFontsEnabled, false);
+  assert.equal(normalized.fontEnglish, "Georgia");
+  assert.equal(normalized.fontChinese, "");
+  assert.equal(core.plainSettings({ fontEnglish: "a".repeat(101) }).fontEnglish.length, 100);
+  const { document, window } = createMockDom({ tree: [] });
+  const engine = core.createEngine({ document, window });
+  engine.apply({ customFontsEnabled: true, fontEnglish: 'A"B\\C' });
+  assert.equal([...document.fonts][0].source, 'local("A\\"B\\\\C")');
+});
 
 test("engine preserves surface roles across repeated scans", async () => {
   const core = await loadCore();
@@ -1154,6 +1350,11 @@ test("normalizes settings and blocked hosts", async () => {
     enabled: true,
     presetLight: "rose-pine",
     presetDark: "rose-pine",
+    customFontsEnabled: false,
+    fontEnglish: "",
+    fontChinese: "",
+    fontMath: "",
+    fontMonospace: "",
     appearance: "dark",
     xCompactLayout: false,
     xSingleColumnWidth: 600,
@@ -1171,6 +1372,11 @@ test("normalizes settings and blocked hosts", async () => {
     enabled: true,
     presetLight: "catppuccin",
     presetDark: "catppuccin",
+    customFontsEnabled: false,
+    fontEnglish: "",
+    fontChinese: "",
+    fontMath: "",
+    fontMonospace: "",
     appearance: "light",
     xCompactLayout: false,
     xSingleColumnWidth: 600,
@@ -1188,6 +1394,11 @@ test("normalizes settings and blocked hosts", async () => {
     enabled: true,
     presetLight: "rose-pine",
     presetDark: "dracula",
+    customFontsEnabled: false,
+    fontEnglish: "",
+    fontChinese: "",
+    fontMath: "",
+    fontMonospace: "",
     appearance: "auto",
     xCompactLayout: false,
     xSingleColumnWidth: 600,

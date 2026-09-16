@@ -71,6 +71,11 @@ Stored in **`chrome.storage.sync`**.
 ```json
 {
   "enabled": true,
+  "customFontsEnabled": false,
+  "fontEnglish": "",
+  "fontChinese": "",
+  "fontMath": "",
+  "fontMonospace": "",
   "presetLight": "rose-pine",
   "presetDark": "rose-pine",
   "appearance": "auto",
@@ -84,7 +89,9 @@ Stored in **`chrome.storage.sync`**.
 
 | Field | Values | Meaning |
 | --- | --- | --- |
-| `enabled` | boolean | Global off clears all tints |
+| `enabled` | boolean | Global off clears all tints and font overrides |
+| `customFontsEnabled` | boolean | Enables custom page fonts; off by default |
+| `fontEnglish`, `fontChinese`, `fontMath`, `fontMonospace` | string | Local font PostScript names; empty preserves page typography |
 | `presetLight` | preset id with a light variant | Palette used when appearance resolves to light |
 | `presetDark` | preset id with a dark variant | Palette used when appearance resolves to dark |
 | `appearance` | `auto` \| `light` \| `dark` | `auto` follows `prefers-color-scheme` |
@@ -262,6 +269,23 @@ Pseudo-elements cannot take per-element inline tints.
 - Page-tone sampling runs on first apply and on palette change only. Full
   cover does not use page tone for surface choice.
 
+## Custom fonts
+
+`core.js` registers local `FontFace` objects in `document.fonts`. English and
+Chinese faces have separate Unicode ranges; MathML and monospace faces cover
+all characters but are applied only to their respective content.
+
+Font routing uses the same batched computed-style snapshots as tinting.
+Native `math` descendants use the math face; `pre`, `code`, `kbd`, `samp`,
+and computed monospace text use the monospace face. SVG, KaTeX, MathJax,
+editors, icon fonts, and opt-out elements retain their original font stacks.
+The original page stack remains after each custom face for uncovered glyphs.
+
+Changing fonts restores styles and rescans even when the palette is unchanged.
+Disabling the extension, blocking the site, or turning custom fonts off removes
+the registered faces and restores inline font declarations and priorities.
+Newly added subtrees receive the current font settings through the observer.
+
 ## theme.css
 
 Active only under `html[data-rosewash-theme]`:
@@ -311,10 +335,14 @@ No direct message to the content script is required; pages listen to
 - Edit enabled / appearance / light and dark palette grids / site layouts /
   full host list (one host per line). Each grid only lists families with that
   variant.
-- Groups controls into General, Theme, and Sites panels. Palette cards use a
-  responsive full-width grid for each variant; Save / Reset remain fixed at
-  the bottom of the viewport.
-- Mentions the site-toggle shortcut.
+- Compact Appearance, Theme, Fonts, and Sites sections use flat grids and
+  separators. Save / Reset follow the content.
+- Settings chrome previews the selected appearance and palette immediately,
+  including system appearance changes in Auto mode.
+- The system font picker calls `queryLocalFonts()` from a user action unless
+  font access is already granted. Options show full names and store PostScript
+  names. Failed access and unavailable fonts are reported explicitly.
+- Four independent previews use the same local FontFace definitions as pages.
 
 ## X compact layout
 

@@ -159,6 +159,11 @@
 
     const watched = [
       "enabled",
+      "customFontsEnabled",
+      "fontEnglish",
+      "fontChinese",
+      "fontMath",
+      "fontMonospace",
       "preset",
       "presetLight",
       "presetDark",

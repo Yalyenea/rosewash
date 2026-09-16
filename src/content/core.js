@@ -203,6 +203,11 @@
 
   const DEFAULT_SETTINGS = Object.freeze({
     enabled: true,
+    customFontsEnabled: false,
+    fontEnglish: "",
+    fontChinese: "",
+    fontMath: "",
+    fontMonospace: "",
     presetLight: "rose-pine",
     presetDark: "rose-pine",
     appearance: "auto",
@@ -228,7 +233,8 @@
     "border-left-color",
     "color",
     "color-scheme",
-    "scrollbar-color"
+    "scrollbar-color",
+    "font-family"
   ];
 
   const SKIP_SELECTOR = [
@@ -236,6 +242,8 @@
     "picture",
     "video",
     "canvas",
+    "math",
+    "mjx-container",
     "svg",
     "iframe",
     "embed",
@@ -664,6 +672,30 @@
     return Array.from(new Set(next)).sort();
   }
 
+  function normalizeFontName(value) {
+    return typeof value === "string" ? value.replace(/[\x00-\x1f\x7f]/g, "").trim().slice(0, 100) : "";
+  }
+
+  function fontDefinitions(settings) {
+    if (!settings.customFontsEnabled) return [];
+    return [
+      ["RosewashEnglish", settings.fontEnglish, "U+0000-024F,U+1E00-1EFF,U+2000-206F"],
+      ["RosewashChinese", settings.fontChinese, "U+2E80-2FFF,U+3000-303F,U+3100-312F,U+31A0-31BF,U+3400-4DBF,U+4E00-9FFF,U+F900-FAFF,U+FE10-FE1F,U+FE30-FE4F,U+FF00-FFEF,U+20000-323AF"],
+      ["RosewashMath", settings.fontMath, "U+0000-10FFFF"],
+      ["RosewashMonospace", settings.fontMonospace, "U+0000-10FFFF"]
+    ].filter(([, name]) => name);
+  }
+
+  function cssFontSource(name) {
+    return 'local("' + name.replace(/["\\]/g, (character) => "\\" + character) + '")';
+  }
+
+  function createFontFaces(settings, window) {
+    return fontDefinitions(normalizeSettings(settings)).map(([family, name, unicodeRange]) =>
+      new window.FontFace(family, cssFontSource(name), { unicodeRange })
+    );
+  }
+
   function normalizeSettings(settings) {
     const source = settings && typeof settings === "object" ? settings : {};
     const disabledHosts = Array.isArray(source.disabledHosts)
@@ -680,6 +712,11 @@
 
     return {
       enabled: source.enabled !== false,
+      customFontsEnabled: source.customFontsEnabled === true,
+      fontEnglish: normalizeFontName(source.fontEnglish),
+      fontChinese: normalizeFontName(source.fontChinese),
+      fontMath: normalizeFontName(source.fontMath),
+      fontMonospace: normalizeFontName(source.fontMonospace),
       presetLight: presetIdForVariant(source.presetLight, source.preset, "light"),
       presetDark: presetIdForVariant(source.presetDark, source.preset, "dark"),
       appearance,
@@ -791,6 +828,11 @@
     const normalized = normalizeSettings(settings);
     return {
       enabled: normalized.enabled,
+      customFontsEnabled: normalized.customFontsEnabled,
+      fontEnglish: normalized.fontEnglish,
+      fontChinese: normalized.fontChinese,
+      fontMath: normalized.fontMath,
+      fontMonospace: normalized.fontMonospace,
       presetLight: normalized.presetLight,
       presetDark: normalized.presetDark,
       appearance: normalized.appearance,
@@ -1009,6 +1051,8 @@
 
   function createEngine({ document, window }) {
     const originalStyles = new WeakMap();
+    let activeFonts = [];
+    let fontKey = "[]";
     let tintedPageChrome = new WeakSet();
     // name -> previous inline value (null if unset)
     let cssVarOverrides = new Map();
@@ -1206,6 +1250,7 @@
         backgroundColor: computedStyle.backgroundColor,
         backgroundImage: computedStyle.backgroundImage,
         color: computedStyle.color,
+        fontFamily: activeFonts.length ? computedStyle.fontFamily : "",
         borderTopColor: computedStyle.borderTopColor,
         borderRightColor: computedStyle.borderRightColor,
         borderBottomColor: computedStyle.borderBottomColor,
@@ -1215,6 +1260,25 @@
 
     function processSnapshot(snapshot, theme) {
       const element = snapshot.element;
+      if (activeFonts.length && snapshot.fontFamily) {
+        const original = snapshot.fontFamily.replace(/"?Rosewash(?:English|Chinese|Math|Monospace)"?,\s*/g, "");
+        const protectedFont = element.closest("[data-rosewash-ignore], [role='img'], svg, .katex, .MathJax, mjx-container, .CodeMirror, .cm-editor, .monaco-editor, [contenteditable]")
+          || /icon|awesome|material\s*(symbols|icons)|glyph|dingbat/i.test(original);
+        let families = [];
+        if (!protectedFont) {
+          if (element.closest("math")) {
+            families = ["RosewashMath"];
+          } else if (element.closest("pre, code, kbd, samp") || /(?:^|,\s*)(?:ui-)?monospace(?:\s*,|$)/i.test(original)) {
+            families = ["RosewashMonospace"];
+          } else if (!shouldSkipElement(element)) {
+            families = ["RosewashEnglish", "RosewashChinese"];
+          }
+        }
+        const prefix = activeFonts.filter((face) => families.includes(face.family))
+          .map((face) => '"' + face.family + '", ').join("");
+        setStyle(element, "font-family", prefix + original);
+      }
+      if (shouldSkipElement(element)) return;
       const palette = PALETTES[theme];
       const background = parseColor(snapshot.backgroundColor);
       const hasBackgroundImage = snapshot.backgroundImage && snapshot.backgroundImage !== "none";
@@ -1270,11 +1334,11 @@
     function scan(root, theme) {
       const start = isElementNode(root) ? root : document.documentElement;
       const elements = [];
-      if (!shouldSkipElement(start)) {
+      if (activeFonts.length || !shouldSkipElement(start)) {
         elements.push(start);
       }
       for (const element of start.querySelectorAll("*")) {
-        if (!shouldSkipElement(element)) {
+        if (activeFonts.length || !shouldSkipElement(element)) {
           elements.push(element);
         }
       }
@@ -1418,7 +1482,18 @@
       return palette;
     }
 
+    function replaceFonts(definitions) {
+      for (const face of activeFonts) document.fonts.delete(face);
+      activeFonts = definitions.map(([family, name, unicodeRange]) => {
+        const face = new window.FontFace(family, cssFontSource(name), { unicodeRange });
+        document.fonts.add(face);
+        return face;
+      });
+      fontKey = JSON.stringify(definitions);
+    }
+
     function clear() {
+      replaceFonts([]);
       disconnectObserver();
       restoreTintedElements();
       restoreCssVarOverrides();
@@ -1442,6 +1517,8 @@
         return { enabled: false, theme: null, tinted: 0 };
       }
 
+      const definitions = fontDefinitions(normalized);
+      const fontsChanged = JSON.stringify(definitions) !== fontKey;
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       const theme = resolveSettingsThemeKey(normalized, prefersDark);
       const nextPalette = PALETTES[theme];
@@ -1459,12 +1536,13 @@
       // Full-cover no longer depends on pageTone for surface decisions. Only
       // restore when the resolved palette actually changes — never on mixed
       // re-detect (that path flashed the whole page white on every load).
-      if (themeChanged) {
+      if (themeChanged || fontsChanged) {
         restoreTintedElements();
         restoreCssVarOverrides();
       }
 
-      const redundant = Boolean(activeTheme) && !themeChanged;
+      if (fontsChanged) replaceFonts(definitions);
+      const redundant = Boolean(activeTheme) && !themeChanged && !fontsChanged;
       if (!redundant) {
         activePageTone = detectPageTone();
       }
@@ -1510,6 +1588,7 @@
     ZHIHU_ARTICLE_WIDTHS,
     listPresets,
     createEngine,
+    createFontFaces,
     classifyPageTone,
     hostFromUrl,
     isDarkNeutralColor,

@@ -10,7 +10,6 @@
     <main>
       <header class="page-header">
         <div>
-          <p class="eyebrow">Settings</p>
           <h1>Rosewash</h1>
         </div>
         <label class="master-toggle">
@@ -24,10 +23,9 @@
 
       <section class="panel general-panel">
         <div class="section-heading">
-          <h2>General</h2>
+          <h2>Appearance</h2>
         </div>
         <div class="setting-row">
-          <span class="setting-label">Appearance</span>
           <div class="modes" aria-label="Appearance">
             <label>
               <input name="appearance" type="radio" value="auto">
@@ -51,13 +49,56 @@
         </div>
         <div class="palette-columns">
           <div class="palette-group">
-            <h3>Light palette</h3>
+            <h3>Light</h3>
             <div id="preset-light-list" class="preset-list" role="listbox" aria-label="Light palette"></div>
           </div>
           <div class="palette-group">
-            <h3>Dark palette</h3>
+            <h3>Dark</h3>
             <div id="preset-dark-list" class="preset-list" role="listbox" aria-label="Dark palette"></div>
           </div>
+        </div>
+      </section>
+
+      <section class="panel fonts-panel">
+        <div class="section-heading">
+          <h2>Fonts</h2>
+          <label class="master-toggle">
+            <span>Custom fonts</span>
+            <span class="toggle">
+              <input id="custom-fonts-enabled" type="checkbox">
+              <span class="toggle-track"></span>
+            </span>
+          </label>
+        </div>
+        <div class="font-list-controls">
+          <button id="load-system-fonts" type="button">System fonts…</button>
+          <span id="font-list-status" class="font-help" role="status"></span>
+        </div>
+        <div class="font-columns">
+          <label class="font-field" for="font-english">
+            <span class="setting-label">English</span>
+            <select id="font-english" aria-label="English"><option value="">Page default</option></select>
+            <small id="font-status-english" aria-live="polite"></small>
+            <span id="font-preview-english" class="font-preview" lang="en">Aa Bb Cc · 0123456789</span>
+          </label>
+          <label class="font-field" for="font-chinese">
+            <span class="setting-label">Chinese</span>
+            <select id="font-chinese" aria-label="Chinese"><option value="">Page default</option></select>
+            <small id="font-status-chinese" aria-live="polite"></small>
+            <span id="font-preview-chinese" class="font-preview" lang="zh-CN">中文字体 · 你好世界</span>
+          </label>
+          <label class="font-field" for="font-math">
+            <span class="setting-label">MathML</span>
+            <select id="font-math" aria-label="MathML"><option value="">Page default</option></select>
+            <small id="font-status-math" aria-live="polite"></small>
+            <math id="font-preview-math" class="font-preview"><msup><mi>x</mi><mn>2</mn></msup><mo>+</mo><msup><mi>y</mi><mn>2</mn></msup><mo>=</mo><msup><mi>z</mi><mn>2</mn></msup></math>
+          </label>
+          <label class="font-field" for="font-monospace">
+            <span class="setting-label">Monospace</span>
+            <select id="font-monospace" aria-label="Monospace"><option value="">Page default</option></select>
+            <small id="font-status-monospace" aria-live="polite"></small>
+            <code id="font-preview-monospace" class="font-preview">const n = 42;</code>
+          </label>
         </div>
       </section>
 
@@ -67,12 +108,10 @@
         </div>
         <div class="site-columns">
           <div class="site-group">
-            <h3>Site layouts</h3>
             <div class="site-layout">
               <label class="site-layout-toggle">
                 <span>
                   <strong>X · Compact layout</strong>
-                  <small>Compact navigation and a centered single-column stream on desktop.</small>
                 </span>
                 <span class="toggle">
                   <input id="x-compact-layout" type="checkbox">
@@ -81,23 +120,16 @@
               </label>
               <label class="site-width-control" for="x-single-column-width">
                 <span class="site-width-heading">
-                  <strong>Single-column width</strong>
+                  <strong>Width</strong>
                   <output id="x-single-column-width-value" for="x-single-column-width">600 px</output>
                 </span>
-                <input id="x-single-column-width" type="range" min="0" max="3" step="1" value="1">
-                <span class="site-width-stops" aria-hidden="true">
-                  <span>520</span>
-                  <span>600</span>
-                  <span>680</span>
-                  <span>760</span>
-                </span>
+                <input id="x-single-column-width" aria-label="X column width" type="range" min="0" max="3" step="1" value="1">
               </label>
             </div>
             <div class="site-layout">
               <label class="site-layout-toggle">
                 <span>
                   <strong>Zhihu · Clean layout</strong>
-                  <small>Hide page chrome and center a widescreen column on home, questions, and articles.</small>
                 </span>
                 <span class="toggle">
                   <input id="zhihu-article-layout" type="checkbox">
@@ -106,16 +138,10 @@
               </label>
               <label class="site-width-control" for="zhihu-article-width">
                 <span class="site-width-heading">
-                  <strong>Column width</strong>
+                  <strong>Width</strong>
                   <output id="zhihu-article-width-value" for="zhihu-article-width">960 px</output>
                 </span>
-                <input id="zhihu-article-width" type="range" min="0" max="3" step="1" value="2">
-                <span class="site-width-stops" aria-hidden="true">
-                  <span>720</span>
-                  <span>840</span>
-                  <span>960</span>
-                  <span>1080</span>
-                </span>
+                <input id="zhihu-article-width" aria-label="Zhihu column width" type="range" min="0" max="3" step="1" value="2">
               </label>
             </div>
           </div>

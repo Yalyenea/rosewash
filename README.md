@@ -16,6 +16,9 @@ protected.
   default Rose Pine for both).
 - Appearance: Auto / Light / Dark. Auto uses the light or dark palette from
   the system color scheme.
+- Optional English, Chinese, native MathML, and monospace fonts, selected from
+  installed system fonts with live previews.
+- Compact settings page that follows the selected theme.
 - Global enable switch.
 - Per-site block list.
 - Optional compact layout for X from 720px: collapsed navigation rail,
@@ -87,6 +90,17 @@ Chrome leaves old content scripts in existing page contexts after extension
 reloads; Rosewash guards new scripts against that state and clears stale
 Rosewash inline styles when the new script starts, but old injected scripts
 cannot be patched in place.
+
+## Custom Fonts
+
+Open the extension settings, enable **Custom fonts**, and click **System
+fonts…**. Allow font access in the browser, then choose fonts and save.
+System font selection requires a browser with Local Font Access support.
+
+**Page default** preserves the website’s font for that category. MathML
+fonts apply to native formulas; KaTeX, MathJax, SVG formulas, and code editors
+keep their own typography. The monospace setting applies to code blocks and
+other monospace text. Fonts must be installed on each device.
 
 ## Docs
 
