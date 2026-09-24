@@ -474,7 +474,9 @@
   }
 
   // Preserve a little hierarchy: page root → base, elevated mids → overlay,
-  // everything else → surface. Media/code stay protected by SKIP_SELECTOR.
+  // everything else → surface. Nearby fills that still read as one paper are
+  // collapsed later, against the painted ancestor. Media/code stay protected
+  // by SKIP_SELECTOR.
   function isDarkThemeKey(theme) {
     return theme === "moon" || String(theme).endsWith("-dark");
   }
@@ -526,6 +528,38 @@
 
   function isCoverBorderColor(color) {
     return isOpaqueColor(color) && channelSpread(color) <= 100;
+  }
+
+  // Same sheet of paper: channel moves of about 12 still look like one fill
+  // (white vs off-white). A real card or chip steps further than that.
+  const PAPER_CHANNEL_DELTA = 12;
+
+  function colorsSharePaper(a, b) {
+    if (!isOpaqueColor(a) || !isOpaqueColor(b)) {
+      return false;
+    }
+    if (Math.abs(a.alpha - b.alpha) > 0.15) {
+      return false;
+    }
+    const maxDelta = Math.max(
+      Math.abs(a.red - b.red),
+      Math.abs(a.green - b.green),
+      Math.abs(a.blue - b.blue)
+    );
+    return maxDelta <= PAPER_CHANNEL_DELTA
+      && Math.abs(luminance(a) - luminance(b)) <= PAPER_CHANNEL_DELTA;
+  }
+
+  // Width is only trustworthy when the style actually strokes. Writing a
+  // border color into the style attribute is enough for some sites (WordPress
+  // global styles) to force border-style: solid and reveal a latent width.
+  function isPaintedBorder(width, style) {
+    const size = Number.parseFloat(width);
+    if (!Number.isFinite(size) || size <= 0) {
+      return false;
+    }
+    const normalized = String(style || "").toLowerCase();
+    return normalized !== "" && normalized !== "none" && normalized !== "hidden";
   }
 
   function classifyPageTone(samples) {
@@ -1064,6 +1098,8 @@
     let activeAppearance = null;
     let activeTheme = null;
     let activePageTone = "mixed";
+    // original color + assigned palette fill, so nested paper can follow a parent
+    let surfaceRecords = new WeakMap();
 
     function remember(element) {
       if (originalStyles.has(element)) {
@@ -1156,18 +1192,62 @@
     }
 
     function tintBorders(element, snapshot, palette) {
-      const borderPairs = [
-        ["border-top-color", snapshot.borderTopColor],
-        ["border-right-color", snapshot.borderRightColor],
-        ["border-bottom-color", snapshot.borderBottomColor],
-        ["border-left-color", snapshot.borderLeftColor]
+      const fill = parseColor(snapshot.backgroundColor);
+      const borderSides = [
+        ["border-top-color", snapshot.borderTopColor, snapshot.borderTopWidth, snapshot.borderTopStyle],
+        ["border-right-color", snapshot.borderRightColor, snapshot.borderRightWidth, snapshot.borderRightStyle],
+        ["border-bottom-color", snapshot.borderBottomColor, snapshot.borderBottomWidth, snapshot.borderBottomStyle],
+        ["border-left-color", snapshot.borderLeftColor, snapshot.borderLeftWidth, snapshot.borderLeftStyle]
       ];
 
-      for (const [property, value] of borderPairs) {
-        if (isCoverBorderColor(parseColor(value))) {
-          setStyle(element, property, palette.overlay);
+      for (const [property, value, width, style] of borderSides) {
+        if (!isPaintedBorder(width, style)) {
+          continue;
+        }
+        const color = parseColor(value);
+        if (!isCoverBorderColor(color)) {
+          continue;
+        }
+        // A stroke that matches the fill was an invisible seam.
+        if (isOpaqueColor(fill) && colorsSharePaper(color, fill)) {
+          continue;
+        }
+        setStyle(element, property, palette.muted);
+      }
+    }
+
+    function rememberSurface(element, original, fill) {
+      surfaceRecords.set(element, { original, fill });
+    }
+
+    function matchingPaperFill(element, color) {
+      if (!isOpaqueColor(color)) {
+        return null;
+      }
+      for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+        const record = surfaceRecords.get(parent);
+        if (!record || !isOpaqueColor(record.original)) {
+          continue;
+        }
+        if (colorsSharePaper(color, record.original)) {
+          return record.fill;
         }
       }
+      return null;
+    }
+
+    function resolveSurfaceFill(element, background, palette, options) {
+      if (options.pageElement) {
+        return palette.base;
+      }
+      if (isOpaqueColor(background) && paletteSurfaceTokenFor(background, palette)) {
+        return surfaceColorFor(background, palette, options);
+      }
+      const shared = matchingPaperFill(element, background);
+      if (shared) {
+        return shared;
+      }
+      return surfaceColorFor(background, palette, options);
     }
 
     function tintText(element, snapshot, palette) {
@@ -1254,7 +1334,15 @@
         borderTopColor: computedStyle.borderTopColor,
         borderRightColor: computedStyle.borderRightColor,
         borderBottomColor: computedStyle.borderBottomColor,
-        borderLeftColor: computedStyle.borderLeftColor
+        borderLeftColor: computedStyle.borderLeftColor,
+        borderTopWidth: computedStyle.borderTopWidth,
+        borderRightWidth: computedStyle.borderRightWidth,
+        borderBottomWidth: computedStyle.borderBottomWidth,
+        borderLeftWidth: computedStyle.borderLeftWidth,
+        borderTopStyle: computedStyle.borderTopStyle,
+        borderRightStyle: computedStyle.borderRightStyle,
+        borderBottomStyle: computedStyle.borderBottomStyle,
+        borderLeftStyle: computedStyle.borderLeftStyle
       };
     }
 
@@ -1298,6 +1386,7 @@
         }
         setStyle(element, "background-color", palette.base, "important");
         tintedPageChrome.add(element);
+        rememberSurface(element, background, palette.base);
       }
 
       const insidePageChrome = isInsideTintedPageChrome(element);
@@ -1314,15 +1403,13 @@
         if (generatedBackground) {
           setStyle(element, "background-image", "none");
         }
-        setStyle(
-          element,
-          "background-color",
-          surfaceColorFor(background, palette, {
-            pageElement,
-            theme,
-            tagName: element.tagName
-          })
-        );
+        const fill = resolveSurfaceFill(element, background, palette, {
+          pageElement,
+          theme,
+          tagName: element.tagName
+        });
+        setStyle(element, "background-color", fill);
+        rememberSurface(element, background, fill);
       }
 
       if (!insidePageChrome) {
@@ -1497,6 +1584,7 @@
       disconnectObserver();
       restoreTintedElements();
       restoreCssVarOverrides();
+      surfaceRecords = new WeakMap();
       activePresetLight = null;
       activePresetDark = null;
       activeAppearance = null;
@@ -1606,6 +1694,8 @@
     isPageChromeCandidate,
     isCoverSurfaceBackground,
     isCoverBorderColor,
+    colorsSharePaper,
+    isPaintedBorder,
     isToneSampleElement,
     isTransparentColor,
     classifySurfaceCssVar,

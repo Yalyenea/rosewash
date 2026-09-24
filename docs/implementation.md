@@ -223,13 +223,20 @@ For each non-skipped element:
    `main`/`article`): force `palette.base` + clear generated backgrounds with
    `!important`; descendants get forced text color.
 2. **Surfaces**: any opaque background (or CSS gradient) maps via
-   `surfaceColorFor` to `base` / `surface` / `overlay`. Transparent
+   `surfaceColorFor` to `base` / `surface` / `overlay`. If that color still
+   shares paper with an opaque ancestor (`colorsSharePaper`, about 12 levels
+   per channel), it keeps the ancestor's fill instead. Transparent
    `html`/`body` still count as the default canvas. `url()` backgrounds are
    left alone. Colors already matching one of the active palette's three
    surface tokens keep that role, so repeated scans cannot turn a page shell
    or elevated region into a different layer.
 3. **Text**: opaque colors → `palette.text`; anchors → `palette.link`.
-4. **Borders**: low-chroma borders → `palette.overlay`.
+4. **Borders**: a low-chroma border is recolored to `palette.muted` only when
+   that side is already painted (`isPaintedBorder`: width above 0 and a style
+   other than `none` / `hidden`) and the stroke is not the same paper as the
+   element's own fill. Unpainted sides are not written. Sites such as
+   WordPress global styles turn an inline `border-*-color` into
+   `border-style: solid`, which would frame every element.
 
 Skip list includes media, canvas, SVG, iframe, form controls, code/editor
 surfaces (CodeMirror, Monaco, hljs, KaTeX, MathJax), and

@@ -2,12 +2,16 @@
 
 ## Unreleased
 
+## 0.2.1 - 2026-09-24
+
+- Nested fills that match the page or their parent stay on the same paper
+  color. Only borders that are already drawn are recolored, using the muted
+  token, so block-heavy pages do not turn into stripes and frames.
 - Add separate English, Chinese, native MathML, and monospace font settings,
   with a system font picker and live previews. Font access requires browser
   permission; leaving a category unset preserves its page font.
 - Flatten and compact the settings page, remove redundant descriptions, and
   follow the selected light/dark palettes and system appearance.
-
 - Cut content-engine work on idle tabs: drop detached tinted nodes, skip the
   full DOM walk when the palette is unchanged, and batch computed-style reads
   before writes. Zhihu layout watches `pushState` instead of the whole tree.

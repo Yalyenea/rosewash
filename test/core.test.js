@@ -94,6 +94,85 @@ test("covers any opaque surface and transparent page roots", async () => {
   }
 });
 
+test("treats nearby fills as one paper and ignores unpainted borders", async () => {
+  const core = await loadCore();
+  const cream = core.parseColor("rgb(253, 255, 247)");
+  const white = core.parseColor("rgb(255, 255, 255)");
+  const card = core.parseColor("rgb(240, 240, 240)");
+  const brown = core.parseColor("rgb(173, 126, 98)");
+  assert.equal(core.colorsSharePaper(cream, white), true);
+  assert.equal(core.colorsSharePaper(cream, card), false);
+  assert.equal(core.colorsSharePaper(cream, brown), false);
+  assert.equal(core.isPaintedBorder("0px", "none"), false);
+  assert.equal(core.isPaintedBorder("1.5px", "none"), false);
+  assert.equal(core.isPaintedBorder("1px", "solid"), true);
+  assert.equal(core.isPaintedBorder("medium", "solid"), false);
+
+  const { document, window, byId } = createMockDom({
+    htmlBackgroundColor: "rgb(253, 255, 247)",
+    bodyBackgroundColor: "rgb(253, 255, 247)",
+    bodyColor: "rgb(38, 67, 10)",
+    tree: [
+      {
+        id: "same-paper",
+        backgroundColor: "rgb(255, 255, 255)",
+        color: "rgb(38, 67, 10)",
+        borderTopColor: "rgb(38, 67, 10)",
+        borderTopWidth: "0px",
+        borderTopStyle: "none"
+      },
+      {
+        id: "nested",
+        backgroundColor: "rgb(253, 255, 247)",
+        color: "rgb(38, 67, 10)",
+        children: [
+          {
+            id: "nested-white",
+            backgroundColor: "rgb(250, 252, 246)",
+            color: "rgb(38, 67, 10)"
+          }
+        ]
+      },
+      {
+        id: "card",
+        backgroundColor: "rgb(240, 240, 240)",
+        color: "rgb(38, 67, 10)"
+      },
+      {
+        id: "chip",
+        backgroundColor: "rgb(173, 126, 98)",
+        color: "rgb(253, 255, 247)"
+      },
+      {
+        id: "seam",
+        backgroundColor: "rgb(253, 255, 247)",
+        borderTopColor: "rgb(253, 255, 247)",
+        borderTopWidth: "1px",
+        borderTopStyle: "solid"
+      },
+      {
+        id: "rule",
+        backgroundColor: "rgba(0, 0, 0, 0)",
+        borderLeftColor: "rgb(38, 67, 10)",
+        borderLeftWidth: "3px",
+        borderLeftStyle: "solid"
+      }
+    ]
+  });
+  const engine = core.createEngine({ document, window });
+  engine.apply({ enabled: true, preset: "rose-pine", appearance: "light", disabledHosts: [] });
+  const dawn = core.PALETTES.dawn;
+
+  assert.equal(byId.get("same-paper").style.getPropertyValue("background-color"), dawn.base);
+  assert.equal(byId.get("same-paper").style.getPropertyValue("border-top-color"), "");
+  assert.equal(byId.get("nested").style.getPropertyValue("background-color"), dawn.base);
+  assert.equal(byId.get("nested-white").style.getPropertyValue("background-color"), dawn.base);
+  assert.equal(byId.get("card").style.getPropertyValue("background-color"), dawn.surface);
+  assert.equal(byId.get("chip").style.getPropertyValue("background-color"), dawn.overlay);
+  assert.equal(byId.get("seam").style.getPropertyValue("border-top-color"), "");
+  assert.equal(byId.get("rule").style.getPropertyValue("border-left-color"), dawn.muted);
+});
+
 test("detects dark-only page tone from root surfaces and theme signals", async () => {
   const core = await loadCore();
   assert.equal(core.isDarkSurfaceColor(core.parseColor("#080b0a")), true);
@@ -436,6 +515,14 @@ function createMockDom(nodes) {
       borderRightColor: spec.borderRightColor || "rgb(0, 0, 0)",
       borderBottomColor: spec.borderBottomColor || "rgb(0, 0, 0)",
       borderLeftColor: spec.borderLeftColor || "rgb(0, 0, 0)",
+      borderTopWidth: spec.borderTopWidth || "0px",
+      borderRightWidth: spec.borderRightWidth || "0px",
+      borderBottomWidth: spec.borderBottomWidth || "0px",
+      borderLeftWidth: spec.borderLeftWidth || "0px",
+      borderTopStyle: spec.borderTopStyle || "none",
+      borderRightStyle: spec.borderRightStyle || "none",
+      borderBottomStyle: spec.borderBottomStyle || "none",
+      borderLeftStyle: spec.borderLeftStyle || "none",
       colorScheme: spec.colorScheme || "normal",
       fontFamily: spec.fontFamily || "serif",
       length: computedNames.length,
@@ -910,13 +997,13 @@ test("engine skips full scan when the resolved theme is unchanged", async () => 
   assert.equal(reads, 1);
   assert.equal(
     byId.get("card").style.getPropertyValue("background-color"),
-    core.PALETTES.dawn.surface
+    core.PALETTES.dawn.base
   );
 
   engine.apply({ ...settings, appearance: "dark" });
   assert.equal(
     byId.get("card").style.getPropertyValue("background-color"),
-    core.PALETTES.moon.surface
+    core.PALETTES.moon.base
   );
 });
 
@@ -989,9 +1076,10 @@ test("engine tints colored and near-white page chrome to base with forced text",
   assert.equal(byId.get("zhihu-header").style.getPropertyValue("color"), palette.text);
   assert.equal(byId.get("zhihu-title").style.getPropertyPriority("color"), "important");
 
-  // Full cover remaps nested painted boxes too, not only near-white surfaces.
+  // A white main on a white page stays on the same paper. A distinctly colored
+  // nested box still takes its own surface.
   assert.equal(byId.get("inner-header").style.getPropertyValue("background-color"), palette.surface);
-  assert.equal(byId.get("article-header").style.getPropertyValue("background-color"), palette.surface);
+  assert.equal(byId.get("article-header").style.getPropertyValue("background-color"), palette.base);
 
   engine.clear();
   assert.equal(byId.get("site-header").style.getPropertyValue("background-color"), "");
@@ -1261,7 +1349,7 @@ test("engine adapts nested Substack-like dark publication shells in Dawn", async
   assert.equal(result.theme, "rose-pine-light");
   assert.equal(engine.stats().pageTone, "dark-only");
   assert.equal(document.documentElement.style.getPropertyValue("background-color"), palette.base);
-  assert.equal(byId.get("main").style.getPropertyValue("background-color"), palette.surface);
+  assert.equal(byId.get("main").style.getPropertyValue("background-color"), palette.base);
   assert.equal(byId.get("main").style.getPropertyValue("color"), palette.text);
   assert.equal(byId.get("panel").style.getPropertyValue("background-color"), palette.surface);
   assert.equal(byId.get("panel").style.getPropertyValue("color"), palette.text);

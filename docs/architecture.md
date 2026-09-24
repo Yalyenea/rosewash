@@ -31,12 +31,17 @@ The engine writes inline styles (with `!important`) so every non-protected
 painted surface becomes Rose Pine:
 
 - Opaque backgrounds map to `base` (page roots), `surface`, or `overlay`
-  (mid-luminance boxes keep a little hierarchy).
+  (mid-luminance boxes keep a little hierarchy). A fill that still matches
+  the page or a painted ancestor stays on that same color, so nested wrappers
+  do not become stripes.
 - Existing palette surface colors retain their role across repeated scans, so
   SPA roots and lazy-loaded regions do not develop `base` / `surface` seams.
 - Transparent `html`/`body` roots are treated as the default document canvas.
 - Opaque text maps to `palette.text`; anchors map to `palette.link`.
-- Low-chroma borders map to `palette.overlay`.
+- Only a border that is already stroked is recolored, and it uses
+  `palette.muted`. A zero-width or `none` border is left alone: writing the
+  color can make the site turn it into a solid frame. A stroke that matches
+  its own fill stays untouched.
 - CSS gradients are flattened to solid palette fills; `url()` media backgrounds
   are left alone.
 - Media, canvas, SVG, iframes, inputs, editors, and code blocks are skipped.
