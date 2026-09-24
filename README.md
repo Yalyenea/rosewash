@@ -121,8 +121,9 @@ just clean
 ```
 
 `just dist` writes `dist/` for Load unpacked. `just package` runs the checks,
-refreshes `dist/`, and writes `.tmp/rosewash.zip`. `just clean` removes `.tmp`
-and local browser-debug leftovers.
+refreshes `dist/`, and writes `release/rosewash-vX.Y.Z.zip` for the Chrome
+Web Store. `manifest.json` is at the root of that zip. `just clean` removes
+`.tmp` and local browser-debug leftovers.
 
 ## Publishing Releases
 

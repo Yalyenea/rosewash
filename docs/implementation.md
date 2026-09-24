@@ -11,8 +11,8 @@ surfaces, text, and neutral borders with Rose Pine Dawn / Moon tokens. There is
 no bundler, no runtime npm dependency, and no TypeScript compile step.
 
 Stage with `just dist` and load the `dist/` folder as an unpacked extension
-(not the repo root). Package with `just package` → `dist/` plus
-`.tmp/rosewash.zip`.
+(not the repo root). `just package` writes the Chrome Web Store zip to
+`release/rosewash-vX.Y.Z.zip`, with `manifest.json` at the archive root.
 
 ## Repository layout
 
@@ -31,6 +31,7 @@ scripts/validate.mjs       Manifest / file presence / syntax checks
 justfile                   test · validate · check · dist · package · clean
 scripts/release-notes.mjs  GitHub Release notes from the version section in changelog.md
 dist/                      Generated loadable extension (`just dist`, gitignored)
+release/                   Chrome Web Store zip (`just package`, gitignored)
 ```
 
 ## Runtime topology
@@ -403,7 +404,7 @@ just test       # node --test test/*.test.js
 just validate   # manifest + required files + --check scripts
 just check      # test + validate
 just dist       # copy manifest + html + src → dist/ (Load unpacked)
-just package    # check + dist + zip → .tmp/rosewash.zip
+just package    # check + dist + zip → release/rosewash-vX.Y.Z.zip
 just clean      # remove .tmp and local debug leftovers
 ```
 

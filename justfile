@@ -18,11 +18,15 @@ dist:
     find dist -name .DS_Store -delete
     @echo "staged dist/ — Load unpacked this folder"
 
-# Check, stage dist/, and zip it
+# Check, stage dist/, and zip it for the Chrome Web Store
 package: check dist
-    mkdir -p .tmp
-    rm -f .tmp/rosewash.zip
-    cd dist && zip -r ../.tmp/rosewash.zip . -x "*.DS_Store"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    version="$(node -p "require('./package.json').version")"
+    mkdir -p release
+    rm -f "release/rosewash-v${version}.zip"
+    cd dist && zip -r "../release/rosewash-v${version}.zip" . -x "*.DS_Store"
+    echo "release/rosewash-v${version}.zip"
 
 # Remove local debug artifacts (Chrome profiles, screenshots, logs)
 clean:

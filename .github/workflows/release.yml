@@ -49,8 +49,11 @@ jobs:
             *) echo "Release tags must start with v, got: $TAG_NAME" >&2; exit 1 ;;
           esac
 
-          asset=".tmp/rosewash-${TAG_NAME}.zip"
-          cp .tmp/rosewash.zip "$asset"
+          asset="release/rosewash-${TAG_NAME}.zip"
+          if [[ ! -f "$asset" ]]; then
+            echo "missing $asset" >&2
+            exit 1
+          fi
           echo "path=$asset" >> "$GITHUB_OUTPUT"
 
       - name: Write release notes
