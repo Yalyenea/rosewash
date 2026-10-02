@@ -14,6 +14,9 @@ protected.
 
 - Independent light and dark palette selectors (28 Codex-aligned families;
   default Rose Pine for both).
+- Plain Light and Dark options appear first in their respective lists and
+  preserve website colors. Switching to either restores previous tints;
+  custom fonts and site layouts still follow their own settings.
 - Appearance: Auto / Light / Dark. Auto uses the light or dark palette from
   the system color scheme.
 - Optional English, Chinese, native MathML, and monospace fonts, selected from

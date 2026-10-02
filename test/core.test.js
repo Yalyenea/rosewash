@@ -345,7 +345,7 @@ test("falls back when a preset lacks the requested appearance", async () => {
   assert.equal(core.resolveThemeKey("proof", "dark", true), "proof-light");
   assert.ok(core.PRESETS.catppuccin.light);
   assert.ok(core.PRESETS["tokyo-night"].dark);
-  assert.equal(core.PRESET_IDS.length, 28);
+  assert.equal(core.PRESET_IDS.length, 30);
 });
 
 test("resolves independent light and dark presets", async () => {
@@ -400,12 +400,128 @@ test("engine applies the matching variant preset", async () => {
   );
 });
 
+test("plain Light and Dark preserve page colors without style reads or observation", async () => {
+  const core = await loadCore();
+  const settings = { presetLight: "light", presetDark: "dark", appearance: "auto" };
+  assert.equal(core.resolveSettingsThemeKey(settings, false), "light-light");
+  assert.equal(core.resolveSettingsThemeKey(settings, true), "dark-dark");
+  for (const prefersDark of [false, true]) {
+    const { document, window, all } = createMockDom({ prefersDark, tree: [{ tag: "a" }] });
+    const root = document.documentElement;
+    root.style.setProperty("color-scheme", "light dark");
+    root.style.setProperty("scrollbar-color", "auto");
+    window.getComputedStyle = () => { assert.fail("plain themes must not read computed styles"); };
+    window.MutationObserver = class {
+      constructor() { assert.fail("plain themes must not observe the page"); }
+    };
+    // Clear the provisional paint too, before storage settings are applied.
+    core.applyThemeTokens(root, "rose-pine-light");
+    const engine = core.createEngine({ document, window });
+    for (let index = 0; index < 2; index += 1) {
+      const result = engine.apply(settings);
+      assert.equal(result.enabled, true);
+      assert.equal(result.theme, prefersDark ? "dark-dark" : "light-light");
+      assert.equal(result.tinted, 0);
+      assert.equal(root.hasAttribute("data-rosewash-theme"), false);
+      assert.equal(root.style.getPropertyValue("--rosewash-base"), "");
+      assert.equal(root.style.getPropertyValue("color-scheme"), "light dark");
+      assert.equal(root.style.getPropertyValue("scrollbar-color"), "auto");
+      for (const element of all) {
+        assert.equal(element.style.getPropertyValue("background-color"), "");
+        assert.equal(element.style.getPropertyValue("color"), "");
+      }
+    }
+  }
+});
+
+test("switching to plain themes restores colors, root tokens, and browser controls", async () => {
+  const core = await loadCore();
+  for (const appearance of ["light", "dark"]) {
+    const { document, window, byId } = createMockDom({
+      rootCssVars: { "--bg-primary": "#ffffff" },
+      tree: [{ id: "link", tag: "a" }]
+    });
+    const root = document.documentElement;
+    const link = byId.get("link");
+    root.style.setProperty("--bg-primary", "#fefefe");
+    root.style.setProperty("color-scheme", "light dark", "important");
+    root.style.setProperty("scrollbar-color", "auto");
+    link.style.setProperty("color", "#123456", "important");
+    link.style.setProperty("background-color", "#abcdef");
+    let disconnects = 0;
+    window.MutationObserver = class {
+      observe() {}
+      disconnect() { disconnects += 1; }
+    };
+    const engine = core.createEngine({ document, window });
+    const tinted = { appearance };
+    assert.ok(engine.apply(tinted).tinted > 0);
+    const result = engine.apply({ ...tinted, presetLight: "light", presetDark: "dark" });
+    assert.equal(result.tinted, 0);
+    assert.equal(root.hasAttribute("data-rosewash-theme"), false);
+    for (const token of ["base", "surface", "overlay", "muted", "text", "link"]) {
+      assert.equal(root.style.getPropertyValue(`--rosewash-${token}`), "");
+    }
+    assert.equal(root.style.getPropertyValue("--bg-primary"), "#fefefe");
+    assert.equal(root.style.getPropertyValue("--main-surface-primary"), "");
+    assert.equal(root.style.getPropertyValue("color-scheme"), "light dark");
+    assert.equal(root.style.getPropertyPriority("color-scheme"), "important");
+    assert.equal(root.style.getPropertyValue("scrollbar-color"), "auto");
+    assert.equal(link.style.getPropertyValue("color"), "#123456");
+    assert.equal(link.style.getPropertyPriority("color"), "important");
+    assert.equal(link.style.getPropertyValue("background-color"), "#abcdef");
+    assert.equal(disconnects, 1);
+    assert.ok(engine.apply(tinted).tinted > 0);
+    assert.equal(root.getAttribute("data-rosewash-theme"), `rose-pine-${appearance}`);
+  }
+});
+
+test("plain themes keep custom fonts independent from page tinting", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [{ id: "text", tag: "p", fontFamily: "Georgia" }] });
+  const text = byId.get("text");
+  let onMutation;
+  let onFrame;
+  window.MutationObserver = class {
+    constructor(callback) { onMutation = callback; }
+    observe() {}
+    disconnect() {}
+  };
+  window.requestAnimationFrame = (callback) => { onFrame = callback; return 1; };
+  const engine = core.createEngine({ document, window });
+  const settings = { presetLight: "light", presetDark: "dark", customFontsEnabled: true, fontEnglish: "Arial" };
+  engine.apply({ ...settings, presetLight: "rose-pine", appearance: "light" });
+  for (const appearance of ["light", "dark"]) {
+    engine.apply({ ...settings, appearance });
+    assert.equal(document.fonts.size, 1);
+    assert.equal(text.style.getPropertyValue("font-family"), '"RosewashEnglish", Georgia');
+    assert.equal(document.documentElement.hasAttribute("data-rosewash-theme"), false);
+    assert.equal(text.style.getPropertyValue("color"), "");
+    assert.equal(text.style.getPropertyValue("background-color"), "");
+  }
+  text.style.removeProperty("font-family");
+  onMutation([{ addedNodes: [text] }]);
+  onFrame();
+  assert.equal(text.style.getPropertyValue("font-family"), '"RosewashEnglish", Georgia');
+  assert.equal(text.style.getPropertyValue("color"), "");
+  engine.apply({ ...settings, customFontsEnabled: false });
+  assert.equal(document.fonts.size, 0);
+  assert.equal(text.style.getPropertyValue("font-family"), "");
+  assert.equal(engine.stats().tinted, 0);
+});
+
 test("lists presets that expose the requested variant", async () => {
   const core = await loadCore();
   const lightIds = core.listPresets("light").map((preset) => preset.id);
   const darkIds = core.listPresets("dark").map((preset) => preset.id);
-  assert.equal(lightIds[0], "rose-pine");
-  assert.equal(darkIds[0], "rose-pine");
+  assert.equal(lightIds[0], "light");
+  assert.equal(darkIds[0], "dark");
+  assert.equal(lightIds[1], "rose-pine");
+  assert.equal(darkIds[1], "rose-pine");
+  assert.ok(lightIds.includes("light"));
+  assert.ok(!lightIds.includes("dark"));
+  assert.ok(darkIds.includes("dark"));
+  assert.ok(!darkIds.includes("light"));
   assert.ok(lightIds.includes("proof"));
   assert.ok(!lightIds.includes("dracula"));
   assert.ok(darkIds.includes("dracula"));

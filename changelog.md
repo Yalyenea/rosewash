@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Add plain Light and Dark options at the top of their palette lists. They
+  preserve website colors and restore previous tints; custom fonts and site
+  layouts keep their independent settings.
+
 ## 0.2.1 - 2026-09-24
 
 - Nested fills that match the page or their parent stay on the same paper

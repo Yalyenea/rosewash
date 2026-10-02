@@ -9,7 +9,8 @@ content pipeline, and change recipes, see
 `src/content/core.js` is the testable engine. It owns:
 
 - Curated preset registry (Rose Pine default, plus Codex-aligned families such
-  as Catppuccin, Nord, Gruvbox, Tokyo Night, …) with light/dark variants.
+  as Catppuccin, Nord, Gruvbox, Tokyo Night, …) with light/dark variants, plus
+  plain Light and Dark options that preserve website colors.
 - Color parsing for hex, `rgb()`, and CSS Color 4 `lab()`, `oklab()`, `lch()`,
   and `oklch()` forms used by modern Tailwind output.
 - Full-page surface and text covering into the active palette.
@@ -132,7 +133,11 @@ plain HTML/CSS/JS and share the same storage schema:
 Theme presets live in one palette registry with light and/or dark variants. The
 content engine resolves `presetLight` or `presetDark` from appearance into a
 concrete palette before scanning, so adding another curated family does not add
-branching inside DOM processing. Legacy `preset` and `mode: auto|dawn|moon`
+branching inside DOM processing. Plain presets set `tint: false`: they restore
+previous tints and skip color overrides, while custom fonts and site layouts
+keep their own settings. Without custom fonts, these presets skip DOM scanning
+and observation. Both UIs list the plain option first, followed by Rose Pine
+and the remaining families sorted by label. Legacy `preset` and `mode: auto|dawn|moon`
 storage still normalize cleanly.
 
 The flat settings layout follows the selected palette and system appearance.

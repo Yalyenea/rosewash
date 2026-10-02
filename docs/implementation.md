@@ -192,9 +192,14 @@ Node `vm` context (`test/core.test.js`). Arrays returned from the sandbox need
 ### Palettes
 
 Presets live in `RosewashCore.PRESETS` (28 families aligned with Codex app code
-themes). Each entry has optional `light` / `dark` token sets:
+themes, plus plain Light and Dark options). Each entry has optional `light` / `dark` token sets:
 
 `base`, `surface`, `overlay`, `muted`, `text`, `link`.
+
+The plain presets use `tint: false`. Their tokens color only the popup and
+settings UI; pages retain their own colors and browser controls. `listPresets`
+puts the plain option first, Rose Pine second, then sorts other families by
+label within each variant.
 
 Default Rose Pine (former Dawn / Moon):
 
@@ -270,6 +275,10 @@ Pseudo-elements cannot take per-element inline tints.
 
 - Disabled or blocked host → `clear()` (restore inline styles, CSS vars, drop
   theme attribute, disconnect observer).
+- Plain Light / Dark → restore previous tints and root CSS variables, clear
+  theme tokens, and skip page-tone sampling and color overrides. With no
+  custom fonts selected, skip DOM scanning and disconnect the observer.
+  Custom fonts and site layouts remain independent of palette tinting.
 - Theme/mode change → restore previous tints, then full rescan.
 - Same resolved theme (tab focus, `load`, `pageshow`) refreshes root CSS
   variables and keeps the observer, but does **not** walk the whole document.

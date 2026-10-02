@@ -9,6 +9,17 @@
   // Curated presets aligned with Codex desktop app code themes (Settings →
   // Appearance). Each preset exposes light and/or dark paper tokens only.
   const PRESETS = Object.freeze({
+    // Plain palette tokens preview the extension UI; pages keep their colors.
+    light: Object.freeze({
+      id: "light",
+      label: "Light",
+      light: Object.freeze({ tint: false, base: "#ffffff", surface: "#f7f7f7", overlay: "#eeeeee", muted: "#777777", text: "#171717", link: "#0066cc" })
+    }),
+    dark: Object.freeze({
+      id: "dark",
+      label: "Dark",
+      dark: Object.freeze({ tint: false, base: "#171717", surface: "#222222", overlay: "#303030", muted: "#999999", text: "#eeeeee", link: "#66aaff" })
+    }),
     "rose-pine": Object.freeze({
       id: "rose-pine",
       label: "Rose Pine",
@@ -172,6 +183,11 @@
     return Object.values(PRESETS)
       .filter((preset) => !variant || preset[variant])
       .sort((a, b) => {
+        const aPlain = a.light?.tint === false || a.dark?.tint === false;
+        const bPlain = b.light?.tint === false || b.dark?.tint === false;
+        if (aPlain !== bPlain) {
+          return aPlain ? -1 : 1;
+        }
         if (a.id === "rose-pine") {
           return -1;
         }
@@ -833,6 +849,10 @@
     if (!root || !palette) {
       return null;
     }
+    if (palette.tint === false) {
+      clearThemeTokens(root);
+      return palette;
+    }
 
     root.setAttribute(THEME_ATTRIBUTE, theme);
     // !important so stylesheet fallbacks in theme.css cannot keep Rose Pine.
@@ -1366,8 +1386,8 @@
           .map((face) => '"' + face.family + '", ').join("");
         setStyle(element, "font-family", prefix + original);
       }
-      if (shouldSkipElement(element)) return;
       const palette = PALETTES[theme];
+      if (palette.tint === false || shouldSkipElement(element)) return;
       const background = parseColor(snapshot.backgroundColor);
       const hasBackgroundImage = snapshot.backgroundImage && snapshot.backgroundImage !== "none";
       const generatedBackground = isGeneratedBackgroundImage(snapshot.backgroundImage);
@@ -1559,6 +1579,7 @@
 
     function applyRootTheme(theme) {
       const palette = applyThemeTokens(document.documentElement, theme);
+      if (palette.tint === false) return palette;
       setStyle(
         document.documentElement,
         "color-scheme",
@@ -1610,6 +1631,7 @@
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       const theme = resolveSettingsThemeKey(normalized, prefersDark);
       const nextPalette = PALETTES[theme];
+      const tintEnabled = nextPalette.tint !== false;
       const currentBase = document.documentElement.style.getPropertyValue("--rosewash-base").trim();
       const themeChanged = Boolean(
         activeTheme
@@ -1632,17 +1654,21 @@
       if (fontsChanged) replaceFonts(definitions);
       const redundant = Boolean(activeTheme) && !themeChanged && !fontsChanged;
       if (!redundant) {
-        activePageTone = detectPageTone();
+        activePageTone = tintEnabled ? detectPageTone() : "mixed";
       }
       activePresetLight = normalized.presetLight;
       activePresetDark = normalized.presetDark;
       activeAppearance = normalized.appearance;
       activeTheme = theme;
       applyRootTheme(theme);
-      if (!redundant) {
-        scan(document.documentElement, theme);
+      if (tintEnabled || activeFonts.length) {
+        if (!redundant) {
+          scan(document.documentElement, theme);
+        }
+        observe();
+      } else {
+        disconnectObserver();
       }
-      observe();
       return {
         enabled: true,
         theme,
