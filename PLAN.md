@@ -4,7 +4,8 @@
 
 Build a compact eye-comfort extension that stays fast and visually quiet. The
 MVP covers pages with Rose Pine Dawn/Moon (full-page palette remap, media and
-code protected), then grows into a small set of curated theme presets.
+recognized syntax highlighting protected), then grows into a small set of
+curated theme presets.
 
 ## Current Milestone: MVP
 
@@ -36,7 +37,8 @@ code protected), then grows into a small set of curated theme presets.
 
 - Keep content scanning bounded and throttled.
 - Process added DOM nodes, not the whole document on every mutation.
-- Preserve media, canvas, SVG, editors, form controls, and code blocks.
+- Preserve media, canvas, SVG, editors, form controls, and recognized syntax
+  highlighting; ordinary code follows the page palette.
 - Store user state in `chrome.storage.sync`.
 - Avoid site-specific rules until the generic behavior proves insufficient.
 - Keep dark-only adaptation generic: detect page tone first, then reuse the

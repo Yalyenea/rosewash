@@ -500,7 +500,7 @@ test("plain themes keep custom fonts independent from page tinting", async () =>
     assert.equal(text.style.getPropertyValue("background-color"), "");
   }
   text.style.removeProperty("font-family");
-  onMutation([{ addedNodes: [text] }]);
+  onMutation([{ type: "childList", target: document.body, addedNodes: [text] }]);
   onFrame();
   assert.equal(text.style.getPropertyValue("font-family"), '"RosewashEnglish", Georgia');
   assert.equal(text.style.getPropertyValue("color"), "");
@@ -617,6 +617,9 @@ function createStyleBag(initial = {}) {
 function createMockDom(nodes) {
   const byId = new Map();
   const all = [];
+  const events = new Map();
+  const frames = new Map();
+  let nextFrame = 1;
 
   function createNode(spec, parent = null) {
     const attrs = new Map(Object.entries(spec.attrs || {}));
@@ -626,6 +629,8 @@ function createMockDom(nodes) {
     const computed = {
       backgroundColor: spec.backgroundColor || "rgba(0, 0, 0, 0)",
       backgroundImage: spec.backgroundImage || "none",
+      backgroundClip: spec.backgroundClip || "border-box",
+      webkitBackgroundClip: spec.webkitBackgroundClip || "border-box",
       color: spec.color || "rgb(0, 0, 0)",
       borderTopColor: spec.borderTopColor || "rgb(0, 0, 0)",
       borderRightColor: spec.borderRightColor || "rgb(0, 0, 0)",
@@ -785,6 +790,9 @@ function createMockDom(nodes) {
   }
 
   const document = {
+    addEventListener(name, listener) { events.set(name, listener); },
+    removeEventListener(name) { events.delete(name); },
+    dispatchEvent(event) { events.get(event.type)?.(event); },
     fonts: new Set(),
     documentElement: html,
     body,
@@ -848,6 +856,7 @@ function createMockDom(nodes) {
       return { matches: Boolean(nodes.prefersDark) };
     },
     MutationObserver: class {
+      constructor(callback) { window.deliverMutations = callback; }
       observe() {}
       disconnect() {}
     },
@@ -856,13 +865,76 @@ function createMockDom(nodes) {
     },
     clearTimeout() {},
     requestAnimationFrame(fn) {
-      return 1;
+      const id = nextFrame++;
+      frames.set(id, fn);
+      return id;
     },
-    cancelAnimationFrame() {}
+    cancelAnimationFrame(id) { frames.delete(id); },
+    flushFrames() {
+      const callbacks = [...frames.values()];
+      frames.clear();
+      for (const fn of callbacks) fn();
+    }
   };
 
   return { document, window, byId, all };
 }
+
+test("gradient text stays readable without becoming a painted surface and restores its fill", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [
+    { id: "title", tag: "span", color: "transparent", backgroundClip: "text",
+      backgroundImage: "linear-gradient(to right, #e879f9, #3b82f6)" },
+    { id: "link", tag: "a", color: "transparent", webkitBackgroundClip: "text",
+      backgroundImage: "linear-gradient(#e879f9, #3b82f6)" }
+  ] });
+  const title = byId.get("title");
+  title.style.setProperty("-webkit-text-fill-color", "transparent", "important");
+  const engine = core.createEngine({ document, window });
+  for (const appearance of ["light", "dark", "light"]) {
+    engine.apply({ appearance });
+    const palette = core.PALETTES[`rose-pine-${appearance}`];
+    assert.equal(title.style.getPropertyValue("color"), palette.text);
+    assert.equal(byId.get("link").style.getPropertyValue("color"), palette.link);
+    assert.equal(title.style.getPropertyValue("background-image"), "none");
+    assert.equal(title.style.getPropertyValue("background-color"), "");
+    assert.equal(title.style.getPropertyValue("-webkit-text-fill-color"), "currentColor");
+  }
+  engine.clear();
+  assert.equal(title.style.getPropertyValue("color"), "");
+  assert.equal(title.style.getPropertyValue("background-image"), "");
+  assert.equal(title.style.getPropertyValue("-webkit-text-fill-color"), "transparent");
+  assert.equal(title.style.getPropertyPriority("-webkit-text-fill-color"), "important");
+});
+
+test("ordinary code text follows the palette while highlighted code and editors remain protected", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [
+    { id: "name", tag: "code", color: "rgb(244, 244, 245)" },
+    { tag: "div", backgroundColor: "rgb(24, 24, 27)", children: [
+      { id: "command", tag: "code", color: "rgb(244, 244, 245)", children: [
+        { id: "argument", tag: "span", color: "rgb(244, 244, 245)" }
+      ] }
+    ] },
+    { id: "key", tag: "kbd", color: "rgb(244, 244, 245)" },
+    { id: "sample", tag: "samp", color: "rgb(244, 244, 245)" },
+    { tag: "pre", className: "hljs", children: [{ id: "highlight", tag: "code" }] },
+    { className: "monaco-editor", children: [{ id: "editor", tag: "code" }] },
+    { attrs: { "data-rosewash-ignore": "" }, children: [{ id: "ignored", tag: "code" }] }
+  ] });
+  const engine = core.createEngine({ document, window });
+  for (const appearance of ["light", "dark"]) {
+    engine.apply({ appearance });
+    for (const id of ["name", "command", "argument", "key", "sample"]) {
+      assert.equal(byId.get(id).style.getPropertyValue("color"), core.PALETTES[`rose-pine-${appearance}`].text, id);
+    }
+    for (const id of ["highlight", "editor", "ignored"]) {
+      assert.equal(byId.get(id).style.getPropertyValue("color"), "", id);
+    }
+  }
+  engine.clear();
+  assert.equal(byId.get("name").style.getPropertyValue("color"), "");
+});
 
 test("custom fonts update on the same theme and restore original inline typography", async () => {
   const core = await loadCore();
@@ -1077,6 +1149,61 @@ test("engine preserves surface roles across repeated scans", async () => {
     byId.get("mid-surface").style.getPropertyValue("background-color"),
     core.PALETTES.dawn.overlay
   );
+});
+
+test("late stylesheets and class changes repair existing gradient text without a page reload", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [
+    { id: "title", tag: "span" }, { id: "unrelated", tag: "p" }
+  ] });
+  const engine = core.createEngine({ document, window });
+  engine.apply({ appearance: "light" });
+  const title = byId.get("title");
+  Object.assign(title._computed, {
+    color: "transparent", backgroundClip: "text",
+    backgroundImage: "linear-gradient(#e879f9, #3b82f6)"
+  });
+  document.dispatchEvent({ type: "load", target: {
+    tagName: "LINK", relList: { contains: (token) => token === "stylesheet" }
+  } });
+  window.flushFrames();
+  assert.equal(title.style.getPropertyValue("-webkit-text-fill-color"), "currentColor");
+
+  Object.assign(title._computed, { color: "rgb(255, 255, 255)", backgroundClip: "border-box", backgroundImage: "none" });
+  const readStyle = window.getComputedStyle;
+  const readIds = [];
+  window.getComputedStyle = (element) => { readIds.push(element.id); return readStyle(element); };
+  window.deliverMutations([{ type: "attributes", attributeName: "class", target: title }]);
+  window.flushFrames();
+  assert.equal(title.style.getPropertyValue("-webkit-text-fill-color"), "");
+  assert.equal(title.style.getPropertyValue("color"), core.PALETTES.dawn.text);
+  assert.ok(!readIds.includes("unrelated"));
+  engine.clear();
+  assert.equal(title.style.getPropertyValue("color"), "");
+});
+
+test("page completion and injected style updates coalesce, and disabling cancels pending repair", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [
+    { id: "title", tag: "span" }, { id: "styles", tag: "style" }
+  ] });
+  const engine = core.createEngine({ document, window });
+  engine.apply({ appearance: "light" });
+  Object.assign(byId.get("title")._computed, {
+    color: "transparent", backgroundClip: "text", backgroundImage: "linear-gradient(#fff, #000)"
+  });
+  engine.refresh();
+  window.deliverMutations([{ type: "characterData", target: { nodeType: 3, parentElement: byId.get("styles") } }]);
+  window.flushFrames();
+  assert.equal(byId.get("title").style.getPropertyValue("-webkit-text-fill-color"), "currentColor");
+  engine.refresh();
+  engine.clear();
+  window.flushFrames();
+  assert.equal(byId.get("title").style.getPropertyValue("color"), "");
+  engine.apply({ presetLight: "light", appearance: "light" });
+  engine.refresh();
+  window.flushFrames();
+  assert.equal(byId.get("title").style.getPropertyValue("color"), "");
 });
 
 test("engine skips full scan when the resolved theme is unchanged", async () => {

@@ -50,8 +50,8 @@
   function dispose() {
     disposed = true;
     darkQuery.removeEventListener("change", applyCachedSettings);
-    document.removeEventListener("DOMContentLoaded", applyCachedSettings);
-    window.removeEventListener("load", applyCachedSettings);
+    document.removeEventListener("DOMContentLoaded", handlePageLoaded);
+    window.removeEventListener("load", handlePageLoaded);
     window.removeEventListener("pageshow", applyCachedSettings);
     document.removeEventListener("visibilitychange", handleVisibilityChange);
     if (document.documentElement?.hasAttribute(X_COMPACT_ATTRIBUTE)) {
@@ -211,6 +211,11 @@
     }
   }
 
+  function handlePageLoaded() {
+    applyCachedSettings();
+    if (!disposed) engine.refresh();
+  }
+
   function start() {
     if (!hasExtensionContext()) {
       dispose();
@@ -218,8 +223,8 @@
     }
 
     darkQuery.addEventListener("change", applyCachedSettings);
-    document.addEventListener("DOMContentLoaded", applyCachedSettings);
-    window.addEventListener("load", applyCachedSettings);
+    document.addEventListener("DOMContentLoaded", handlePageLoaded);
+    window.addEventListener("load", handlePageLoaded);
     window.addEventListener("pageshow", applyCachedSettings);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 

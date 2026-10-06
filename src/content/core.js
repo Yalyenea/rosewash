@@ -248,6 +248,7 @@
     "border-bottom-color",
     "border-left-color",
     "color",
+    "-webkit-text-fill-color",
     "color-scheme",
     "scrollbar-color",
     "font-family"
@@ -264,9 +265,6 @@
     "iframe",
     "embed",
     "object",
-    "code",
-    "kbd",
-    "samp",
     "textarea",
     "select",
     "input",
@@ -1111,7 +1109,7 @@
     // name -> previous inline value (null if unset)
     let cssVarOverrides = new Map();
     let observer = null;
-    let pendingRoots = new Set();
+    let pendingRoots = new Map();
     let pendingFrame = null;
     let activePresetLight = null;
     let activePresetDark = null;
@@ -1349,6 +1347,8 @@
         element,
         backgroundColor: computedStyle.backgroundColor,
         backgroundImage: computedStyle.backgroundImage,
+        backgroundClip: computedStyle.backgroundClip,
+        webkitBackgroundClip: computedStyle.webkitBackgroundClip,
         color: computedStyle.color,
         fontFamily: activeFonts.length ? computedStyle.fontFamily : "",
         borderTopColor: computedStyle.borderTopColor,
@@ -1391,13 +1391,20 @@
       const background = parseColor(snapshot.backgroundColor);
       const hasBackgroundImage = snapshot.backgroundImage && snapshot.backgroundImage !== "none";
       const generatedBackground = isGeneratedBackgroundImage(snapshot.backgroundImage);
+      const gradientText = generatedBackground
+        && (snapshot.backgroundClip === "text" || snapshot.webkitBackgroundClip === "text");
+      if (gradientText) {
+        setStyle(element, "background-image", "none");
+        setStyle(element, "color", element.tagName === "A" ? palette.link : palette.text);
+        setStyle(element, "-webkit-text-fill-color", "currentColor");
+      }
       const pageElement = isPageElement(element, document);
 
       const chromeCandidate = isPageChromeElement(element);
       const knownChromeClass = hasPageChromeClass(elementClassName(element));
       // Semantic headers / known site shells still paint when the root is
       // transparent (background lives on a child or CSS-in-JS layer).
-      const pageChromeTinted = chromeCandidate
+      const pageChromeTinted = !gradientText && chromeCandidate
         && (knownChromeClass || background?.alpha > 0.05 || generatedBackground)
         && (knownChromeClass || !hasBackgroundImage || generatedBackground);
       if (pageChromeTinted) {
@@ -1416,7 +1423,7 @@
 
       // Full cover: every opaque painted box becomes Rose Pine. Gradient-only
       // fills are flattened; url()/media backgrounds stay untouched.
-      const coverSurface = !pageChromeTinted
+      const coverSurface = !gradientText && !pageChromeTinted
         && (!hasBackgroundImage || generatedBackground)
         && (isCoverSurfaceBackground(background, { pageElement }) || generatedBackground);
       if (coverSurface) {
@@ -1462,14 +1469,36 @@
     function flushPending() {
       pendingFrame = null;
       if (!activeTheme) {
-        pendingRoots = new Set();
+        pendingRoots = new Map();
         return;
       }
 
       const roots = pendingRoots;
-      pendingRoots = new Set();
-      for (const root of roots) {
+      pendingRoots = new Map();
+      for (const [root, refresh] of roots) {
+        if (!refresh) continue;
+        for (let parent = root.parentElement; parent; parent = parent.parentElement) {
+          if (roots.has(parent)) roots.set(parent, true);
+        }
+      }
+      for (const [root, refresh] of roots) {
+        let covered = false;
+        for (let parent = root.parentElement; parent; parent = parent.parentElement) {
+          if (roots.has(parent)) { covered = true; break; }
+        }
+        if (covered) continue;
         if (isElementNode(root) && root.isConnected !== false) {
+          if (refresh) {
+            for (const element of [root, ...root.querySelectorAll("*")]) {
+              if (element.hasAttribute(TINT_ATTRIBUTE)) restoreElement(element);
+              surfaceRecords.delete(element);
+              tintedPageChrome.delete(element);
+            }
+            if (root === document.documentElement) {
+              restoreCssVarOverrides();
+              applyRootTheme(activeTheme);
+            }
+          }
           scan(root, activeTheme);
         }
       }
@@ -1477,8 +1506,8 @@
 
     // Coalesce SPA mutations to the next frame — not 250ms — so new white
     // nodes cover before the next paint when possible.
-    function scheduleScan(root) {
-      pendingRoots.add(root);
+    function scheduleScan(root, refresh = false) {
+      pendingRoots.set(root, refresh || pendingRoots.get(root) === true);
       if (pendingFrame !== null) {
         return;
       }
@@ -1501,20 +1530,45 @@
         }
 
         for (const record of records) {
-          for (const node of record.addedNodes) {
+          if (record.type === "attributes") {
+            scheduleScan(record.target, true);
+            continue;
+          }
+          const target = isElementNode(record.target) ? record.target : record.target.parentElement;
+          if (target?.closest("style")) {
+            refresh();
+            continue;
+          }
+          for (const node of record.addedNodes || []) {
             if (isElementNode(node)) {
+              if (node.tagName === "STYLE" || node.querySelectorAll("style").length) refresh();
               scheduleScan(node);
             }
           }
         }
       });
-      observer.observe(document.documentElement, { childList: true, subtree: true });
+      observer.observe(document.documentElement, {
+        childList: true, subtree: true, characterData: true,
+        attributes: true, attributeFilter: ["class"]
+      });
+      document.addEventListener("load", handleStylesheetLoad, true);
+    }
+
+    function refresh() {
+      if (activeTheme && (PALETTES[activeTheme].tint !== false || activeFonts.length)) {
+        scheduleScan(document.documentElement, true);
+      }
+    }
+
+    function handleStylesheetLoad(event) {
+      if (event.target.tagName === "LINK" && event.target.relList.contains("stylesheet")) refresh();
     }
 
     function disconnectObserver() {
       if (observer) {
         observer.disconnect();
         observer = null;
+        document.removeEventListener("load", handleStylesheetLoad, true);
       }
       if (pendingFrame !== null) {
         if (typeof window.cancelAnimationFrame === "function") {
@@ -1523,7 +1577,7 @@
         window.clearTimeout(pendingFrame);
         pendingFrame = null;
       }
-      pendingRoots = new Set();
+      pendingRoots = new Map();
     }
 
     function restoreCssVarOverrides() {
@@ -1690,7 +1744,7 @@
       };
     }
 
-    return { apply, clear, stats, disconnect: disconnectObserver };
+    return { apply, refresh, clear, stats, disconnect: disconnectObserver };
   }
 
   const api = Object.freeze({

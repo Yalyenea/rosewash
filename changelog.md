@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Keep gradient text readable when its background is replaced by the palette.
+  Ordinary code, keyboard labels, and sample output now follow page colors;
+  editors and recognized syntax-highlighting regions remain protected.
+- Repair tints after page loading, late stylesheet loads, inserted or edited
+  styles, and element class changes. Batch overlapping scans into the next
+  frame while keeping idle tab-focus updates free of full-page scans.
+
 - Add plain Light and Dark options at the top of their palette lists. They
   preserve website colors and restore previous tints; custom fonts and site
   layouts keep their independent settings.

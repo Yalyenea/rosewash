@@ -155,8 +155,10 @@ On every page match, roughly:
 5. Later: `storage.onChanged`, `matchMedia` dark changes, `DOMContentLoaded`,
    `load`, `pageshow`, `visibilitychange`, and popup messages all re-apply from
    the **in-page settings cache** (no extra storage read on system theme
-   switch). If the resolved palette did not change, the engine skips the full
-   DOM walk and only refreshes root CSS variables.
+   switch). If the resolved palette did not change, ordinary re-applies skip
+   the full DOM walk and only refresh root CSS variables. `DOMContentLoaded`
+   and `load` also request a batched refresh to cover styles that arrived
+   after the initial scan.
 
 ### Extension context safety
 
@@ -237,6 +239,11 @@ For each non-skipped element:
    surface tokens keep that role, so repeated scans cannot turn a page shell
    or elevated region into a different layer.
 3. **Text**: opaque colors → `palette.text`; anchors → `palette.link`.
+   Generated gradients clipped to text become palette text rather than a
+   painted surface. Their background image is cleared and
+   `-webkit-text-fill-color` is set to `currentColor`; the original fill is
+   restored when tinting is cleared. Ordinary `code`, `kbd`, and `samp`
+   elements and their children follow the palette.
 4. **Borders**: a low-chroma border is recolored to `palette.muted` only when
    that side is already painted (`isPaintedBorder`: width above 0 and a style
    other than `none` / `hidden`) and the stroke is not the same paper as the
@@ -244,8 +251,8 @@ For each non-skipped element:
    WordPress global styles turn an inline `border-*-color` into
    `border-style: solid`, which would frame every element.
 
-Skip list includes media, canvas, SVG, iframe, form controls, code/editor
-surfaces (CodeMirror, Monaco, hljs, KaTeX, MathJax), and
+Skip list includes media, canvas, SVG, iframe, form controls, editor and
+rendered formula surfaces (CodeMirror, Monaco, hljs, KaTeX, MathJax), and
 `[data-rosewash-ignore]`.
 
 ### Root CSS variable remapping
@@ -264,8 +271,14 @@ Pseudo-elements cannot take per-element inline tints.
 
 ### MutationObserver
 
-- Observes the document for added nodes.
-- Scans **added subtrees only**, not the whole document every time.
+- Observes added nodes and class changes. New subtrees are scanned directly;
+  class changes restore and rescan only the affected subtree.
+- Inserting or editing a `style` element, or loading a stylesheet `link`,
+  requests a full refresh. Refresh restores tint properties and surface
+  records before reading the new page styles, then reapplies root tokens.
+- Nested scan requests are folded into their queued ancestor; a child refresh
+  promotes that ancestor to refresh too. Inline style changes made by the
+  engine are not observed, avoiding a scan loop.
 - Coalesces to **`requestAnimationFrame`** (not a multi-hundred-ms debounce)
   so SPA navigations cover before the next paint when possible.
 - Restore walks **connected** `[data-rosewash-tinted]` nodes. Detached feed
@@ -280,9 +293,12 @@ Pseudo-elements cannot take per-element inline tints.
   custom fonts selected, skip DOM scanning and disconnect the observer.
   Custom fonts and site layouts remain independent of palette tinting.
 - Theme/mode change → restore previous tints, then full rescan.
-- Same resolved theme (tab focus, `load`, `pageshow`) refreshes root CSS
+- Same resolved theme (tab focus, `pageshow`) refreshes root CSS
   variables and keeps the observer, but does **not** walk the whole document.
   New nodes still arrive through the mutation scan.
+- Page completion and stylesheet updates explicitly request a refresh even
+  when the resolved theme is unchanged. Pending scans and stylesheet listeners
+  are removed on clear or disconnect.
 - Page-tone sampling runs on first apply and on palette change only. Full
   cover does not use page tone for surface choice.
 
@@ -430,8 +446,9 @@ branch other than `main`.
 
 1. **No site-specific rules** until generic cover fails; known chrome classes
    (Zhihu) are narrow exceptions already documented.
-2. **Bounded DOM work**: initial scan + added nodes only; no continuous
-   `getComputedStyle` loops.
+2. **Bounded DOM work**: added nodes and class changes scan their subtrees;
+   page completion and stylesheet updates request batched full refreshes.
+   No continuous `getComputedStyle` loops.
 3. **Cache-driven Auto**: system theme flips re-apply from memory, never
    re-read storage in the content script path.
 4. **Prefer generic tone + palette registry** over URL allowlists for themes.

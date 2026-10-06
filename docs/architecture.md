@@ -17,7 +17,8 @@ content pipeline, and change recipes, see
 - Optional page-tone sampling (still used for diagnostics and mixed re-detect).
 - Site block matching.
 - DOM tinting and restoration.
-- A throttled `MutationObserver` for newly inserted elements.
+- A batched `MutationObserver` for inserted elements, class changes, and
+  stylesheet edits, plus a listener for stylesheet loads.
 
 At `document_start` the content runtime paints a provisional
 `data-rosewash-theme` (Auto from system preference) and applies default
@@ -43,9 +44,12 @@ painted surface becomes Rose Pine:
   `palette.muted`. A zero-width or `none` border is left alone: writing the
   color can make the site turn it into a solid frame. A stroke that matches
   its own fill stays untouched.
-- CSS gradients are flattened to solid palette fills; `url()` media backgrounds
-  are left alone.
-- Media, canvas, SVG, iframes, inputs, editors, and code blocks are skipped.
+- CSS gradients are flattened to solid palette fills. Gradients clipped to text
+  become readable palette text without a surface fill; `url()` media
+  backgrounds are left alone.
+- Ordinary code, keyboard labels, and sample output follow the palette. Media,
+  canvas, SVG, iframes, inputs, editors, and recognized syntax-highlighting
+  regions are skipped.
 
 Page chrome is `header`, `[role=banner]`, top-level `nav`, and known app shells
 such as Zhihu's `.AppHeader` / `.LeanAppHeaderBar` / `.MobileAppHeader`, when
@@ -72,9 +76,8 @@ per-element inline tints, so:
 Inverted icon/button tokens and brand accents are left alone. Overrides
 restore with the rest of the theme.
 
-If the first document-start pass can only classify the page as `mixed`, the
-next runtime re-apply restores Rosewash's own inline styles before sampling
-again. This keeps early `color-scheme` writes from masking a later SPA shell.
+Page-tone sampling runs on initial apply and palette or font changes. Surface
+covering does not depend on the sampled tone.
 
 Original inline style snapshots are also mirrored onto `data-rosewash-*`
 attributes. This lets a new content-script instance clean up stale inline styles
@@ -90,7 +93,7 @@ left by an older orphaned script after extension reload.
 - Reads settings from `chrome.storage.sync` and keeps an in-page cache.
 - Re-applies on storage changes.
 - Re-applies after `DOMContentLoaded` and `load` using the already-loaded
-  settings cache.
+  settings cache, then requests a batched refresh for late page styles.
 - Re-applies from the cache immediately after system dark mode changes in Auto
   mode.
 - Re-checks settings when a page becomes visible again.
@@ -163,13 +166,15 @@ keep the native layout.
 
 ## Performance Boundary
 
-The MVP scans the existing DOM once on load, then only scans newly added nodes.
-If the resolved theme, raw mode, or custom font selection changes, already-tinted elements are restored
-before the next scan so Auto dark and manual Moon use the same color path. A
-later apply with the same palette (tab focus, `load`) does not walk the document
-again. It does not walk every element on each mutation and does not call
-`getComputedStyle()` inside a continuous loop. Scan reads computed styles in one
-pass, then writes inline tints.
+The engine scans the initial DOM, then scans added subtrees and restores and
+rescans subtrees whose classes change. Page completion, stylesheet loads, and
+inserted or edited styles request full refreshes. Requests coalesce into the
+next frame; nested subtrees are scanned only through their queued ancestor.
+If the resolved theme, appearance, or custom font selection changes, tinted
+elements are restored before the next scan. Ordinary re-applies with the same
+palette, including tab focus, skip the document walk. The engine does not walk
+every element on each mutation or read computed styles in a continuous loop.
+Each scan reads computed styles in one pass, then writes inline tints.
 
 System theme changes do not call `chrome.storage` again and do not wait for an
 extra animation frame. This avoids both the common MV3 reload/update failure

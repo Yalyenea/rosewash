@@ -7,8 +7,9 @@ Tokyo Night, Solarized, Dracula, GitHub, Linear, Notion, Raycast, Vercel, …).
 
 It remaps page canvases, painted surfaces, neutral borders, and text into the
 active palette so everyday browsing follows a calm paper tone instead of harsh
-site defaults. Media, canvas, SVG, inputs, editors, and code blocks stay
-protected.
+site defaults. Ordinary code and gradient text remain readable in the active
+palette. Media, canvas, SVG, inputs, editors, and recognized syntax-highlighting
+regions stay protected.
 
 ## Features
 
@@ -40,7 +41,9 @@ protected.
   (`--ground`, `--ink`, ChatGPT surface tokens, Substack publication vars, …).
 - CSS Color 4 tone parsing for modern `lab()`, `oklab()`, `lch()`, and
   `oklch()` authored pages.
-- Media, canvas, SVG, inputs, editors, and code block protection.
+- Automatic tint repair after page loading, stylesheet updates, and element
+  class changes, including during in-page navigation.
+- Media, canvas, SVG, inputs, editors, and syntax-highlighting region protection.
 - No runtime dependencies or build step.
 
 ## Screenshots
@@ -162,7 +165,8 @@ against an existing tag from the Actions tab.
 Rosewash remaps page canvases, painted surfaces, text, and low-chroma borders
 into the active Dawn or Moon palette. It samples common document roots and SPA
 app roots so modern CSS and design-token pages are covered without URL-specific
-rules. Media, canvas, SVG, inputs, editors, and code stay protected. Complex
+rules. Media, canvas, SVG, inputs, editors, and recognized syntax-highlighting
+regions stay protected. Complex
 filter inversion and large site-specific rule packs are left for later versions.
 Future versions should add more theme presets through a shared palette registry
 instead of site-specific or theme-specific branches.
