@@ -15,6 +15,7 @@
   const lightSelect = document.querySelector("#preset-light");
   const darkSelect = document.querySelector("#preset-dark");
   const siteButton = document.querySelector("#site-toggle");
+  const siteStatus = document.querySelector("#site-status");
   const xLayoutRow = document.querySelector("#x-layout-row");
   const xLayoutInput = document.querySelector("#x-compact-layout");
   const zhihuLayoutRow = document.querySelector("#zhihu-layout-row");
@@ -117,6 +118,7 @@
   }
 
   function render() {
+    const restriction = core.pageRestrictionForUrl(activeTab?.url);
     enabledInput.checked = settings.enabled;
     hostLabel.textContent = activeHost || "unsupported page";
     lightSelect.value = settings.presetLight;
@@ -134,8 +136,13 @@
     }
 
     const disabled = activeHost && isHostDisabled(activeHost, settings.disabledHosts);
-    siteButton.textContent = disabled ? "Blocked" : "Allowed";
-    siteButton.disabled = !activeHost;
+    siteButton.textContent = restriction || !activeHost ? "Unavailable" : disabled ? "Blocked" : "Allowed";
+    siteButton.disabled = Boolean(restriction) || !activeHost;
+    siteStatus.hidden = !restriction;
+    siteStatus.textContent = restriction === "webstore"
+      ? "The browser blocks extensions on the Web Store and its developer dashboard."
+      : restriction ? "Rosewash cannot run on this page." : "";
+    refreshButton.disabled = Boolean(restriction);
     paintPopupChrome();
   }
 
@@ -167,7 +174,7 @@
   });
 
   siteButton.addEventListener("click", () => {
-    if (!activeHost) {
+    if (!activeHost || core.pageRestrictionForUrl(activeTab?.url)) {
       return;
     }
 

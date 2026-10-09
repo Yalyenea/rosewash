@@ -12,7 +12,7 @@ async function activeTab() {
 
 async function toggleCurrentSite() {
   const tab = await activeTab();
-  if (!tab || !tab.url) {
+  if (!tab || core.pageRestrictionForUrl(tab.url)) {
     return;
   }
 

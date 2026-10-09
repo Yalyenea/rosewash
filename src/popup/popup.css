@@ -168,6 +168,10 @@ p {
   border-top: 1px solid rgba(152, 147, 165, 0.18);
 }
 
+.layout-row[hidden] {
+  display: none;
+}
+
 .layout-row > span:first-child {
   display: grid;
   gap: 1px;
@@ -188,6 +192,18 @@ p {
   color: var(--accent);
   min-height: 26px;
   padding: 0 10px;
+}
+
+#site-status {
+  color: var(--text);
+  margin: 0 2px 10px;
+  max-width: none;
+  white-space: normal;
+}
+
+button:disabled {
+  cursor: default;
+  opacity: 0.55;
 }
 
 footer {

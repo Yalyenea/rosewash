@@ -15,6 +15,32 @@ function plain(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+test("recognizes Chromium's Web Store domain restriction, including developer dashboard URLs", async () => {
+  const core = await loadCore();
+  for (const url of [
+    "https://chrome.google.com/u/1/webstore/devconsole/publisher/item/edit",
+    "https://chrome.google.com/webstore/devconsole/",
+    "https://chrome.google.com/",
+    "https://CHROME.GOOGLE.COM./webstore/",
+    "https://chromewebstore.google.com/detail/rosewash/item",
+    "https://sub.chromewebstore.google.com/"
+  ]) {
+    assert.equal(core.pageRestrictionForUrl(url), "webstore", url);
+  }
+  for (const url of [
+    "https://developer.chrome.com/",
+    "https://chrome.google.com.example.org/",
+    "https://notchromewebstore.google.com/",
+    "http://localhost:8000/",
+    "file:///page.html"
+  ]) {
+    assert.equal(core.pageRestrictionForUrl(url), "", url);
+  }
+  for (const url of ["chrome://extensions/", "chrome-extension://id/popup.html", "about:blank", "invalid", undefined]) {
+    assert.equal(core.pageRestrictionForUrl(url), "unsupported", url);
+  }
+});
+
 test("parses rgb, rgba, and hex colors", async () => {
   const core = await loadCore();
   assert.deepEqual(plain(core.parseColor("rgb(255, 250, 243)")), {

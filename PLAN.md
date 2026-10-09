@@ -33,6 +33,25 @@ curated theme presets.
 - [x] Root surface CSS-variable remapping so token-driven `::after` fades
   (ChatGPT thread footer) follow the paper palette.
 
+## Known Limitations
+
+### Chrome Web Store developer dashboard — 2026-09-30
+
+- **Status:** blocked by Chromium policy; page tinting remains unavailable.
+- **Affected pages:** `chrome.google.com` and `chromewebstore.google.com`,
+  including `/u/1/webstore/devconsole/.../edit` and their subdomains.
+- **Cause:** Chromium rejects extension script injection across these domains.
+  The restriction includes the developer dashboard and applies even with
+  `<all_urls>` host permissions.
+- **Current handling:** the popup shows `Unavailable` with the reason and
+  disables site toggling and Refresh. The site-toggle shortcut skips these
+  pages. These changes explain the limitation; they do not enable tinting.
+- **Revisit when:** Chromium changes this restriction or Google provides a
+  supported way to customize the dashboard appearance.
+- **Sources:** Chromium's
+  [script injection restriction](https://github.com/chromium/chromium/blob/main/chrome/common/extensions/chrome_extensions_client.cc)
+  and [Web Store domain matching](https://github.com/chromium/chromium/blob/main/extensions/common/extension_urls.cc).
+
 ## Implementation Rules
 
 - Keep content scanning bounded and throttled.

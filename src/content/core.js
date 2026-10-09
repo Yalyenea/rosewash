@@ -689,6 +689,23 @@
     }
   }
 
+  function pageRestrictionForUrl(value) {
+    try {
+      const url = new URL(value);
+      if (!["http:", "https:", "file:"].includes(url.protocol)) {
+        return "unsupported";
+      }
+      // Chromium restricts the entire Web Store domains, including devconsole.
+      const host = url.hostname.replace(/\.$/, "");
+      if (isHostDisabled(host, ["chrome.google.com", "chromewebstore.google.com"])) {
+        return "webstore";
+      }
+      return "";
+    } catch {
+      return "unsupported";
+    }
+  }
+
   function isHostDisabled(host, disabledHosts) {
     const normalizedHost = normalizeHost(host);
     if (!normalizedHost) {
@@ -1759,6 +1776,7 @@
     createFontFaces,
     classifyPageTone,
     hostFromUrl,
+    pageRestrictionForUrl,
     isDarkNeutralColor,
     isDarkSurfaceColor,
     isDarkThemeKey,
