@@ -79,9 +79,11 @@ restore with the rest of the theme.
 Page-tone sampling runs on initial apply and palette or font changes. Surface
 covering does not depend on the sampled tone.
 
-Original inline style snapshots are also mirrored onto `data-rosewash-*`
-attributes. This lets a new content-script instance clean up stale inline styles
-left by an older orphaned script after extension reload.
+Only properties changed by the engine are recorded and restored. A declaration
+updated later by the website remains in place; untouched properties such as
+X's dynamically loaded background images are preserved. The original and
+applied declarations are mirrored onto `data-rosewash-style-overrides`, so a
+new content-script instance can remove stale overrides after extension reload.
 
 ## Extension Runtime
 

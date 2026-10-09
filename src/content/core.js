@@ -3,6 +3,7 @@
 
   const THEME_ATTRIBUTE = "data-rosewash-theme";
   const TINT_ATTRIBUTE = "data-rosewash-tinted";
+  const STYLE_OVERRIDES_ATTRIBUTE = "data-rosewash-style-overrides";
   const HAD_STYLE_ATTRIBUTE = "data-rosewash-had-style";
   const ORIGINAL_STYLE_ATTRIBUTE = "data-rosewash-original-style";
 
@@ -240,20 +241,6 @@
     dawn: "light",
     moon: "dark"
   });
-  const RESTORED_PROPERTIES = [
-    "background-color",
-    "background-image",
-    "border-top-color",
-    "border-right-color",
-    "border-bottom-color",
-    "border-left-color",
-    "color",
-    "-webkit-text-fill-color",
-    "color-scheme",
-    "scrollbar-color",
-    "font-family"
-  ];
-
   const SKIP_SELECTOR = [
     "img",
     "picture",
@@ -1136,29 +1123,12 @@
     // original color + assigned palette fill, so nested paper can follow a parent
     let surfaceRecords = new WeakMap();
 
-    function remember(element) {
-      if (originalStyles.has(element)) {
-        return;
-      }
-
-      if (!element.hasAttribute(ORIGINAL_STYLE_ATTRIBUTE)) {
-        const originalStyle = element.getAttribute("style");
-        element.setAttribute(HAD_STYLE_ATTRIBUTE, originalStyle === null ? "false" : "true");
-        element.setAttribute(ORIGINAL_STYLE_ATTRIBUTE, originalStyle || "");
-      }
-
-      const styles = {};
-      for (const property of RESTORED_PROPERTIES) {
-        styles[property] = {
-          value: element.style.getPropertyValue(property),
-          priority: element.style.getPropertyPriority(property)
-        };
-      }
-      originalStyles.set(element, styles);
+    function matchesOverride(element, property, item) {
+      return element.style.getPropertyValue(property) === item.appliedValue
+        && element.style.getPropertyPriority(property) === item.appliedPriority;
     }
 
     function setStyle(element, property, value, priority = "") {
-      remember(element);
       // Full-cover uses !important so SPA/CSS-in-JS layers cannot flash
       // their original white between React commits.
       const nextPriority = priority || "important";
@@ -1169,7 +1139,20 @@
       ) {
         return;
       }
+      const styles = originalStyles.get(element) || {};
+      // Record only properties we write. React can add media backgrounds or
+      // update an existing declaration after the first tint.
+      if (!styles[property] || !matchesOverride(element, property, styles[property])) {
+        styles[property] = {
+          value: element.style.getPropertyValue(property),
+          priority: element.style.getPropertyPriority(property)
+        };
+      }
       element.style.setProperty(property, value, nextPriority);
+      styles[property].appliedValue = element.style.getPropertyValue(property);
+      styles[property].appliedPriority = element.style.getPropertyPriority(property);
+      originalStyles.set(element, styles);
+      element.setAttribute(STYLE_OVERRIDES_ATTRIBUTE, JSON.stringify(styles));
       element.setAttribute(TINT_ATTRIBUTE, activeTheme);
     }
 
@@ -1183,11 +1166,10 @@
       return descendants;
     }
 
-    function restoreElement(element) {
-      const styles = originalStyles.get(element);
-      if (styles) {
-        for (const property of RESTORED_PROPERTIES) {
-          const item = styles[property];
+    function restoreStyleOverrides(element, styles) {
+      for (const [property, item] of Object.entries(styles)) {
+        // A later page write owns the declaration now; leave it in place.
+        if (matchesOverride(element, property, item)) {
           if (item.value) {
             element.style.setProperty(property, item.value, item.priority);
           } else {
@@ -1195,8 +1177,14 @@
           }
         }
       }
+    }
 
+    function restoreElement(element) {
+      const styles = originalStyles.get(element);
+      if (styles) restoreStyleOverrides(element, styles);
+      originalStyles.delete(element);
       element.removeAttribute(TINT_ATTRIBUTE);
+      element.removeAttribute(STYLE_OVERRIDES_ATTRIBUTE);
       element.removeAttribute(HAD_STYLE_ATTRIBUTE);
       element.removeAttribute(ORIGINAL_STYLE_ATTRIBUTE);
     }
@@ -1209,18 +1197,22 @@
     }
 
     function restoreStaleTintedElements() {
-      const selector = `[${TINT_ATTRIBUTE}][${HAD_STYLE_ATTRIBUTE}][${ORIGINAL_STYLE_ATTRIBUTE}]`;
+      const selector = `[${TINT_ATTRIBUTE}]`;
       const staleElements = [
         ...(document.documentElement.matches(selector) ? [document.documentElement] : []),
         ...document.querySelectorAll(selector)
       ];
       for (const element of staleElements) {
-        if (element.getAttribute(HAD_STYLE_ATTRIBUTE) === "true") {
+        if (element.hasAttribute(STYLE_OVERRIDES_ATTRIBUTE)) {
+          restoreStyleOverrides(element, JSON.parse(element.getAttribute(STYLE_OVERRIDES_ATTRIBUTE)));
+        } else if (element.getAttribute(HAD_STYLE_ATTRIBUTE) === "true") {
+          // Clean up snapshots left by versions that stored the whole style.
           element.setAttribute("style", element.getAttribute(ORIGINAL_STYLE_ATTRIBUTE) || "");
-        } else {
+        } else if (element.getAttribute(HAD_STYLE_ATTRIBUTE) === "false") {
           element.removeAttribute("style");
         }
         element.removeAttribute(TINT_ATTRIBUTE);
+        element.removeAttribute(STYLE_OVERRIDES_ATTRIBUTE);
         element.removeAttribute(HAD_STYLE_ATTRIBUTE);
         element.removeAttribute(ORIGINAL_STYLE_ATTRIBUTE);
       }

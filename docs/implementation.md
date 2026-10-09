@@ -171,9 +171,16 @@ Chrome leaves old content scripts alive after extension reload. Calls into
 
 ### Stale style cleanup
 
-Engine mirrors original inline styles onto `data-rosewash-*` attributes. A new
-content-script instance calls `restoreStaleTintedElements()` on first apply so
-orphaned tints from a previous extension version do not stick.
+The engine records each inline property it changes, including its previous
+value and priority and the applied override. Restoration writes the previous
+value only while the current declaration still matches that override. Later
+website updates and untouched properties, such as X's asynchronously loaded
+background images, remain in place. Restored records are discarded so the
+next tint captures the current page styles.
+
+Records are mirrored onto `data-rosewash-style-overrides`. A new content-script
+instance calls `restoreStaleTintedElements()` on first apply to remove orphaned
+tints. Whole-style snapshots from earlier versions are also cleaned up.
 
 Attributes used:
 
@@ -181,8 +188,8 @@ Attributes used:
 | --- | --- |
 | `data-rosewash-theme` | Active theme key for CSS (`{preset}-light` / `{preset}-dark`; legacy aliases `dawn` / `moon` still resolve in `PALETTES`) |
 | `data-rosewash-tinted` | Element was touched by the engine |
-| `data-rosewash-had-style` | Had an inline `style` before Rosewash |
-| `data-rosewash-original-style` | Snapshot of that original inline style |
+| `data-rosewash-style-overrides` | Original and applied declarations for properties changed by the engine |
+| `data-rosewash-had-style`, `data-rosewash-original-style` | Whole-style snapshots from earlier versions, read only during stale cleanup |
 | `data-rosewash-ignore` | Opt-out marker (also in `SKIP_SELECTOR`) |
 
 ## Engine (`src/content/core.js`)
@@ -353,6 +360,8 @@ No direct message to the content script is required; pages listen to
 **Popup**
 
 - Reads active tab host; toggles that host in `disabledHosts`.
+- Shows `Unavailable` and a reason on browser-protected pages, including the
+  Web Store developer dashboard, and disables site toggling and Refresh.
 - On X, exposes the `xCompactLayout` switch for the desktop layout.
 - On Zhihu, exposes the `zhihuArticleLayout` switch for home, questions, and
   articles.

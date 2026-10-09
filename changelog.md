@@ -1,14 +1,19 @@
 # Changelog
 
-## Unreleased
+## 0.2.2 - 2026-10-08
 
+- Fix blank X avatars and image previews after page loading, tint refreshes,
+  or theme changes. Restore only properties changed by Rosewash and preserve
+  later website style updates, including newly loaded background images.
+- Explain browser restrictions on the Chrome Web Store and its developer
+  dashboard in the popup. Disable unavailable site controls and skip the
+  site-toggle shortcut on these pages.
 - Keep gradient text readable when its background is replaced by the palette.
   Ordinary code, keyboard labels, and sample output now follow page colors;
   editors and recognized syntax-highlighting regions remain protected.
 - Repair tints after page loading, late stylesheet loads, inserted or edited
   styles, and element class changes. Batch overlapping scans into the next
   frame while keeping idle tab-focus updates free of full-page scans.
-
 - Add plain Light and Dark options at the top of their palette lists. They
   preserve website colors and restore previous tints; custom fonts and site
   layouts keep their independent settings.

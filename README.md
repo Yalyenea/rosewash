@@ -55,11 +55,12 @@ regions stay protected.
 | [Python Docs](https://docs.python.org/3/tutorial/index.html) | ![Rosewash Dawn on Python Docs](docs/assets/screenshots/python-docs-dawn.png) | ![Rosewash Moon on Python Docs](docs/assets/screenshots/python-docs-moon.png) |
 | [arXiv](https://arxiv.org/abs/1706.03762) | ![Rosewash Dawn on arXiv](docs/assets/screenshots/arxiv-dawn.png) | ![Rosewash Moon on arXiv](docs/assets/screenshots/arxiv-moon.png) |
 
-## Install From Release
+## Install
 
-Rosewash is not on the Chrome Web Store. Install from a [GitHub
-Release](https://github.com/Yalyenea/rosewash/releases) instead. Works in
-Chrome, Edge, Brave, Helium, and other Chromium browsers.
+Install [Rosewash from the Chrome Web Store](https://chromewebstore.google.com/detail/rosewash/jklllohlbljogmomdfhggfojpgellcmh).
+Works in Chrome, Edge, Brave, Helium, and other Chromium browsers.
+
+For manual installation, use a [GitHub Release](https://github.com/Yalyenea/rosewash/releases):
 
 1. Open the [latest release](https://github.com/Yalyenea/rosewash/releases/latest).
 2. Download `rosewash-vX.Y.Z.zip` (for example `rosewash-v0.2.0.zip`).

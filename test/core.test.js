@@ -1177,6 +1177,75 @@ test("engine preserves surface roles across repeated scans", async () => {
   );
 });
 
+test("late X avatar and preview backgrounds survive refresh, theme changes, and clear", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({
+    href: "https://x.com/home",
+    tree: [{ id: "avatar" }, { id: "preview" }]
+  });
+  const engine = core.createEngine({ document, window });
+  engine.apply({ appearance: "light" });
+  const backgrounds = [
+    [byId.get("avatar"), 'url("https://pbs.twimg.com/profile_images/avatar.jpg")'],
+    [byId.get("preview"), 'url("https://pbs.twimg.com/media/preview.jpg")']
+  ];
+  for (const [element, image] of backgrounds) {
+    element.style.setProperty("background-image", image);
+    element._computed.backgroundImage = image;
+  }
+  const assertImages = () => {
+    for (const [element, image] of backgrounds) {
+      assert.equal(element.style.getPropertyValue("background-image"), image);
+      assert.equal(element.style.getPropertyPriority("background-image"), "");
+    }
+  };
+  engine.refresh();
+  window.flushFrames();
+  assertImages();
+  engine.apply({ appearance: "dark" });
+  assertImages();
+  engine.clear();
+  assertImages();
+});
+
+test("restoration preserves page updates and resamples them before tinting again", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [
+    { id: "card", backgroundColor: "rgb(255, 255, 255)" }
+  ] });
+  const card = byId.get("card");
+  const engine = core.createEngine({ document, window });
+  engine.apply({ appearance: "light" });
+  card.style.setProperty("background-color", "rgb(240, 240, 240)");
+  card._computed.backgroundColor = "rgb(240, 240, 240)";
+  engine.refresh();
+  window.flushFrames();
+  assert.equal(card.style.getPropertyValue("background-color"), core.PALETTES.dawn.surface);
+  card.style.setProperty("color", "rgb(20, 30, 40)", "important");
+  engine.clear();
+  assert.equal(card.style.getPropertyValue("background-color"), "rgb(240, 240, 240)");
+  assert.equal(card.style.getPropertyPriority("background-color"), "");
+  assert.equal(card.style.getPropertyValue("color"), "rgb(20, 30, 40)");
+  assert.equal(card.style.getPropertyPriority("color"), "important");
+});
+
+test("a new engine clears stale overrides while keeping late media styles", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [{ id: "avatar" }] });
+  const avatar = byId.get("avatar");
+  const engine = core.createEngine({ document, window });
+  engine.apply({ appearance: "light" });
+  engine.disconnect();
+  const image = 'url("https://pbs.twimg.com/profile_images/avatar.jpg")';
+  avatar.style.setProperty("background-image", image);
+  avatar._computed.backgroundImage = image;
+  const nextEngine = core.createEngine({ document, window });
+  nextEngine.apply({ appearance: "dark" });
+  nextEngine.clear();
+  assert.equal(avatar.style.getPropertyValue("background-image"), image);
+  assert.equal(avatar.style.getPropertyValue("color"), "");
+});
+
 test("late stylesheets and class changes repair existing gradient text without a page reload", async () => {
   const core = await loadCore();
   const { document, window, byId } = createMockDom({ tree: [
