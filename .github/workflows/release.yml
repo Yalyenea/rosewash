@@ -59,6 +59,7 @@ jobs:
       - name: Write release notes
         id: notes
         run: |
+          mkdir -p .tmp
           notes=".tmp/release-notes.md"
           node scripts/release-notes.mjs "$TAG_NAME" > "$notes"
           echo "path=$notes" >> "$GITHUB_OUTPUT"
