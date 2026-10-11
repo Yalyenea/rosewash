@@ -9,67 +9,62 @@
   <body>
     <main class="shell">
       <header class="topline">
-        <div>
-          <h1>Rosewash</h1>
-          <p id="host">current site</p>
-        </div>
-        <label class="switch" aria-label="Enable Rosewash">
-          <input id="enabled" type="checkbox">
-          <span></span>
-        </label>
+        <div><h1>Rosewash</h1><p id="host">current site</p></div>
+        <label class="switch" aria-label="Enable Rosewash"><input id="enabled" type="checkbox"><span></span></label>
       </header>
 
-      <section class="modes" aria-label="Appearance">
-        <button type="button" data-appearance="auto">Auto</button>
-        <button type="button" data-appearance="light">Light</button>
-        <button type="button" data-appearance="dark">Dark</button>
-      </section>
-
-      <section class="presets" aria-label="Palettes">
-        <label class="preset">
-          <span>Light</span>
-          <select id="preset-light"></select>
+      <section class="section site-policy" aria-label="Site defaults">
+        <label class="setting-row">
+          <span><strong>Enable on all sites by default</strong><small id="default-status">Site exceptions still apply</small></span>
+          <span class="switch"><input id="default-enabled" type="checkbox"><span></span></span>
         </label>
-        <label class="preset">
-          <span>Dark</span>
-          <select id="preset-dark"></select>
+        <label class="setting-row current-site">
+          <span>Current site <small id="site-source"></small></span>
+          <select id="site-policy" aria-label="Current site policy" title="Alt+Shift+B toggles this site">
+            <option value="default">Follow default</option>
+            <option value="on">Always on</option>
+            <option value="off">Always off</option>
+          </select>
         </label>
-      </section>
-
-      <section class="site">
-        <div class="site-row">
-          <span>Site</span>
-          <button id="site-toggle" type="button" title="Alt+Shift+B">Allowed</button>
-        </div>
         <p id="site-status" role="status" hidden></p>
-        <label id="x-layout-row" class="site-row layout-row" hidden>
-          <span>
-            <strong>Compact layout</strong>
-            <small>X · desktop</small>
-          </span>
-          <span class="switch" aria-label="Use compact X layout">
-            <input id="x-compact-layout" type="checkbox">
-            <span></span>
-          </span>
-        </label>
-        <label id="zhihu-layout-row" class="site-row layout-row" hidden>
-          <span>
-            <strong>Clean layout</strong>
-            <small>Zhihu · desktop</small>
-          </span>
-          <span class="switch" aria-label="Use Zhihu clean layout">
-            <input id="zhihu-article-layout" type="checkbox">
-            <span></span>
-          </span>
-        </label>
       </section>
 
-      <footer>
-        <button id="options" type="button">Settings</button>
-        <button id="refresh" type="button">Refresh</button>
-      </footer>
+      <section class="section" aria-label="Appearance">
+        <h2>Appearance</h2>
+        <div class="modes"><button type="button" data-appearance="auto">Auto</button><button type="button" data-appearance="light">Light</button><button type="button" data-appearance="dark">Dark</button></div>
+        <div class="presets">
+          <label class="field"><span>Light</span><select id="preset-light" aria-label="Light palette"></select></label>
+          <label class="field"><span>Dark</span><select id="preset-dark" aria-label="Dark palette"></select></label>
+        </div>
+      </section>
+
+      <section class="section" aria-label="Fonts">
+        <div class="section-heading"><h2>Fonts</h2><label class="switch" aria-label="Use custom fonts"><input id="custom-fonts-enabled" type="checkbox"><span></span></label></div>
+        <div class="font-grid">
+          <label class="field"><span>English</span><select id="font-english"><option value="">Page default</option></select></label>
+          <label class="field"><span>Chinese</span><select id="font-chinese"><option value="">Page default</option></select></label>
+          <label class="field"><span>MathML</span><select id="font-math"><option value="">Page default</option></select></label>
+          <label class="field"><span>Monospace</span><select id="font-monospace"><option value="">Page default</option></select></label>
+        </div>
+        <p id="font-list-status" class="helper" role="status"></p>
+      </section>
+
+      <section class="section layouts" aria-label="Site layouts">
+        <h2>Site layouts</h2>
+        <div class="layout-row">
+          <label class="setting-row"><span><strong>X</strong><small>Compact layout</small></span><span class="switch"><input id="x-compact-layout" type="checkbox"><span></span></span></label>
+          <select id="x-single-column-width" aria-label="X column width"></select>
+        </div>
+        <div class="layout-row">
+          <label class="setting-row"><span><strong>Zhihu</strong><small>Clean layout</small></span><span class="switch"><input id="zhihu-article-layout" type="checkbox"><span></span></span></label>
+          <select id="zhihu-article-width" aria-label="Zhihu column width"></select>
+        </div>
+      </section>
+
+      <footer><button id="options" type="button">All settings ↗</button><span id="save-status" role="status"></span><button id="refresh" type="button">Refresh</button></footer>
     </main>
     <script src="src/content/core.js"></script>
+    <script src="src/settings/fonts.js"></script>
     <script src="src/popup/popup.js"></script>
   </body>
 </html>

@@ -23,8 +23,7 @@ async function toggleCurrentSite() {
 
   const raw = await chrome.storage.sync.get(null);
   const settings = core.plainSettings(raw);
-  const disabledHosts = core.toggleHostDisabled(host, settings.disabledHosts);
-  await chrome.storage.sync.set(core.plainSettings({ ...settings, disabledHosts }));
+  await chrome.storage.sync.set(core.toggleHostEnabled(host, settings));
 }
 
 chrome.commands.onCommand.addListener((command) => {

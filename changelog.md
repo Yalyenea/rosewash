@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.3 - 2026-10-11
+
+- Choose whether Rosewash starts enabled or disabled on new sites. Each site
+  can follow the default, stay always on, or stay always off. Changing the
+  default preserves explicit site choices; the shortcut saves an on/off choice.
+- Expand the popup with all four font selectors, X and Zhihu layout controls,
+  and column widths. Changes save immediately.
+- Load installed system fonts automatically in the popup and settings page
+  through the browser's font settings API. Add the required `fontSettings`
+  permission and support regular face names for family-based font selections.
+- Read stored site rules before applying colors, fonts, or layouts so sites
+  that start disabled do not briefly receive the theme.
+
 ## 0.2.2 - 2026-10-08
 
 - Fix blank X avatars and image previews after page loading, tint refreshes,

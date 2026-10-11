@@ -220,6 +220,7 @@
 
   const DEFAULT_SETTINGS = Object.freeze({
     enabled: true,
+    defaultEnabled: true,
     customFontsEnabled: false,
     fontEnglish: "",
     fontChinese: "",
@@ -232,7 +233,8 @@
     xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
     zhihuArticleWidth: 960,
-    disabledHosts: []
+    disabledHosts: [],
+    enabledHosts: []
   });
 
   const VALID_APPEARANCES = new Set(["auto", "light", "dark"]);
@@ -724,6 +726,44 @@
     return Array.from(new Set(next)).sort();
   }
 
+  function isHostEnabled(host, settings) {
+    const normalized = normalizeSettings(settings);
+    const specificity = (hosts) => hosts.reduce((length, entry) =>
+      isHostDisabled(host, [entry]) ? Math.max(length, entry.length) : length, 0);
+    const allowed = specificity(normalized.enabledHosts);
+    const blocked = specificity(normalized.disabledHosts);
+    return allowed || blocked ? allowed > blocked : normalized.defaultEnabled;
+  }
+
+  function hostPolicyForHost(host, settings) {
+    const normalizedHost = normalizeHost(host);
+    const normalized = normalizeSettings(settings);
+    if (normalized.disabledHosts.includes(normalizedHost)) return "off";
+    if (normalized.enabledHosts.includes(normalizedHost)) return "on";
+    return "default";
+  }
+
+  function setHostPolicy(host, policy, settings) {
+    if (!["default", "on", "off"].includes(policy)) {
+      throw new RangeError(`Unknown site policy: ${policy}`);
+    }
+    const normalizedHost = normalizeHost(host);
+    const next = plainSettings(settings);
+    if (!normalizedHost) return next;
+    next.enabledHosts = next.enabledHosts.filter((entry) => entry !== normalizedHost);
+    next.disabledHosts = next.disabledHosts.filter((entry) => entry !== normalizedHost);
+    if (policy !== "default") {
+      const hosts = policy === "on" ? next.enabledHosts : next.disabledHosts;
+      hosts.push(normalizedHost);
+      hosts.sort();
+    }
+    return next;
+  }
+
+  function toggleHostEnabled(host, settings) {
+    return setHostPolicy(host, isHostEnabled(host, settings) ? "off" : "on", settings);
+  }
+
   function normalizeFontName(value) {
     return typeof value === "string" ? value.replace(/[\x00-\x1f\x7f]/g, "").trim().slice(0, 100) : "";
   }
@@ -739,7 +779,11 @@
   }
 
   function cssFontSource(name) {
-    return 'local("' + name.replace(/["\\]/g, (character) => "\\" + character) + '")';
+    // fontSettings lists families; local() requires a full face or PostScript name.
+    const names = [name, `${name} Regular`, `${name.replace(/\s/g, "")}-Regular`];
+    return Array.from(new Set(names)).map((value) =>
+      'local("' + value.replace(/["\\]/g, (character) => "\\" + character) + '")'
+    ).join(", ");
   }
 
   function createFontFaces(settings, window) {
@@ -753,6 +797,9 @@
     const disabledHosts = Array.isArray(source.disabledHosts)
       ? source.disabledHosts.map(normalizeHost).filter(Boolean)
       : [];
+    const enabledHosts = Array.isArray(source.enabledHosts)
+      ? source.enabledHosts.map(normalizeHost).filter(Boolean)
+      : [];
 
     let appearance = DEFAULT_SETTINGS.appearance;
     if (VALID_APPEARANCES.has(source.appearance)) {
@@ -764,6 +811,7 @@
 
     return {
       enabled: source.enabled !== false,
+      defaultEnabled: source.defaultEnabled !== false,
       customFontsEnabled: source.customFontsEnabled === true,
       fontEnglish: normalizeFontName(source.fontEnglish),
       fontChinese: normalizeFontName(source.fontChinese),
@@ -780,7 +828,8 @@
       zhihuArticleWidth: ZHIHU_ARTICLE_WIDTHS.includes(source.zhihuArticleWidth)
         ? source.zhihuArticleWidth
         : DEFAULT_SETTINGS.zhihuArticleWidth,
-      disabledHosts: Array.from(new Set(disabledHosts)).sort()
+      disabledHosts: Array.from(new Set(disabledHosts)).sort(),
+      enabledHosts: Array.from(new Set(enabledHosts)).sort()
     };
   }
 
@@ -884,6 +933,7 @@
     const normalized = normalizeSettings(settings);
     return {
       enabled: normalized.enabled,
+      defaultEnabled: normalized.defaultEnabled,
       customFontsEnabled: normalized.customFontsEnabled,
       fontEnglish: normalized.fontEnglish,
       fontChinese: normalized.fontChinese,
@@ -896,7 +946,8 @@
       xSingleColumnWidth: normalized.xSingleColumnWidth,
       zhihuArticleLayout: normalized.zhihuArticleLayout,
       zhihuArticleWidth: normalized.zhihuArticleWidth,
-      disabledHosts: normalized.disabledHosts.slice()
+      disabledHosts: normalized.disabledHosts.slice(),
+      enabledHosts: normalized.enabledHosts.slice()
     };
   }
 
@@ -1684,7 +1735,7 @@
 
       const normalized = normalizeSettings(settings);
       const host = hostFromUrl(document.location.href);
-      if (!normalized.enabled || isHostDisabled(host, normalized.disabledHosts)) {
+      if (!normalized.enabled || !isHostEnabled(host, normalized)) {
         clear();
         return { enabled: false, theme: null, tinted: 0 };
       }
@@ -1774,9 +1825,13 @@
     isDarkThemeKey,
     generatedBackgroundHasDarkSurface,
     isHostDisabled,
+    isHostEnabled,
+    hostPolicyForHost,
     isZhihuHost,
     isZhihuArticlePath,
     toggleHostDisabled,
+    toggleHostEnabled,
+    setHostPolicy,
     isLightNeutralColor,
     isGeneratedBackgroundImage,
     isNearWhiteColor,

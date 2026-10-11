@@ -15,15 +15,14 @@ content pipeline, and change recipes, see
   and `oklch()` forms used by modern Tailwind output.
 - Full-page surface and text covering into the active palette.
 - Optional page-tone sampling (still used for diagnostics and mixed re-detect).
-- Site block matching.
+- Default site policy and per-host on/off rules, with subdomain matching.
 - DOM tinting and restoration.
 - A batched `MutationObserver` for inserted elements, class changes, and
   stylesheet edits, plus a listener for stylesheet loads.
 
-At `document_start` the content runtime paints a provisional
-`data-rosewash-theme` (Auto from system preference) and applies default
-settings immediately so `theme.css` can force the page canvas before
-`chrome.storage` returns. Stored settings then refine or clear the cover.
+At `document_start` the content runtime reads stored settings before applying
+colors, fonts, or layouts. Disabled sites stay untouched while storage loads.
+Enabled sites receive `data-rosewash-theme`, activating the CSS canvas cover.
 MutationObserver scans coalesce to `requestAnimationFrame` (not a multi-hundred
 millisecond delay). Theme re-apply only restores previous tints when the
 resolved palette actually changes, so mixed page-tone re-detect no longer
@@ -89,9 +88,8 @@ new content-script instance can remove stale overrides after extension reload.
 
 `src/content/content.js` wires the engine to Chrome extension APIs:
 
-- Paints a provisional theme attribute, then applies default settings
-  immediately at `document_start` so the canvas is covered before storage
-  returns; stored settings refine or clear that cover.
+- Reads the stored site policy at `document_start`, then applies colors, fonts,
+  and layouts only when the extension and the current site are enabled.
 - Reads settings from `chrome.storage.sync` and keeps an in-page cache.
 - Re-applies on storage changes.
 - Re-applies after `DOMContentLoaded` and `load` using the already-loaded
@@ -108,8 +106,9 @@ new content-script instance can remove stale overrides after extension reload.
 `src/content/core.js` via `importScripts` for host helpers, then handles
 `chrome.commands`:
 
-- `toggle-current-site` (default `Alt+Shift+B`) toggles the active tab's host
-  in `disabledHosts` and writes `chrome.storage.sync`. Content scripts pick up
+- `toggle-current-site` (default `Alt+Shift+B`) saves an explicit on/off rule
+  for the active hostname in `enabledHosts` or `disabledHosts` and writes
+  `chrome.storage.sync`. Content scripts pick up
   the change through `storage.onChanged`.
 
 Users can rebind the shortcut under `chrome://extensions/shortcuts`.
@@ -117,12 +116,13 @@ Users can rebind the shortcut under `chrome://extensions/shortcuts`.
 ## UI
 
 `popup.html` is the daily control surface. `options.html` is the full settings
-page (appearance, palette grids, system fonts, site layouts, block list). Both are
+page (appearance, palette grids, system fonts, site layouts, site rules). Both are
 plain HTML/CSS/JS and share the same storage schema:
 
 ```json
 {
   "enabled": true,
+  "defaultEnabled": true,
   "customFontsEnabled": false,
   "fontEnglish": "",
   "fontChinese": "",
@@ -131,7 +131,8 @@ plain HTML/CSS/JS and share the same storage schema:
   "presetLight": "rose-pine",
   "presetDark": "rose-pine",
   "appearance": "auto",
-  "disabledHosts": []
+  "disabledHosts": [],
+  "enabledHosts": []
 }
 ```
 
@@ -145,9 +146,17 @@ and observation. Both UIs list the plain option first, followed by Rose Pine
 and the remaining families sorted by label. Legacy `preset` and `mode: auto|dawn|moon`
 storage still normalize cleanly.
 
+The popup exposes Follow default / Always on / Always off for the current
+hostname. Explicit choices persist when `defaultEnabled` changes. Clearing a
+hostname's rule restores its parent rule if present, otherwise the global
+default. The most specific hostname wins; a blocked rule wins a tie, and the
+global enable switch pauses every site. The popup also exposes font selectors,
+layout switches, and column widths, saving each change immediately.
+
 The flat settings layout follows the selected palette and system appearance.
-Its font picker uses permission-gated Local Font Access to enumerate installed
-faces and save their PostScript names. The engine applies separate local faces
+The shared font picker automatically enumerates installed families with
+`chrome.fontSettings.getFontList()` using the `fontSettings` permission.
+The engine resolves local face names and applies separate local faces
 for English, Chinese, native MathML, and monospace text, restoring original
 fonts when disabled. Renderer-managed formulas and code editors are protected.
 

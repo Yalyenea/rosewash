@@ -18,8 +18,9 @@ Stage with `just dist` and load the `dist/` folder as an unpacked extension
 
 ```text
 manifest.json              MV3 entry: permissions, content scripts, SW, commands
-popup.html + src/popup/    Action popup (enable, appearance, light/dark palettes, site block)
-options.html + src/options/ Settings (palettes, appearance, site layouts, block list)
+popup.html + src/popup/    Action popup (site policy, palettes, fonts, site layouts)
+options.html + src/options/ Settings (palettes, appearance, site layouts, site rules)
+src/settings/fonts.js     Shared automatic system font picker and previews
 src/background/            Service worker (keyboard commands)
 src/content/
   core.js                  Pure engine + host helpers (testable via vm)
@@ -57,7 +58,7 @@ release/                   Chrome Web Store zip (`just package`, gitignored)
 | --- | --- | --- |
 | Manifest | `manifest.json` | Registers scripts, storage, `<all_urls>`, commands |
 | Engine | `src/content/core.js` → `globalThis.RosewashCore` | Color parse, cover, restore, host helpers |
-| Content bootstrap | `src/content/content.js` | Storage cache, listeners, provisional paint |
+| Content bootstrap | `src/content/content.js` | Stored site policy, settings cache, listeners |
 | CSS cover | `src/content/theme.css` | First-frame canvas / SPA roots / known shells |
 | Background | `src/background/background.js` | Site toggle command |
 | Popup | `src/popup/popup.js` | Daily controls + push message to active tab |
@@ -72,6 +73,7 @@ Stored in **`chrome.storage.sync`**.
 ```json
 {
   "enabled": true,
+  "defaultEnabled": true,
   "customFontsEnabled": false,
   "fontEnglish": "",
   "fontChinese": "",
@@ -84,15 +86,17 @@ Stored in **`chrome.storage.sync`**.
   "xSingleColumnWidth": 600,
   "zhihuArticleLayout": false,
   "zhihuArticleWidth": 960,
-  "disabledHosts": []
+  "disabledHosts": [],
+  "enabledHosts": []
 }
 ```
 
 | Field | Values | Meaning |
 | --- | --- | --- |
 | `enabled` | boolean | Global off clears all tints and font overrides |
+| `defaultEnabled` | boolean | Default state for sites without a matching rule; true for existing installs |
 | `customFontsEnabled` | boolean | Enables custom page fonts; off by default |
-| `fontEnglish`, `fontChinese`, `fontMath`, `fontMonospace` | string | Local font PostScript names; empty preserves page typography |
+| `fontEnglish`, `fontChinese`, `fontMath`, `fontMonospace` | string | Local font family or face names; empty preserves page typography |
 | `presetLight` | preset id with a light variant | Palette used when appearance resolves to light |
 | `presetDark` | preset id with a dark variant | Palette used when appearance resolves to dark |
 | `appearance` | `auto` \| `light` \| `dark` | `auto` follows `prefers-color-scheme` |
@@ -101,6 +105,7 @@ Stored in **`chrome.storage.sync`**.
 | `zhihuArticleLayout` | boolean | Enables the centered Zhihu reading layout on home, questions, and articles |
 | `zhihuArticleWidth` | 720 / 840 / 960 / 1080 | Centered Zhihu column width |
 | `disabledHosts` | string[] | Hostnames (and parents) where Rosewash is blocked |
+| `enabledHosts` | string[] | Hostnames (and parents) where Rosewash is explicitly enabled |
 
 Normalization lives in `RosewashCore.normalizeSettings()`:
 
@@ -123,14 +128,22 @@ on `documentElement`.
 Host matching (`isHostDisabled`): exact match or subdomain of a listed host
 (`news.example.com` matches entry `example.com`).
 
-Toggle (`toggleHostDisabled`): remove any list entry that matches the host; if
-none matched, append the host. Used by the background command; popup implements
-the same algorithm inline.
+`isHostEnabled` uses the most specific matching rule in `enabledHosts` or
+`disabledHosts`, otherwise `defaultEnabled`. A disabled rule wins a tie.
+The global `enabled` flag takes priority over every site choice.
+
+`hostPolicyForHost` returns the current hostname's explicit `on` / `off`
+choice, or `default`. `setHostPolicy` removes that exact hostname from both
+lists, then adds it to the chosen list for `on` or `off`, even when its value
+matches the current default. Selecting `default` leaves no explicit rule and
+restores the parent rule, if present, or the global default. Parent and sibling
+rules remain intact. `toggleHostEnabled` saves the opposite of the current
+effective state as an explicit choice; the background shortcut uses this helper.
 
 ## Manifest details
 
 - **MV3**, version must match `package.json` (`scripts/validate.mjs` enforces).
-- Permissions: `storage`; host access via `"host_permissions": ["<all_urls>"]`.
+- Permissions: `storage`, `fontSettings`; host access via `"host_permissions": ["<all_urls>"]`.
 - Content scripts at `document_start`: `theme.css`, then `core.js`, then
   `content.js` (order matters: engine must exist before bootstrap).
 - Background service worker: `src/background/background.js`.
@@ -143,16 +156,14 @@ On every page match, roughly:
 
 1. **CSS inject** (`theme.css`) is available but inactive until
    `html[data-rosewash-theme]` exists.
-2. **`paintProvisionalRoot()`** sets `data-rosewash-theme` from system Auto
-   preference so theme.css paints the canvas on the first frame.
-3. **`applyCachedSettings()`** with in-memory defaults (`enabled: true`,
-   `appearance: auto`, both presets `rose-pine`) runs a full engine apply on the
-   (still small) document_start DOM — intentional FOUC mitigation; not a blank
-   wait for storage.
-4. **`loadSettings()`** reads raw `chrome.storage.sync` (no default merge,
+2. **`loadSettings()`** reads raw `chrome.storage.sync` (no default merge,
    so a legacy `preset` is not hidden by default `presetLight`/`presetDark`),
-   replaces the cache, re-applies (may clear if disabled / blocked host).
-5. Later: `storage.onChanged`, `matchMedia` dark changes, `DOMContentLoaded`,
+   replaces the cache, and marks settings loaded. No colors, fonts, or layouts
+   apply before this read, so default-off and blocked sites stay untouched.
+3. **`applyCachedSettings()`** resolves the site policy, applies layouts, and
+   runs the engine. `theme.css` becomes active when the engine sets the theme
+   attribute. Disabled sites clear the theme instead.
+4. Later: `storage.onChanged`, `matchMedia` dark changes, `DOMContentLoaded`,
    `load`, `pageshow`, `visibilitychange`, and popup messages all re-apply from
    the **in-page settings cache** (no extra storage read on system theme
    switch). If the resolved palette did not change, ordinary re-applies skip
@@ -314,6 +325,8 @@ Pseudo-elements cannot take per-element inline tints.
 `core.js` registers local `FontFace` objects in `document.fonts`. English and
 Chinese faces have separate Unicode ranges; MathML and monospace faces cover
 all characters but are applied only to their respective content.
+Local sources include the selected name, its regular full face name, and its
+regular PostScript form because the browser font list returns family names.
 
 Font routing uses the same batched computed-style snapshots as tinting.
 Native `math` descendants use the math face; `pre`, `code`, `kbd`, `samp`,
@@ -349,7 +362,7 @@ This is the first-frame layer; nested boxes still need the JS engine.
 importScripts("../content/core.js")
 → chrome.commands.onCommand
 → active tab URL → hostFromUrl
-→ toggleHostDisabled → chrome.storage.sync.set
+→ toggleHostEnabled → chrome.storage.sync.set
 ```
 
 No direct message to the content script is required; pages listen to
@@ -359,31 +372,35 @@ No direct message to the content script is required; pages listen to
 
 **Popup**
 
-- Reads active tab host; toggles that host in `disabledHosts`.
+- Reads the active tab host and offers Follow default / Always on / Always off.
+  The row also shows its effective On / Off state, inherited parent rules,
+  and global pause state.
+- A separate switch sets the default on/off policy for new sites.
 - Shows `Unavailable` and a reason on browser-protected pages, including the
   Web Store developer dashboard, and disables site toggling and Refresh.
-- On X, exposes the `xCompactLayout` switch for the desktop layout.
-- On Zhihu, exposes the `zhihuArticleLayout` switch for home, questions, and
-  articles.
+- Exposes X and Zhihu layout switches and column widths on every page.
+- Offers the custom-font switch and four font selectors, with automatic font
+  enumeration through the shared `src/settings/fonts.js` picker.
 - Two palette selects (`presetLight` / `presetDark`); lists only families
   that expose that variant.
 - On change: write storage + `chrome.tabs.sendMessage` with
   `{ type: "rosewash:settings-updated", settings }` (best-effort; storage
   path still works if the content script is missing).
-- Site button title documents `Alt+Shift+B`.
+- The site selector title documents `Alt+Shift+B`.
 
 **Options**
 
-- Edit enabled / appearance / light and dark palette grids / site layouts /
-  full host list (one host per line). Each grid only lists families with that
+- Edit enabled / default site policy / appearance / light and dark palette
+  grids / site layouts / always-on and always-off lists (one host per line).
+  Each grid only lists families with that
   variant.
 - Compact Appearance, Theme, Fonts, and Sites sections use flat grids and
   separators. Save / Reset follow the content.
 - Settings chrome previews the selected appearance and palette immediately,
   including system appearance changes in Auto mode.
-- The system font picker calls `queryLocalFonts()` from a user action unless
-  font access is already granted. Options show full names and store PostScript
-  names. Failed access and unavailable fonts are reported explicitly.
+- The shared font picker calls `chrome.fontSettings.getFontList()` on opening
+  either UI. It shows display names and stores font IDs. Enumeration errors
+  and unavailable preview fonts are reported explicitly.
 - Four independent previews use the same local FontFace definitions as pages.
 
 ## X compact layout
@@ -445,6 +462,7 @@ just clean      # remove .tmp and local debug leftovers
 | Area | How |
 | --- | --- |
 | Engine unit tests | `test/core.test.js` loads `core.js` in `vm` |
+| Content startup | `test/content.test.js` verifies stored policy gating and layout changes |
 | Browser fixtures | `test/fixtures/*` HTML + runners (manual / scripted) |
 | Validate | Requires background runtime files, the site-toggle command, storage + `<all_urls>` |
 

@@ -11,8 +11,8 @@ html[data-rosewash-theme] {
   --rosewash-link: #286983;
 }
 
-/* Force the page canvas as soon as data-rosewash-theme is set (provisional at
-   document_start, refined after storage). Nested boxes still need the engine. */
+/* Force the page canvas once stored site settings enable the theme.
+   Nested boxes still need the engine. */
 html[data-rosewash-theme],
 html[data-rosewash-theme] body {
   background-color: var(--rosewash-base) !important;

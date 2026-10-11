@@ -32,6 +32,9 @@ h3, .setting-label { font-size: 12px; font-weight: 500; color: var(--muted); }
 .general-panel { display: flex; align-items: center; justify-content: space-between; }
 .section-heading { margin-bottom: 10px; }
 .general-panel .section-heading { margin: 0; }
+.defaults-panel .site-layout-toggle { margin: 0; }
+.defaults-panel strong { font-size: 12px; font-weight: 500; }
+.defaults-panel small { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
 .toggle { display: inline-flex; position: relative; flex: none; }
 .toggle input, .modes input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .toggle-track {
@@ -83,7 +86,7 @@ button:hover { background: var(--overlay); }
 .font-preview { font-size: 14px; line-height: 22px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 math.font-preview { font-size: 17px; text-align: left; }
 code.font-preview { font: 12px/22px ui-monospace, monospace; }
-.site-columns { display: grid; grid-template-columns: 2fr 1fr; gap: 28px; }
+.site-columns { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 22px; }
 .site-group { min-width: 0; }
 .site-group:not(.blocked-sites) { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
 .site-layout strong { font-size: 12px; font-weight: 500; }

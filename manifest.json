@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
   "name": "Rosewash",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "A lightweight Rose Pine tint for harsh white web pages.",
   "permissions": [
-    "storage"
+    "storage",
+    "fontSettings"
   ],
   "host_permissions": [
     "<all_urls>"

@@ -568,6 +568,8 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
     disabledHosts: ["Example.COM"]
   })), {
     enabled: true,
+    defaultEnabled: true,
+    enabledHosts: [],
     presetLight: "catppuccin",
     customFontsEnabled: false,
     fontEnglish: "",
@@ -977,7 +979,7 @@ test("custom fonts update on the same theme and restore original inline typograp
   const firstFaces = [...document.fonts];
   engine.apply({ ...settings, fontEnglish: "Verdana" });
   assert.equal(document.fonts.size, 2);
-  assert.equal([...document.fonts][0].source, 'local("Verdana")');
+  assert.equal([...document.fonts][0].source, 'local("Verdana"), local("Verdana Regular"), local("Verdana-Regular")');
   assert.ok(firstFaces.every((face) => !document.fonts.has(face)));
 
   engine.apply({ ...settings, customFontsEnabled: false });
@@ -1118,7 +1120,7 @@ test("changing only math or monospace settings rescans the same theme and restor
     settings = { ...settings, [setting]: name + " Alternate" };
     engine.apply(settings);
     assert.ok(!document.fonts.has(originalFace));
-    assert.equal([...document.fonts].find((face) => face.family === family).source, 'local("' + name + ' Alternate")');
+    assert.ok([...document.fonts].find((face) => face.family === family).source.startsWith('local("' + name + ' Alternate"),'));
   }
   for (const setting of ["fontMath", "fontMonospace"]) {
     settings = { ...settings, [setting]: "" };
@@ -1141,7 +1143,7 @@ test("font names normalize and escape local font sources", async () => {
   const { document, window } = createMockDom({ tree: [] });
   const engine = core.createEngine({ document, window });
   engine.apply({ customFontsEnabled: true, fontEnglish: 'A"B\\C' });
-  assert.equal([...document.fonts][0].source, 'local("A\\"B\\\\C")');
+  assert.equal([...document.fonts][0].source, 'local("A\\"B\\\\C"), local("A\\"B\\\\C Regular"), local("A\\"B\\\\C-Regular")');
 });
 
 test("engine preserves surface roles across repeated scans", async () => {
@@ -1774,6 +1776,8 @@ test("normalizes settings and blocked hosts", async () => {
     disabledHosts: [" Example.COM ", ".docs.example.com", "example.com"]
   })), {
     enabled: true,
+    defaultEnabled: true,
+    enabledHosts: [],
     presetLight: "rose-pine",
     presetDark: "rose-pine",
     customFontsEnabled: false,
@@ -1796,6 +1800,8 @@ test("normalizes settings and blocked hosts", async () => {
     disabledHosts: []
   })), {
     enabled: true,
+    defaultEnabled: true,
+    enabledHosts: [],
     presetLight: "catppuccin",
     presetDark: "catppuccin",
     customFontsEnabled: false,
@@ -1818,6 +1824,8 @@ test("normalizes settings and blocked hosts", async () => {
     disabledHosts: []
   })), {
     enabled: true,
+    defaultEnabled: true,
+    enabledHosts: [],
     presetLight: "rose-pine",
     presetDark: "dracula",
     customFontsEnabled: false,
@@ -1851,4 +1859,97 @@ test("normalizes settings and blocked hosts", async () => {
     ["docs.example.com", "other.org"]
   );
   assert.deepEqual(plain(core.toggleHostDisabled("", ["example.com"])), ["example.com"]);
+});
+
+test("site defaults preserve legacy blocks and use the most specific exception", async () => {
+  const core = await loadCore();
+  assert.equal(core.isHostEnabled("new.org", {}), true);
+  assert.equal(core.isHostEnabled("news.example.com", { disabledHosts: ["example.com"] }), false);
+  const settings = core.plainSettings({
+    defaultEnabled: false,
+    enabledHosts: [" Example.COM ", ".example.com"],
+    disabledHosts: ["private.example.com"]
+  });
+  assert.deepEqual(plain(settings.enabledHosts), ["example.com"]);
+  assert.equal(core.isHostEnabled("new.org", settings), false);
+  assert.equal(core.isHostEnabled("news.example.com", settings), true);
+  assert.equal(core.isHostEnabled("private.example.com", settings), false);
+  assert.equal(core.isHostEnabled("child.private.example.com", settings), false);
+  assert.equal(core.isHostEnabled("example.com", { enabledHosts: ["example.com"], disabledHosts: ["example.com"] }), false);
+});
+
+test("site toggles work in both default modes and preserve parent and sibling policies", async () => {
+  const core = await loadCore();
+  for (const defaultEnabled of [true, false]) {
+    const initial = core.plainSettings({ defaultEnabled });
+    const toggled = core.toggleHostEnabled("Example.COM", initial);
+    assert.equal(core.isHostEnabled("example.com", toggled), !defaultEnabled);
+    const again = core.toggleHostEnabled("example.com", toggled);
+    assert.equal(core.isHostEnabled("example.com", again), defaultEnabled);
+    assert.equal(core.hostPolicyForHost("example.com", again), defaultEnabled ? "on" : "off");
+    assert.deepEqual(plain(core.setHostPolicy("example.com", "default", again)), plain(initial));
+  }
+  const initial = core.plainSettings({ disabledHosts: ["example.com"] });
+  const next = core.toggleHostEnabled("docs.example.com", initial);
+  assert.equal(core.isHostEnabled("docs.example.com", next), true);
+  assert.equal(core.isHostEnabled("news.example.com", next), false);
+  assert.deepEqual(plain(next.disabledHosts), ["example.com"]);
+  assert.equal(core.isHostEnabled("docs.example.com", core.toggleHostEnabled("docs.example.com", next)), false);
+  assert.deepEqual(plain(core.setHostPolicy("docs.example.com", "default", next)), plain(initial));
+});
+
+test("explicit site policies persist across default changes and can return to default", async () => {
+  const core = await loadCore();
+  for (const policy of ["default", "on", "off"]) {
+    for (const defaultEnabled of [true, false]) {
+      const initial = core.plainSettings({ defaultEnabled });
+      const next = core.setHostPolicy("Example.COM", policy, initial);
+      assert.equal(core.hostPolicyForHost("example.com", next), policy);
+      const expected = policy === "default" ? defaultEnabled : policy === "on";
+      assert.equal(core.isHostEnabled("example.com", next), expected);
+      const flipped = { ...next, defaultEnabled: !defaultEnabled };
+      assert.equal(core.hostPolicyForHost("example.com", flipped), policy);
+      assert.equal(core.isHostEnabled("example.com", flipped), policy === "default" ? !defaultEnabled : expected);
+      const reset = core.setHostPolicy("example.com", "default", flipped);
+      assert.equal(core.isHostEnabled("example.com", reset), !defaultEnabled);
+      assert.deepEqual(plain(reset.enabledHosts), []);
+      assert.deepEqual(plain(reset.disabledHosts), []);
+    }
+  }
+});
+
+test("changing a child policy preserves other sites and clears conflicting rules", async () => {
+  const core = await loadCore();
+  const initial = core.plainSettings({
+    disabledHosts: ["example.com", "docs.example.com", "other.org"],
+    enabledHosts: ["docs.example.com"]
+  });
+  assert.equal(core.hostPolicyForHost("docs.example.com", initial), "off");
+  const next = core.setHostPolicy("docs.example.com", "on", initial);
+  assert.equal(core.isHostEnabled("docs.example.com", next), true);
+  assert.equal(core.isHostEnabled("news.example.com", next), false);
+  assert.deepEqual(plain(next.disabledHosts), ["example.com", "other.org"]);
+  const reset = core.setHostPolicy("docs.example.com", "default", next);
+  assert.equal(core.hostPolicyForHost("docs.example.com", reset), "default");
+  assert.equal(core.isHostEnabled("docs.example.com", reset), false);
+  assert.deepEqual(plain(reset.enabledHosts), []);
+  assert.deepEqual(plain(reset.disabledHosts), ["example.com", "other.org"]);
+  assert.throws(() => core.setHostPolicy("example.com", "unknown", initial), /Unknown site policy/);
+});
+
+test("default-off sites clear tints and fonts unless explicitly enabled", async () => {
+  const core = await loadCore();
+  const { document, window } = createMockDom({
+    htmlBackgroundColor: "rgb(255, 255, 255)",
+    bodyBackgroundColor: "rgb(255, 255, 255)",
+    bodyColor: "rgb(17, 17, 17)"
+  });
+  const engine = core.createEngine({ document, window });
+  const settings = { appearance: "light", customFontsEnabled: true, fontEnglish: "Georgia" };
+  engine.apply(settings);
+  assert.equal(engine.apply({ ...settings, defaultEnabled: false }).enabled, false);
+  assert.equal(document.documentElement.hasAttribute("data-rosewash-theme"), false);
+  assert.equal(document.body.style.getPropertyValue("font-family"), "");
+  assert.equal(engine.apply({ ...settings, defaultEnabled: false, enabledHosts: ["example.com"] }).enabled, true);
+  assert.equal(engine.apply({ ...settings, enabled: false, enabledHosts: ["example.com"] }).enabled, false);
 });

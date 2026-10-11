@@ -21,6 +21,13 @@
         </label>
       </header>
 
+      <section class="panel defaults-panel">
+        <label class="site-layout-toggle">
+          <span><strong>Enable on all sites by default</strong><small>Turn off to enable sites individually. Site exceptions take priority.</small></span>
+          <span class="toggle"><input id="default-enabled" type="checkbox"><span class="toggle-track"></span></span>
+        </label>
+      </section>
+
       <section class="panel general-panel">
         <div class="section-heading">
           <h2>Appearance</h2>
@@ -71,7 +78,6 @@
           </label>
         </div>
         <div class="font-list-controls">
-          <button id="load-system-fonts" type="button">System fonts…</button>
           <span id="font-list-status" class="font-help" role="status"></span>
         </div>
         <div class="font-columns">
@@ -146,8 +152,12 @@
             </div>
           </div>
           <label class="site-group blocked-sites">
-            <h3>Blocked sites</h3>
-            <textarea id="disabled-hosts" spellcheck="false" placeholder="example.com"></textarea>
+            <h3>Always on</h3>
+            <textarea id="enabled-hosts" aria-label="Always enabled sites" spellcheck="false" placeholder="example.com"></textarea>
+          </label>
+          <label class="site-group blocked-sites">
+            <h3>Always off</h3>
+            <textarea id="disabled-hosts" aria-label="Always disabled sites" spellcheck="false" placeholder="example.com"></textarea>
           </label>
         </div>
       </section>
@@ -159,6 +169,7 @@
       </footer>
     </main>
     <script src="src/content/core.js"></script>
+    <script src="src/settings/fonts.js"></script>
     <script src="src/options/options.js"></script>
   </body>
 </html>

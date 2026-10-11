@@ -22,15 +22,18 @@ regions stay protected.
   the system color scheme.
 - Optional English, Chinese, native MathML, and monospace fonts, selected from
   installed system fonts with live previews.
-- Compact settings page that follows the selected theme.
+- Compact popup and settings page that follow the selected theme. The popup
+  includes fonts, site layouts, and column widths, with automatic saving.
 - Global enable switch.
-- Per-site block list.
+- Default on/off policy for new sites, plus per-site **Follow default**,
+  **Always on**, and **Always off** choices. Explicit choices survive changes
+  to the default; settings lists manage always-on and always-off sites.
 - Optional compact layout for X from 720px: collapsed navigation rail,
   adjustable centered timelines, and rail-based search. Thread pages stay
   native single-column.
 - Optional Zhihu clean layout from 720px: hide the top bar and side chrome
   on home, questions, and articles, then pick a reading width.
-- Default shortcut `Alt+Shift+B` toggles blocked / allowed for the current site
+- Default shortcut `Alt+Shift+B` saves an on/off choice for the current site
   (rebind under `chrome://extensions/shortcuts`).
 - Full-page paper cover for light, dark, and cool-paper sites.
 - Default transparent `html`/`body` canvases (legacy pages such as jmlr.org).
@@ -100,14 +103,26 @@ cannot be patched in place.
 
 ## Custom Fonts
 
-Open the extension settings, enable **Custom fonts**, and click **System
-fonts…**. Allow font access in the browser, then choose fonts and save.
-System font selection requires a browser with Local Font Access support.
+Open the popup or extension settings and enable **Custom fonts**. Installed
+system fonts load automatically. Popup changes save immediately; the full
+settings page uses **Save**. The extension needs the browser's `fontSettings`
+permission to list fonts.
 
 **Page default** preserves the website’s font for that category. MathML
 fonts apply to native formulas; KaTeX, MathJax, SVG formulas, and code editors
 keep their own typography. The monospace setting applies to code blocks and
 other monospace text. Fonts must be installed on each device.
+
+## Site Settings
+
+**Enable on all sites by default** controls sites without an explicit rule.
+In the popup, set **Current site** to **Always on** or **Always off** to keep
+that choice when the default changes. Select **Follow default** to remove the
+current hostname's rule. Rules also cover subdomains; a more specific hostname
+rule takes priority, and clearing it restores the parent rule if one exists.
+
+The header switch pauses the entire extension, including sites set to always
+on. Re-enabling it restores the saved site choices.
 
 ## Docs
 

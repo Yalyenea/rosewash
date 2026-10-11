@@ -37,6 +37,10 @@ if (!manifest.permissions.includes("storage")) {
   throw new Error("storage permission is required");
 }
 
+if (!manifest.permissions.includes("fontSettings")) {
+  throw new Error("fontSettings permission is required for automatic system font lists");
+}
+
 if (!manifest.host_permissions?.includes("<all_urls>")) {
   throw new Error("<all_urls> host permission is required for page tinting");
 }
@@ -47,6 +51,7 @@ const scriptFiles = [
   "src/background/background.js",
   "src/popup/popup.js",
   "src/options/options.js",
+  "src/settings/fonts.js",
   ...(manifest.content_scripts || []).flatMap((entry) => entry.js || []),
   "scripts/validate.mjs",
   "scripts/release-notes.mjs"

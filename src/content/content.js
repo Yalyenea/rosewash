@@ -15,29 +15,9 @@
     "data-rosewash-zhihu-home",
     "data-rosewash-zhihu-question"
   ];
-  const LAYOUT_HINT_KEY = "rosewash:layout-hint";
   let settingsCache = core.plainSettings(core.DEFAULT_SETTINGS);
+  let settingsLoaded = false;
   let disposed = false;
-
-  function readLayoutHint() {
-    try {
-      return JSON.parse(window.localStorage.getItem(LAYOUT_HINT_KEY) || "null");
-    } catch {
-      return null;
-    }
-  }
-
-  function writeLayoutHint(settings) {
-    try {
-      window.localStorage.setItem(LAYOUT_HINT_KEY, JSON.stringify({
-        xCompactLayout: settings.xCompactLayout === true,
-        xSingleColumnWidth: settings.xSingleColumnWidth,
-        zhihuArticleLayout: settings.zhihuArticleLayout === true,
-        zhihuArticleWidth: settings.zhihuArticleWidth
-      }));
-    } catch {
-    }
-  }
 
   function hasExtensionContext() {
     try {
@@ -80,7 +60,7 @@
     const settings = core.normalizeSettings(settingsCache);
     const host = window.location.hostname.toLowerCase();
     const allowed = settings.enabled
-      && !core.isHostDisabled(host, settings.disabledHosts);
+      && core.isHostEnabled(host, settings);
     const xActive = allowed && host === "x.com" && settings.xCompactLayout;
     if (xActive) {
       document.documentElement.style.setProperty(
@@ -111,24 +91,12 @@
   }
 
   function applyCachedSettings() {
-    if (disposed) {
+    if (disposed || !settingsLoaded) {
       return;
     }
 
     syncSiteLayout();
-    writeLayoutHint(core.normalizeSettings(settingsCache));
     engine.apply(settingsCache);
-  }
-
-  // Paint the canvas token before chrome.storage returns so theme.css can
-  // force html/body on the first frame. Refined once real settings load.
-  function paintProvisionalRoot() {
-    if (disposed || !document.documentElement) {
-      return;
-    }
-
-    const theme = core.resolveSettingsThemeKey(settingsCache, darkQuery.matches);
-    core.applyThemeTokens(document.documentElement, theme);
   }
 
   async function readStorageSettings() {
@@ -146,6 +114,7 @@
 
     try {
       settingsCache = await readStorageSettings();
+      settingsLoaded = true;
       applyCachedSettings();
     } catch {
       dispose();
@@ -159,6 +128,7 @@
 
     const watched = [
       "enabled",
+      "defaultEnabled",
       "customFontsEnabled",
       "fontEnglish",
       "fontChinese",
@@ -173,7 +143,8 @@
       "xSingleColumnWidth",
       "zhihuArticleLayout",
       "zhihuArticleWidth",
-      "disabledHosts"
+      "disabledHosts",
+      "enabledHosts"
     ];
     if (!watched.some((key) => Object.prototype.hasOwnProperty.call(changes, key))) {
       return;
@@ -187,6 +158,7 @@
           return;
         }
         settingsCache = next;
+        settingsLoaded = true;
         applyCachedSettings();
       })
       .catch(() => {
@@ -200,6 +172,7 @@
     }
 
     settingsCache = core.plainSettings(message.settings);
+    settingsLoaded = true;
     applyCachedSettings();
     sendResponse({ ok: true, stats: engine.stats() });
     return true;
@@ -231,15 +204,7 @@
     try {
       chrome.storage.onChanged.addListener(handleStorageChanged);
       chrome.runtime.onMessage.addListener(handleMessage);
-      // 1) Attribute + tokens so theme.css covers the canvas this frame.
-      paintProvisionalRoot();
-      const hint = readLayoutHint();
-      if (hint) {
-        settingsCache = core.plainSettings({ ...settingsCache, ...hint });
-      }
-      // 2) Default full cover immediately (document_start DOM is small).
-      applyCachedSettings();
-      // 3) Storage refines enabled/presets/appearance/blocklist without a blank gap.
+      // Read the site policy before painting, so default-off sites stay untouched.
       loadSettings();
     } catch {
       dispose();

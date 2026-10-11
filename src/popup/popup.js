@@ -2,142 +2,83 @@
   "use strict";
 
   const core = globalThis.RosewashCore;
-  if (!core) {
-    document.body.innerHTML = "<p style=\"padding:12px\">Rosewash core failed to load.</p>";
-    return;
-  }
-
-  const DEFAULT_SETTINGS = core.plainSettings(core.DEFAULT_SETTINGS);
-
   const enabledInput = document.querySelector("#enabled");
-  const hostLabel = document.querySelector("#host");
-  const appearanceButtons = Array.from(document.querySelectorAll("[data-appearance]"));
+  const defaultInput = document.querySelector("#default-enabled");
+  const customFontsInput = document.querySelector("#custom-fonts-enabled");
   const lightSelect = document.querySelector("#preset-light");
   const darkSelect = document.querySelector("#preset-dark");
-  const siteButton = document.querySelector("#site-toggle");
-  const siteStatus = document.querySelector("#site-status");
-  const xLayoutRow = document.querySelector("#x-layout-row");
-  const xLayoutInput = document.querySelector("#x-compact-layout");
-  const zhihuLayoutRow = document.querySelector("#zhihu-layout-row");
-  const zhihuLayoutInput = document.querySelector("#zhihu-article-layout");
-  const optionsButton = document.querySelector("#options");
+  const siteSelect = document.querySelector("#site-policy");
   const refreshButton = document.querySelector("#refresh");
-
+  const saveStatus = document.querySelector("#save-status");
+  const appearanceButtons = Array.from(document.querySelectorAll("[data-appearance]"));
+  const systemAppearance = window.matchMedia("(prefers-color-scheme: dark)");
+  const xLayoutInput = document.querySelector("#x-compact-layout");
+  const zhihuLayoutInput = document.querySelector("#zhihu-article-layout");
+  const xWidthSelect = document.querySelector("#x-single-column-width");
+  const zhihuWidthSelect = document.querySelector("#zhihu-article-width");
+  const fontFields = ["English", "Chinese", "Math", "Monospace"].map((name) => ({
+    key: `font${name}`,
+    input: document.querySelector(`#font-${name.toLowerCase()}`)
+  }));
+  const fontPicker = globalThis.RosewashFonts.createPicker({
+    enabledInput: customFontsInput,
+    fields: fontFields,
+    status: document.querySelector("#font-list-status")
+  });
+  let settings = core.plainSettings(core.DEFAULT_SETTINGS);
   let activeTab = null;
   let activeHost = "";
-  let settings = DEFAULT_SETTINGS;
-
-  function normalizeHost(host) {
-    return String(host || "").trim().toLowerCase().replace(/^\.+/, "");
-  }
-
-  function hostFromUrl(value) {
-    try {
-      return normalizeHost(new URL(value).hostname);
-    } catch {
-      return "";
-    }
-  }
-
-  function isHostDisabled(host, disabledHosts) {
-    const normalizedHost = normalizeHost(host);
-    return disabledHosts.some((entry) => {
-      const disabledHost = normalizeHost(entry);
-      return disabledHost
-        && (normalizedHost === disabledHost || normalizedHost.endsWith(`.${disabledHost}`));
-    });
-  }
-
-  function fillPresetOptions(select, variant) {
-    for (const preset of core.listPresets(variant)) {
-      const option = document.createElement("option");
-      option.value = preset.id;
-      option.textContent = preset.label;
-      select.appendChild(option);
-    }
-  }
-
-  function resolvedPalette() {
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const themeKey = core.resolveSettingsThemeKey(settings, prefersDark);
-    return { themeKey, palette: core.PALETTES[themeKey] };
-  }
+  let statusTimeout;
 
   function paintPopupChrome() {
-    const { themeKey, palette } = resolvedPalette();
-    if (!palette) {
-      return;
-    }
-
+    const themeKey = core.resolveSettingsThemeKey(settings, systemAppearance.matches);
+    const palette = core.PALETTES[themeKey];
     const root = document.documentElement;
     root.dataset.theme = themeKey;
-    root.style.setProperty("--base", palette.base);
-    root.style.setProperty("--surface", palette.surface);
-    root.style.setProperty("--overlay", palette.overlay);
-    root.style.setProperty("--text", palette.text);
-    root.style.setProperty("--muted", palette.muted);
+    for (const token of ["base", "surface", "overlay", "text"]) {
+      root.style.setProperty(`--${token}`, palette[token]);
+    }
     root.style.setProperty("--accent", palette.link);
     root.style.colorScheme = core.isDarkThemeKey(themeKey) ? "dark" : "light";
   }
 
-  async function storageGet() {
-    const raw = await chrome.storage.sync.get(null);
-    return core.plainSettings(raw);
-  }
-
-  async function storageSet(nextSettings) {
-    const normalized = core.plainSettings(nextSettings);
-    settings = normalized;
-    await chrome.storage.sync.set(normalized);
-    // Drop legacy keys so they cannot fight the new schema on next read.
-    await chrome.storage.sync.remove(["mode", "preset"]);
-    return normalized;
-  }
-
-  function activeTabQuery() {
-    return chrome.tabs.query({ active: true, currentWindow: true }).then((tabs) => tabs[0] || null);
-  }
-
   async function syncContentScripts() {
     const tabs = await chrome.tabs.query({});
-    let reached = 0;
-    await Promise.all(
-      tabs.map((tab) => {
-        if (!tab.id) {
-          return Promise.resolve();
-        }
-        return chrome.tabs
-          .sendMessage(tab.id, { type: "rosewash:settings-updated", settings })
-          .then(() => {
-            reached += 1;
-          })
-          .catch(() => undefined);
-      })
-    );
-    return reached;
+    await Promise.all(tabs.filter((tab) => tab.id).map((tab) =>
+      chrome.tabs.sendMessage(tab.id, { type: "rosewash:settings-updated", settings })
+        .catch(() => undefined)
+    ));
   }
 
   function render() {
     const restriction = core.pageRestrictionForUrl(activeTab?.url);
     enabledInput.checked = settings.enabled;
-    hostLabel.textContent = activeHost || "unsupported page";
+    defaultInput.checked = settings.defaultEnabled;
+    document.querySelector("#host").textContent = activeHost || "unsupported page";
+    document.querySelector("#default-status").textContent = settings.defaultEnabled
+      ? "New sites are on · exceptions still apply"
+      : "New sites are off · enable them individually";
     lightSelect.value = settings.presetLight;
     darkSelect.value = settings.presetDark;
-    xLayoutRow.hidden = activeHost !== "x.com";
+    fontPicker.render(settings);
     xLayoutInput.checked = settings.xCompactLayout;
-    zhihuLayoutRow.hidden = !core.isZhihuHost(activeHost);
     zhihuLayoutInput.checked = settings.zhihuArticleLayout;
-
+    xWidthSelect.value = String(settings.xSingleColumnWidth);
+    zhihuWidthSelect.value = String(settings.zhihuArticleWidth);
+    xWidthSelect.disabled = !settings.xCompactLayout;
+    zhihuWidthSelect.disabled = !settings.zhihuArticleLayout;
     for (const button of appearanceButtons) {
-      button.setAttribute(
-        "aria-pressed",
-        String(button.dataset.appearance === settings.appearance)
-      );
+      button.setAttribute("aria-pressed", String(button.dataset.appearance === settings.appearance));
     }
-
-    const disabled = activeHost && isHostDisabled(activeHost, settings.disabledHosts);
-    siteButton.textContent = restriction || !activeHost ? "Unavailable" : disabled ? "Blocked" : "Allowed";
-    siteButton.disabled = Boolean(restriction) || !activeHost;
+    const allowed = core.isHostEnabled(activeHost, settings);
+    const policy = core.hostPolicyForHost(activeHost, settings);
+    const inherited = policy === "default"
+      && core.isHostDisabled(activeHost, [...settings.enabledHosts, ...settings.disabledHosts]);
+    siteSelect.value = policy;
+    siteSelect.disabled = Boolean(restriction) || !activeHost;
+    document.querySelector("#site-source").textContent = restriction || !activeHost ? "Unavailable"
+      : !settings.enabled ? "Paused" : `${allowed ? "On" : "Off"}${inherited ? " · parent rule" : ""}`;
+    const siteStatus = document.querySelector("#site-status");
     siteStatus.hidden = !restriction;
     siteStatus.textContent = restriction === "webstore"
       ? "The browser blocks extensions on the Web Store and its developer dashboard."
@@ -146,70 +87,60 @@
     paintPopupChrome();
   }
 
-  async function updateSettings(nextSettings) {
-    const normalizedHosts = Array.from(
-      new Set((nextSettings.disabledHosts || []).map(normalizeHost).filter(Boolean))
-    ).sort();
-    await storageSet({ ...nextSettings, disabledHosts: normalizedHosts });
+  async function updateSettings(next) {
+    settings = core.plainSettings(next);
     render();
-    await syncContentScripts();
+    window.clearTimeout(statusTimeout);
+    saveStatus.textContent = "Saving…";
+    try {
+      await chrome.storage.sync.set(settings);
+      await chrome.storage.sync.remove(["mode", "preset"]);
+      await syncContentScripts();
+      saveStatus.textContent = "Saved";
+      statusTimeout = window.setTimeout(() => { saveStatus.textContent = ""; }, 1600);
+    } catch (error) {
+      saveStatus.textContent = `Save failed: ${error.message}`;
+    }
   }
 
-  enabledInput.addEventListener("change", () => {
-    updateSettings({ ...settings, enabled: enabledInput.checked });
-  });
-
+  for (const [input, key] of [
+    [enabledInput, "enabled"], [defaultInput, "defaultEnabled"],
+    [customFontsInput, "customFontsEnabled"], [xLayoutInput, "xCompactLayout"],
+    [zhihuLayoutInput, "zhihuArticleLayout"]
+  ]) input.addEventListener("change", () => updateSettings({ ...settings, [key]: input.checked }));
+  for (const [input, key] of [[lightSelect, "presetLight"], [darkSelect, "presetDark"], ...fontFields.map(({ input, key }) => [input, key])]) {
+    input.addEventListener("change", () => updateSettings({ ...settings, [key]: input.value }));
+  }
+  for (const [input, key] of [[xWidthSelect, "xSingleColumnWidth"], [zhihuWidthSelect, "zhihuArticleWidth"]]) {
+    input.addEventListener("change", () => updateSettings({ ...settings, [key]: Number(input.value) }));
+  }
   for (const button of appearanceButtons) {
-    button.addEventListener("click", () => {
-      updateSettings({ ...settings, appearance: button.dataset.appearance });
-    });
+    button.addEventListener("click", () => updateSettings({ ...settings, appearance: button.dataset.appearance }));
   }
-
-  lightSelect.addEventListener("change", () => {
-    updateSettings({ ...settings, presetLight: lightSelect.value });
-  });
-
-  darkSelect.addEventListener("change", () => {
-    updateSettings({ ...settings, presetDark: darkSelect.value });
-  });
-
-  siteButton.addEventListener("click", () => {
-    if (!activeHost || core.pageRestrictionForUrl(activeTab?.url)) {
-      return;
+  siteSelect.addEventListener("change", () => {
+    if (activeHost && !core.pageRestrictionForUrl(activeTab?.url)) {
+      updateSettings(core.setHostPolicy(activeHost, siteSelect.value, settings));
     }
-
-    const disabledHosts = settings.disabledHosts.filter((host) => !isHostDisabled(activeHost, [host]));
-    if (disabledHosts.length === settings.disabledHosts.length) {
-      disabledHosts.push(activeHost);
-    }
-
-    updateSettings({ ...settings, disabledHosts });
   });
-
-  xLayoutInput.addEventListener("change", () => {
-    updateSettings({ ...settings, xCompactLayout: xLayoutInput.checked });
-  });
-
-  zhihuLayoutInput.addEventListener("change", () => {
-    updateSettings({ ...settings, zhihuArticleLayout: zhihuLayoutInput.checked });
-  });
-
-  optionsButton.addEventListener("click", () => {
-    chrome.runtime.openOptionsPage();
-  });
-
-  refreshButton.addEventListener("click", () => {
-    syncContentScripts();
-  });
+  document.querySelector("#options").addEventListener("click", () => chrome.runtime.openOptionsPage());
+  refreshButton.addEventListener("click", syncContentScripts);
+  systemAppearance.addEventListener("change", paintPopupChrome);
 
   async function init() {
-    fillPresetOptions(lightSelect, "light");
-    fillPresetOptions(darkSelect, "dark");
-    activeTab = await activeTabQuery();
-    activeHost = activeTab ? hostFromUrl(activeTab.url) : "";
-    settings = await storageGet();
+    for (const [select, variant] of [[lightSelect, "light"], [darkSelect, "dark"]]) {
+      for (const preset of core.listPresets(variant)) select.add(new Option(preset.label, preset.id));
+    }
+    for (const [select, widths] of [[xWidthSelect, core.X_SINGLE_COLUMN_WIDTHS], [zhihuWidthSelect, core.ZHIHU_ARTICLE_WIDTHS]]) {
+      for (const width of widths) select.add(new Option(`${width} px`, String(width)));
+    }
+    const [tabs, raw] = await Promise.all([
+      chrome.tabs.query({ active: true, currentWindow: true }), chrome.storage.sync.get(null)
+    ]);
+    activeTab = tabs[0] || null;
+    activeHost = core.hostFromUrl(activeTab?.url);
+    settings = core.plainSettings(raw);
     render();
+    await fontPicker.load();
   }
-
   init();
 })();
