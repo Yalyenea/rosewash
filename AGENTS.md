@@ -31,6 +31,23 @@ Guidance for coding agents working in the Rosewash repository.
 - Run `just check` (tests + validate) before considering work done.
 - Put temporary files under `.tmp/`.
 
+## Browser verification
+
+- Use the `kimi-webbridge` skill to connect to the user's Helium browser for
+  page inspection and visual verification. This is the preferred browser
+  workflow for this project.
+- Run `just dist`, reload the unpacked Rosewash extension from `dist/`, then
+  refresh the test page so verification uses the current implementation.
+- Use Computer Use (`cua_repl`) for Helium's internal pages when WebBridge
+  cannot access them. Routine development actions, such as clicking Rosewash's
+  Reload button on `chrome://extensions/`, should be completed directly without
+  asking the user to repeat them. Verify the reload confirmation in the UI.
+- Keep task tabs in one WebBridge session with a descriptive tab group. Leave
+  the verified page visible for the user to test, and save screenshots under
+  `.tmp/`.
+- If WebBridge cannot connect, follow the skill's startup instructions. Stop
+  and ask the user if the connection remains blocked after a reasonable retry.
+
 ## Dev commands
 
 ```sh

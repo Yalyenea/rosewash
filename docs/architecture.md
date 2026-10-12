@@ -11,8 +11,9 @@ content pipeline, and change recipes, see
 - Curated preset registry (Rose Pine default, plus Codex-aligned families such
   as Catppuccin, Nord, Gruvbox, Tokyo Night, …) with light/dark variants, plus
   plain Light and Dark options that preserve website colors.
-- Color parsing for hex, `rgb()`, and CSS Color 4 `lab()`, `oklab()`, `lch()`,
-  and `oklch()` forms used by modern Tailwind output.
+- Color parsing for hex, `rgb()`, and CSS Color 4 `color(srgb ...)`, `lab()`,
+  `oklab()`, `lch()`, and `oklch()` forms. Computed sRGB colors from `color-mix()`
+  and relative RGB colors follow the same surface, text, and border rules.
 - Full-page surface and text covering into the active palette.
 - Optional page-tone sampling (still used for diagnostics and mixed re-detect).
 - Default site policy and per-host on/off rules, with subdomain matching.

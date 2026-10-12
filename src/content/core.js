@@ -332,6 +332,28 @@
   }
 
   function parseCssColor4(value) {
+    // color-mix(in srgb, ...) and relative RGB colors serialize as color(srgb ...).
+    const srgb = value.match(/^color\(srgb\s+([^()]+)\)$/);
+    if (srgb) {
+      const [body, alphaBody, extra] = srgb[1].split("/");
+      const parts = body.trim().split(/\s+/);
+      const component = /^(?:none|[-+]?(?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?%?)$/;
+      const alphaValue = alphaBody?.trim();
+      if (extra !== undefined || parts.length !== 3
+        || !parts.every((part) => component.test(part))
+        || (alphaValue !== undefined && !component.test(alphaValue))) {
+        return null;
+      }
+      const channels = parts.map((part) => part === "none" ? 0
+        : clamp255((parseFloat(part) / (part.endsWith("%") ? 100 : 1)) * 255));
+      return {
+        red: channels[0],
+        green: channels[1],
+        blue: channels[2],
+        alpha: alphaValue === "none" ? 0 : parseColorAlpha(alphaValue)
+      };
+    }
+
     const match = value.match(/^(oklab|oklch|lab|lch)\((.*)\)$/);
     if (!match) {
       return null;

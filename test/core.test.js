@@ -73,6 +73,28 @@ test("parses rgb, rgba, and hex colors", async () => {
   assert.equal(core.classifySurfaceCssVar("--main-surface-background", core.parseColor("#fffffff2")), "base");
 });
 
+test("parses computed sRGB colors from color-mix and relative colors", async () => {
+  const core = await loadCore();
+  const header = core.parseColor("color(srgb 0.956863 0.945098 0.917647 / 0.92)");
+  assert.ok(Math.abs(header.red - 244) < 0.001);
+  assert.ok(Math.abs(header.green - 241) < 0.001);
+  assert.ok(Math.abs(header.blue - 234) < 0.001);
+  assert.equal(header.alpha, 0.92);
+  assert.deepEqual(plain(core.parseColor("color(srgb 100% 50% 0% / 92%)")), {
+    red: 255, green: 127.5, blue: 0, alpha: 0.92
+  });
+  assert.deepEqual(plain(core.parseColor("color(srgb -0.1 1.2 5e-1)")), {
+    red: 0, green: 255, blue: 127.5, alpha: 1
+  });
+  assert.deepEqual(plain(core.parseColor("color(srgb none 0 0 / none)")), {
+    red: 0, green: 0, blue: 0, alpha: 0
+  });
+  for (const invalid of ["color(srgb 1 0)", "color(srgb 1 bad 0)",
+    "color(srgb 1 0 0 /)", "color(srgb 1 0 0 / 1 / 1)", "color(display-p3 1 0 0)"]) {
+    assert.equal(core.parseColor(invalid), null, invalid);
+  }
+});
+
 test("parses modern CSS color functions enough for tone detection", async () => {
   const core = await loadCore();
   assert.equal(core.isDarkSurfaceColor(core.parseColor("lab(0.0177803 0 0)")), true);
@@ -1425,6 +1447,33 @@ test("engine tints colored and near-white page chrome to base with forced text",
   assert.equal(byId.get("site-header").style.getPropertyValue("background-color"), "");
   assert.equal(byId.get("site-header").style.getPropertyValue("color"), "");
   assert.equal(byId.get("zhihu-header").style.getPropertyValue("background-color"), "");
+});
+
+test("engine covers sRGB mixed header surfaces across theme changes and restores them", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [{
+    id: "mixed-header", tag: "header",
+    backgroundColor: "color(srgb 0.956863 0.945098 0.917647 / 0.92)",
+    color: "color(srgb 0.1 0.1 0.1)",
+    children: [{ id: "brand", tag: "span", color: "color(srgb 0.1 0.1 0.1)" }]
+  }] });
+  const engine = core.createEngine({ document, window });
+  const header = byId.get("mixed-header");
+  header.style.setProperty("background-color", "color(srgb 1 1 1 / 0.92)");
+  for (const appearance of ["dark", "light", "dark"]) {
+    engine.apply({ appearance });
+    const palette = core.PALETTES[`rose-pine-${appearance}`];
+    assert.equal(header.style.getPropertyValue("background-color"), palette.base);
+    assert.equal(header.style.getPropertyPriority("background-color"), "important");
+    assert.equal(byId.get("brand").style.getPropertyValue("color"), palette.text);
+    engine.refresh();
+    window.flushFrames();
+    assert.equal(header.style.getPropertyValue("background-color"), palette.base);
+  }
+  engine.clear();
+  assert.equal(header.style.getPropertyValue("background-color"), "color(srgb 1 1 1 / 0.92)");
+  assert.equal(header.style.getPropertyPriority("background-color"), "");
+  assert.equal(byId.get("brand").style.getPropertyValue("color"), "");
 });
 
 test("engine rebuilds page chrome membership after restore", async () => {

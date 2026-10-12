@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Fix light headers left behind in dark mode when their computed backgrounds
+  use `color(srgb ...)`, including Lanyon.AI. Parse sRGB colors produced by
+  `color-mix()` and relative colors so surfaces, text, and borders follow the
+  selected palette.
+
 ## 0.2.4 - 2026-10-11
 
 - Keep the popup focused on the current site, appearance, and palettes. Move

@@ -235,7 +235,11 @@ branching inside `processElement`. `muted` is also used for scrollbar tracks.
 ### Color parsing
 
 Supports `#rgb` / `#rrggbb` / `#rrggbbaa`, `rgb()` / `rgba()`, and CSS Color 4
-`lab()`, `oklab()`, `lch()`, `oklch()` (enough for modern Tailwind output).
+`color(srgb ...)`, `lab()`, `oklab()`, `lch()`, `oklch()` (enough for modern
+Tailwind output). sRGB parsing handles numeric and percentage channels, alpha,
+and missing (`none`) components. This covers computed colors from
+`color-mix(in srgb, ...)` and relative RGB colors, including translucent page
+headers such as Lanyon.AI's. Other `color()` spaces are not parsed.
 
 Helpers classify near-white, dark surfaces, opaque text, low-chroma borders,
 and generated gradients vs `url()` media backgrounds.

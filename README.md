@@ -45,8 +45,9 @@ regions stay protected.
   (forced even when styled via CSS-in-JS).
 - Root CSS custom property remapping for design-token backgrounds and text
   (`--ground`, `--ink`, ChatGPT surface tokens, Substack publication vars, …).
-- CSS Color 4 tone parsing for modern `lab()`, `oklab()`, `lch()`, and
-  `oklch()` authored pages.
+- CSS Color 4 parsing for `color(srgb ...)`, `lab()`, `oklab()`, `lch()`, and
+  `oklch()` pages, including sRGB colors computed from `color-mix()` and
+  relative RGB colors.
 - Automatic tint repair after page loading, stylesheet updates, and element
   class changes, including during in-page navigation.
 - Media, canvas, SVG, inputs, editors, and syntax-highlighting region protection.
