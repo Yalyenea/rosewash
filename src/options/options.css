@@ -35,6 +35,11 @@ h3, .setting-label { font-size: 12px; font-weight: 500; color: var(--muted); }
 .defaults-panel .site-layout-toggle { margin: 0; }
 .defaults-panel strong { font-size: 12px; font-weight: 500; }
 .defaults-panel small { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
+.shortcut-panel, .shortcut-controls { display: flex; align-items: center; gap: 12px; }
+.shortcut-panel { justify-content: space-between; flex-wrap: wrap; }
+.shortcut-panel p { color: var(--muted); font-size: 11px; margin-top: 3px; }
+.shortcut-controls { flex-wrap: wrap; }
+#shortcut-binding { font: 12px/1.4 ui-monospace, monospace; padding: 4px 8px; border: 1px solid var(--border); border-radius: 3px; background: var(--surface); }
 .toggle { display: inline-flex; position: relative; flex: none; }
 .toggle input, .modes input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .toggle-track {

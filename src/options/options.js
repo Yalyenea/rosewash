@@ -41,6 +41,31 @@
   const saveButton = document.querySelector("#save");
   const resetButton = document.querySelector("#reset");
   const status = document.querySelector("#status");
+  const shortcutBinding = document.querySelector("#shortcut-binding");
+
+  async function refreshShortcut() {
+    try {
+      const commands = await chrome.commands.getAll();
+      const shortcut = commands.find((command) => command.name === "toggle-current-site")?.shortcut;
+      shortcutBinding.textContent = shortcut || "Not set";
+      shortcutBinding.title = shortcut ? "Current browser shortcut" : "Assign a shortcut in the browser's extension settings.";
+    } catch (error) {
+      shortcutBinding.textContent = "Unavailable";
+      shortcutBinding.title = `Could not read shortcut: ${error.message}`;
+    }
+  }
+
+  document.querySelector("#edit-shortcut").addEventListener("click", async () => {
+    try {
+      await chrome.tabs.create({ url: "chrome://extensions/shortcuts" });
+    } catch (error) {
+      setStatus(`Could not open shortcuts: ${error.message}`);
+    }
+  });
+  window.addEventListener("focus", refreshShortcut);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) refreshShortcut();
+  });
 
   let selectedLight = DEFAULT_SETTINGS.presetLight;
   let selectedDark = DEFAULT_SETTINGS.presetDark;
@@ -230,5 +255,6 @@
   fillPresetList(lightList, "light", selectLight);
   fillPresetList(darkList, "dark", selectDark);
   paintSettingsChrome();
+  refreshShortcut();
   load();
 })();

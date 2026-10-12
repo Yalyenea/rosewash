@@ -8,6 +8,7 @@
   const lightSelect = document.querySelector("#preset-light");
   const darkSelect = document.querySelector("#preset-dark");
   const siteSelect = document.querySelector("#site-policy");
+  const siteShortcut = document.querySelector("#site-shortcut");
   const refreshButton = document.querySelector("#refresh");
   const saveStatus = document.querySelector("#save-status");
   const appearanceButtons = Array.from(document.querySelectorAll("[data-appearance]"));
@@ -29,6 +30,29 @@
   let activeTab = null;
   let activeHost = "";
   let statusTimeout;
+
+  async function refreshShortcut() {
+    try {
+      const commands = await chrome.commands.getAll();
+      const shortcut = commands.find((command) => command.name === "toggle-current-site")?.shortcut;
+      siteShortcut.textContent = shortcut || "Set key";
+      siteSelect.title = shortcut
+        ? `${shortcut} toggles this site between Always on and Always off.`
+        : "Shortcut not set. Assign one in Settings → Change shortcut.";
+    } catch (error) {
+      siteShortcut.textContent = "Unavailable";
+      siteSelect.title = `Could not read shortcut: ${error.message}`;
+    }
+    siteShortcut.title = `${siteSelect.title} Click to change the shortcut in browser settings.`;
+  }
+  window.addEventListener("focus", refreshShortcut);
+  siteShortcut.addEventListener("click", async () => {
+    try {
+      await chrome.tabs.create({ url: "chrome://extensions/shortcuts" });
+    } catch (error) {
+      saveStatus.textContent = `Could not open shortcuts: ${error.message}`;
+    }
+  });
 
   function paintPopupChrome() {
     const themeKey = core.resolveSettingsThemeKey(settings, systemAppearance.matches);
@@ -142,5 +166,6 @@
     render();
     await fontPicker.load();
   }
+  refreshShortcut();
   init();
 })();

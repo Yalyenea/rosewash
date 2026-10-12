@@ -150,8 +150,12 @@ The popup exposes Follow default / Always on / Always off for the current
 hostname. Explicit choices persist when `defaultEnabled` changes. Clearing a
 hostname's rule restores its parent rule if present, otherwise the global
 default. The most specific hostname wins; a blocked rule wins a tie, and the
-global enable switch pauses every site. The popup also exposes font selectors,
-layout switches, and column widths, saving each change immediately.
+global enable switch pauses every site. More settings starts collapsed and
+contains the default rule, font selectors, layout switches, and column widths.
+Each popup change saves immediately. The shortcut button beside the site
+selector shows the actual browser binding and opens extension shortcut settings.
+The settings page provides the same shortcut display and editing entry point;
+both refresh the binding when reopened or focused.
 
 The flat settings layout follows the selected palette and system appearance.
 The shared font picker automatically enumerates installed families with

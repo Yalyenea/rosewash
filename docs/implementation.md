@@ -375,7 +375,8 @@ No direct message to the content script is required; pages listen to
 - Reads the active tab host and offers Follow default / Always on / Always off.
   The row also shows its effective On / Off state, inherited parent rules,
   and global pause state.
-- A separate switch sets the default on/off policy for new sites.
+- More settings starts collapsed and contains the default on/off switch,
+  custom fonts, site layout switches, and column widths.
 - Shows `Unavailable` and a reason on browser-protected pages, including the
   Web Store developer dashboard, and disables site toggling and Refresh.
 - Exposes X and Zhihu layout switches and column widths on every page.
@@ -386,7 +387,10 @@ No direct message to the content script is required; pages listen to
 - On change: write storage + `chrome.tabs.sendMessage` with
   `{ type: "rosewash:settings-updated", settings }` (best-effort; storage
   path still works if the content script is missing).
-- The site selector title documents `Alt+Shift+B`.
+- A button beside the site selector shows the actual binding returned by
+  `chrome.commands.getAll()`, or Set key when unassigned. Clicking it opens
+  `chrome://extensions/shortcuts`. The binding refreshes on opening and focus;
+  its title explains that the shortcut saves an Always on / Always off choice.
 
 **Options**
 
@@ -402,6 +406,9 @@ No direct message to the content script is required; pages listen to
   either UI. It shows display names and stores font IDs. Enumeration errors
   and unavailable preview fonts are reported explicitly.
 - Four independent previews use the same local FontFace definitions as pages.
+- The Keyboard shortcut row shows the current browser binding or Not set,
+  with Change shortcut opening the browser's extension shortcut settings.
+  Opening, focus, and returning to a visible page refresh the binding.
 
 ## X compact layout
 

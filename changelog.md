@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.4 - 2026-10-11
+
+- Keep the popup focused on the current site, appearance, and palettes. Move
+  default site rules, fonts, and layout controls into More settings while
+  retaining automatic font loading and immediate saving.
+- Show the browser's actual shortcut in a button beside the current-site
+  selector. Clicking it opens the browser's extension shortcut settings;
+  unassigned shortcuts show Set key.
+- Add the current shortcut and a Change shortcut button to the settings page.
+  Refresh the binding when returning from the browser's shortcut settings,
+  and report unavailable bindings explicitly.
+
 ## 0.2.3 - 2026-10-11
 
 - Choose whether Rosewash starts enabled or disabled on new sites. Each site

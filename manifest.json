@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Rosewash",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "A lightweight Rose Pine tint for harsh white web pages.",
   "permissions": [
     "storage",
@@ -24,7 +24,7 @@
         "default": "Alt+Shift+B",
         "mac": "Alt+Shift+B"
       },
-      "description": "Toggle blocked / allowed for the current site"
+      "description": "Toggle Always on / Always off for the current site"
     }
   },
   "content_scripts": [

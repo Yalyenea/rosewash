@@ -23,7 +23,8 @@ regions stay protected.
 - Optional English, Chinese, native MathML, and monospace fonts, selected from
   installed system fonts with live previews.
 - Compact popup and settings page that follow the selected theme. The popup
-  includes fonts, site layouts, and column widths, with automatic saving.
+  keeps daily controls visible and groups default rules, fonts, site layouts,
+  and column widths under **More settings**, with automatic saving.
 - Global enable switch.
 - Default on/off policy for new sites, plus per-site **Follow default**,
   **Always on**, and **Always off** choices. Explicit choices survive changes
@@ -34,7 +35,9 @@ regions stay protected.
 - Optional Zhihu clean layout from 720px: hide the top bar and side chrome
   on home, questions, and articles, then pick a reading width.
 - Default shortcut `Alt+Shift+B` saves an on/off choice for the current site
-  (rebind under `chrome://extensions/shortcuts`).
+  (Option+Shift+B on Mac). The button beside the site selector shows the actual
+  binding and opens the browser's shortcut settings. The settings page also
+  offers **Change shortcut**.
 - Full-page paper cover for light, dark, and cool-paper sites.
 - Default transparent `html`/`body` canvases (legacy pages such as jmlr.org).
 - Page-level headers and navigation bars blend into the active page base,
@@ -103,7 +106,8 @@ cannot be patched in place.
 
 ## Custom Fonts
 
-Open the popup or extension settings and enable **Custom fonts**. Installed
+Open **More settings** in the popup, or extension settings, and enable
+**Custom fonts**. Installed
 system fonts load automatically. Popup changes save immediately; the full
 settings page uses **Save**. The extension needs the browser's `fontSettings`
 permission to list fonts.
@@ -116,6 +120,7 @@ other monospace text. Fonts must be installed on each device.
 ## Site Settings
 
 **Enable on all sites by default** controls sites without an explicit rule.
+It is under **More settings** in the popup, and at the top of extension settings.
 In the popup, set **Current site** to **Always on** or **Always off** to keep
 that choice when the default changes. Select **Follow default** to remove the
 current hostname's rule. Rules also cover subdomains; a more specific hostname
