@@ -1,6 +1,128 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import vm from "node:vm";
+
+async function profileHoverRuntime({ wide = true } = {}) {
+  const listeners = new Map();
+  const observers = [];
+  const attributes = new Set(["data-rosewash-x-compact"]);
+  const media = { matches: wide, addEventListener() {} };
+  const document = {
+    documentElement: { hasAttribute: (name) => attributes.has(name) },
+    querySelectorAll: () => [],
+    addEventListener: (type, callback) => listeners.set(type, callback),
+    removeEventListener: (type, callback) => {
+      if (listeners.get(type) === callback) listeners.delete(type);
+    }
+  };
+  const context = {
+    document,
+    Node: { ELEMENT_NODE: 1 },
+    MouseEvent: class {
+      constructor(type, options) { Object.assign(this, { type }, options); }
+    },
+    MutationObserver: class {
+      constructor(callback) { observers.push(callback); }
+      observe() {}
+      disconnect() {}
+    },
+    window: { matchMedia: () => media, setTimeout, clearTimeout }
+  };
+  vm.runInNewContext(await readFile(new URL("../src/sites/x.js", import.meta.url), "utf8"), context);
+  return {
+    listeners,
+    mountCard: (card) => observers[0]([{ addedNodes: [card] }]),
+    pointer: (type, target, relatedTarget = null) => listeners.get(type)?.({ target, relatedTarget }),
+    disable() {
+      attributes.clear();
+      listeners.get("rosewash:x-compact-change")();
+    }
+  };
+}
+
+function hoverElement(selectors = [], parent = null) {
+  return {
+    nodeType: 1, isConnected: true, parent,
+    matches: (selector) => selectors.includes(selector),
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    closest(selector) {
+      return selectors.includes(selector) ? this : parent?.closest(selector) || null;
+    },
+    contains(node) {
+      for (; node; node = node.parent) if (node === this) return true;
+      return false;
+    }
+  };
+}
+
+test("keeps an avatar's portaled profile card open until the pointer leaves it", async () => {
+  const runtime = await profileHoverRuntime();
+  const avatar = hoverElement(["[data-testid^='UserAvatar-Container-']"]);
+  const anchor = hoverElement(["a[href]"], avatar);
+  const card = hoverElement(["[data-testid='HoverCard']"]);
+  const button = hoverElement([], card);
+  const name = hoverElement([], card);
+  const events = [];
+  let nativeHovered = true;
+  let closing = true;
+  anchor.dispatchEvent = (event) => {
+    events.push(event.type);
+    if (event.type === "mouseout") {
+      nativeHovered = false;
+      closing = true;
+    } else if (!nativeHovered) {
+      nativeHovered = true;
+      closing = false;
+    }
+  };
+  runtime.pointer("pointerover", anchor);
+  runtime.mountCard(card);
+  // Crossing unrelated content must retain the card's original owner.
+  runtime.pointer("pointerover", hoverElement());
+  runtime.pointer("pointerover", button, anchor);
+  assert.equal(closing, false);
+  assert.deepEqual(events, ["mouseout", "mouseover"]);
+
+  runtime.pointer("pointerout", button, name);
+  runtime.pointer("pointerover", name, button);
+  assert.equal(closing, false);
+  assert.equal(events.length, 2);
+
+  runtime.pointer("pointerout", name);
+  assert.equal(closing, true);
+  assert.deepEqual(events, ["mouseout", "mouseover", "mouseout"]);
+});
+
+test("cleans up profile hover ownership when disabled and ignores unrelated links", async () => {
+  const runtime = await profileHoverRuntime();
+  const card = hoverElement(["[data-testid='HoverCard']"]);
+  const unrelated = hoverElement(["a[href]"]);
+  unrelated.dispatchEvent = () => assert.fail("unrelated link received a hover event");
+  runtime.pointer("pointerover", unrelated);
+  runtime.mountCard(card);
+  runtime.pointer("pointerover", card);
+
+  const avatar = hoverElement(["[data-testid^='UserAvatar-Container-']"]);
+  const anchor = hoverElement(["a[href]"], avatar);
+  const events = [];
+  anchor.dispatchEvent = (event) => events.push(event.type);
+  const ownedCard = hoverElement(["[data-testid='HoverCard']"]);
+  runtime.pointer("pointerover", anchor);
+  runtime.pointer("pointerover", card);
+  assert.equal(events.length, 0);
+  runtime.mountCard(ownedCard);
+  runtime.pointer("pointerover", ownedCard);
+  runtime.disable();
+  assert.deepEqual(events, ["mouseout", "mouseover", "mouseout"]);
+  assert.equal(runtime.listeners.has("pointerover"), false);
+  assert.equal(runtime.listeners.has("pointerout"), false);
+
+  const mobile = await profileHoverRuntime({ wide: false });
+  assert.equal(mobile.listeners.has("pointerover"), false);
+  assert.equal(mobile.listeners.has("pointerout"), false);
+});
 
 test("constrains every navigation ancestor to the compact rail hit area", async () => {
   const css = await readFile(new URL("../src/sites/x.css", import.meta.url), "utf8");

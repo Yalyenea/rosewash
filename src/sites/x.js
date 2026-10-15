@@ -4,6 +4,8 @@
   const ROOT_ATTRIBUTE = "data-rosewash-x-compact";
   const ROOT_CHANGE_EVENT = "rosewash:x-compact-change";
   const RAIL_CONTROL_ATTRIBUTE = "data-rosewash-x-rail-control";
+  const PROFILE_AVATAR_SELECTOR = "[data-testid^='UserAvatar-Container-']";
+  const PROFILE_CARD_SELECTOR = "[data-testid='HoverCard']";
   const RAIL_SELECTOR = [
     "[data-testid='SideNav_NewTweet_Button']",
     "[data-testid='SideNav_AccountSwitcher_Button']"
@@ -12,6 +14,10 @@
 
   let timer = 0;
   let watching = false;
+  let pendingProfileAnchor = null;
+  let profileAnchor = null;
+  let hoveredProfileCard = null;
+  const profileCardAnchors = new WeakMap();
   const documentObserver = new MutationObserver(handleMutations);
   const rootObserver = new MutationObserver(handleRootChange);
 
@@ -41,6 +47,54 @@
     }
   }
 
+  function emitProfileHover(type) {
+    if (profileAnchor?.isConnected) {
+      profileAnchor.dispatchEvent(new MouseEvent(type, {
+        bubbles: true,
+        relatedTarget: null
+      }));
+    }
+  }
+
+  function clearProfileHover() {
+    if (hoveredProfileCard) {
+      emitProfileHover("mouseout");
+    }
+    profileAnchor = null;
+    pendingProfileAnchor = null;
+    hoveredProfileCard = null;
+  }
+
+  function handleProfilePointerOver(event) {
+    const target = event.target;
+    if (target?.nodeType !== Node.ELEMENT_NODE) {
+      return;
+    }
+    const card = target.closest(PROFILE_CARD_SELECTOR);
+    if (card) {
+      const anchor = profileCardAnchors.get(card);
+      if (card !== hoveredProfileCard && anchor?.isConnected) {
+        profileAnchor = anchor;
+        hoveredProfileCard = card;
+        // X polls the avatar's :hover state, which excludes its portaled card.
+        // Clear that poll before retaining the native hover state for the card.
+        emitProfileHover("mouseout");
+        emitProfileHover("mouseover");
+      }
+      return;
+    }
+    const anchor = target.closest("a[href]");
+    pendingProfileAnchor = anchor?.closest(PROFILE_AVATAR_SELECTOR) ? anchor : null;
+  }
+
+  function handleProfilePointerOut(event) {
+    if (!hoveredProfileCard || !hoveredProfileCard.contains(event.target)
+      || (event.relatedTarget && hoveredProfileCard.contains(event.relatedTarget))) {
+      return;
+    }
+    clearProfileHover();
+  }
+
   function nodeContainsRail(node) {
     return node.nodeType === Node.ELEMENT_NODE
       && (node.matches(RAIL_SELECTOR) || Boolean(node.querySelector(RAIL_SELECTOR)));
@@ -48,9 +102,22 @@
 
   function handleMutations(mutations) {
     for (const mutation of mutations) {
+      if (pendingProfileAnchor?.isConnected) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType !== Node.ELEMENT_NODE) {
+            continue;
+          }
+          const cards = node.matches(PROFILE_CARD_SELECTOR)
+            ? [node] : node.querySelectorAll(PROFILE_CARD_SELECTOR);
+          for (const card of cards) {
+            if (!profileCardAnchors.has(card)) {
+              profileCardAnchors.set(card, pendingProfileAnchor);
+            }
+          }
+        }
+      }
       if (Array.from(mutation.addedNodes).some(nodeContainsRail)) {
         schedule();
-        return;
       }
     }
   }
@@ -64,6 +131,8 @@
       subtree: true
     });
     watching = true;
+    document.addEventListener("pointerover", handleProfilePointerOver, true);
+    document.addEventListener("pointerout", handleProfilePointerOut, true);
   }
 
   function stopObserver() {
@@ -72,6 +141,9 @@
     }
     documentObserver.disconnect();
     watching = false;
+    document.removeEventListener("pointerover", handleProfilePointerOver, true);
+    document.removeEventListener("pointerout", handleProfilePointerOut, true);
+    clearProfileHover();
   }
 
   function sync() {

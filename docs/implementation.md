@@ -421,7 +421,11 @@ No direct message to the content script is required; pages listen to
 when Rosewash is enabled, X is not blocked, and `xCompactLayout` is true.
 
 - `x.js` marks the compose and account-switcher controls so the tint engine
-  does not paint over the compact rail.
+  does not paint over the compact rail. It associates newly opened profile
+  cards with their avatar links in a `WeakMap`. Delegated pointer events
+  retain the native hover state while the pointer is inside the portaled
+  card, releasing X's avatar-only hover poll first. Leaving the card releases
+  that state; disabling the layout removes the listeners and releases it too.
 - `x.css` collapses the navigation rail, keeps X's Explore/search entry in that
   rail, hides the redundant right search column, and stretches virtualized post
   cells to the selected single-column width from `min-width: 720px`. The width

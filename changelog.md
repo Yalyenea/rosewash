@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Keep X profile cards open when moving from an author's avatar into the
+  card. Preserve native links and controls, and dismiss the card after the
+  pointer leaves.
 - Make Zhihu's clean layout work below 720px. Keep question headers, author
   controls, topic cards, and action bars within the viewport; wrap controls
   on narrow screens and keep fixed answer actions aligned after resizing.
