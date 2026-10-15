@@ -69,14 +69,24 @@ test("startup waits for site policy and storage changes update site layouts", as
   assert.equal(attributes.has("data-rosewash-x-compact"), false);
   assert.equal(properties.has("--rosewash-x-single"), false);
 
-  // A slow read from a previous change must not undo a directly delivered toggle.
+  // A notification reads current storage, even if a delayed sender includes an old snapshot.
   let releaseOldRead;
   pendingRead = new Promise((resolve) => { releaseOldRead = resolve; });
   storageChanged({ disabledHosts: { newValue: ["x.com"] } }, "sync");
-  const latest = { ...raw, disabledHosts: [], enabledHosts: ["x.com"] };
-  messageReceived({ type: "rosewash:settings-updated", settings: latest }, {}, () => {});
+  const outdated = raw;
+  const latest = { ...raw, disabledHosts: [], enabledHosts: ["x.com"], xSingleColumnWidth: 760 };
+  raw = latest;
+  pendingRead = Promise.resolve(raw);
+  let response;
+  assert.equal(messageReceived({ type: "rosewash:settings-updated", settings: outdated }, {}, (value) => {
+    response = value;
+  }), true);
+  assert.equal(response, undefined);
+  await new Promise(setImmediate);
+  assert.equal(response.ok, true);
   assert.equal(attributes.has("data-rosewash-x-compact"), true);
-  releaseOldRead(raw);
+  assert.equal(properties.get("--rosewash-x-single"), "760px");
+  releaseOldRead(outdated);
   await new Promise(setImmediate);
   assert.equal(attributes.has("data-rosewash-x-compact"), true);
   assert.equal(applied.at(-1).disabledHosts.length, 0);
@@ -84,6 +94,7 @@ test("startup waits for site policy and storage changes update site layouts", as
   // Overlapping storage reads must also finish in change order, not read order.
   pendingRead = new Promise((resolve) => { releaseOldRead = resolve; });
   storageChanged({ enabledHosts: { newValue: [] } }, "sync");
+  raw = { ...raw, disabledHosts: ["x.com"] };
   pendingRead = Promise.resolve(raw);
   storageChanged({ disabledHosts: { newValue: ["x.com"] } }, "sync");
   await new Promise(setImmediate);

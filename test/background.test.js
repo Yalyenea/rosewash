@@ -5,42 +5,68 @@ import vm from "node:vm";
 
 const coreSource = await readFile(new URL("../src/content/core.js", import.meta.url), "utf8");
 const backgroundSource = await readFile(new URL("../src/background/background.js", import.meta.url), "utf8");
+const flush = () => new Promise(setImmediate);
 
-function background({ url = "https://x.com/home", messageError = false } = {}) {
+function deferred() {
+  let resolve;
+  const promise = new Promise((done) => { resolve = done; });
+  return { promise, resolve };
+}
+
+function background({ url = "https://x.com/home", messageError = false, beforeSet, notify } = {}) {
   const writes = [];
   const messages = [];
+  const errors = [];
   let stored = {};
-  let listener;
-  const context = { URL, console };
+  let commandListener;
+  let messageListener;
+  let writeAttempts = 0;
+  const extensionUrl = "chrome-extension://test/";
+  const context = { URL, console: { error: (...args) => errors.push(args) } };
   context.globalThis = context;
   context.importScripts = () => vm.runInNewContext(coreSource, context);
   context.chrome = {
-    commands: { onCommand: { addListener: (fn) => { listener = fn; } } },
+    runtime: {
+      id: "test",
+      getURL: (path) => extensionUrl + path,
+      onMessage: { addListener: (fn) => { messageListener = fn; } }
+    },
+    commands: { onCommand: { addListener: (fn) => { commandListener = fn; } } },
     tabs: {
       query: async () => [{ id: 1, url }],
       sendMessage: async (tabId, message) => {
-        messages.push({ tabId, message });
+        messages.push({ tabId, message: structuredClone(message) });
         if (messageError) throw new Error("No receiver");
+        if (notify) await notify();
       }
     },
     storage: { sync: {
       get: async () => structuredClone(stored),
       set: async (next) => {
-        await new Promise(setImmediate);
+        await flush();
+        if (beforeSet) await beforeSet(++writeAttempts);
         stored = structuredClone(next);
-        writes.push(stored);
-      }
+        writes.push(structuredClone(stored));
+      },
+      remove: async (keys) => { for (const key of keys) delete stored[key]; }
     } }
   };
   vm.runInNewContext(backgroundSource, context);
+  const sender = { id: "test", url: extensionUrl + "popup.html" };
   return {
-    writes, messages,
-    command: (tab) => listener("toggle-current-site", tab),
-    done: () => vm.runInNewContext("toggleQueue", context)
+    writes, messages, errors,
+    command: (tab) => commandListener("toggle-current-site", tab),
+    receive: (message, sendResponse) => messageListener(message, sender, sendResponse),
+    send: (message) => new Promise((resolve) => messageListener(message, sender, resolve)),
+    done: () => vm.runInNewContext("settingsQueue", context)
   };
 }
 
-test("shortcut persists and directly applies each rapid toggle to the command's tab", async () => {
+function edit(settings, baseline = {}) {
+  return { type: "rosewash:edit-settings", baseline, settings };
+}
+
+test("shortcut persists each rapid toggle and notifies the command's tab without snapshots", async () => {
   const runtime = background();
   const tab = { id: 7, url: "https://www.zhihu.com/question/123" };
   runtime.command(tab);
@@ -49,10 +75,10 @@ test("shortcut persists and directly applies each rapid toggle to the command's 
   assert.equal(runtime.writes.length, 2);
   assert.deepEqual(runtime.writes.map((settings) => settings.disabledHosts), [["www.zhihu.com"], []]);
   assert.deepEqual(runtime.writes[1].enabledHosts, ["www.zhihu.com"]);
-  assert.deepEqual(runtime.messages.map(({ tabId }) => tabId), [7, 7]);
-  assert.equal(runtime.messages[0].message.type, "rosewash:settings-updated");
-  assert.deepEqual(structuredClone(runtime.messages[0].message.settings), runtime.writes[0]);
-  assert.deepEqual(structuredClone(runtime.messages[1].message.settings), runtime.writes[1]);
+  assert.deepEqual(runtime.messages, [
+    { tabId: 7, message: { type: "rosewash:settings-updated" } },
+    { tabId: 7, message: { type: "rosewash:settings-updated" } }
+  ]);
 });
 
 test("shortcut ignores protected pages", async () => {
@@ -68,4 +94,72 @@ test("a tab without a content script still retains its shortcut preference", asy
   runtime.command();
   await runtime.done();
   assert.deepEqual(runtime.writes[0].disabledHosts, ["x.com"]);
+});
+
+test("accepted popup saves finish in order after the sender closes without consuming replies", async () => {
+  const firstWrite = deferred();
+  const runtime = background({ beforeSet: (attempt) => attempt === 1 ? firstWrite.promise : undefined });
+  // A closed popup has no receiver for the callback's return value or response.
+  const closedPopupResponse = () => {};
+  assert.equal(runtime.receive(edit({ appearance: "dark" }), closedPopupResponse), true);
+  assert.equal(runtime.receive(edit({ xCompactLayout: true }), closedPopupResponse), true);
+  await flush();
+  assert.equal(runtime.writes.length, 0);
+  firstWrite.resolve();
+  await runtime.done();
+  assert.equal(runtime.writes.length, 2);
+  assert.equal(runtime.writes[0].appearance, "dark");
+  assert.equal(runtime.writes[0].xCompactLayout, false);
+  assert.equal(runtime.writes[1].appearance, "dark");
+  assert.equal(runtime.writes[1].xCompactLayout, true);
+});
+
+test("unanswered tab notifications do not delay another save or its acknowledgement", async () => {
+  const notification = deferred();
+  const runtime = background({ notify: () => notification.promise });
+  const first = await runtime.send(edit({ appearance: "dark" }));
+  assert.equal(first.ok, true);
+  await flush();
+  assert.equal(runtime.messages.length, 1);
+  const second = await runtime.send(edit({ xCompactLayout: true }));
+  assert.equal(second.ok, true);
+  assert.equal(runtime.writes.length, 2);
+  assert.equal(second.settings.appearance, "dark");
+  assert.equal(second.settings.xCompactLayout, true);
+  notification.resolve();
+  await flush();
+});
+
+test("popup edits and shortcuts share a queue and preserve each other's settings", async () => {
+  const runtime = background();
+  const popupSave = runtime.send(edit({ appearance: "dark" }));
+  runtime.command({ id: 7, url: "https://x.com/home" });
+  const nextPopupSave = runtime.send(edit({ xSingleColumnWidth: 680 }));
+  await runtime.done();
+  assert.equal((await popupSave).ok, true);
+  assert.equal((await nextPopupSave).ok, true);
+  assert.equal(runtime.writes.length, 3);
+  assert.equal(runtime.writes[0].appearance, "dark");
+  assert.deepEqual(runtime.writes[1].disabledHosts, ["x.com"]);
+  assert.equal(runtime.writes[1].appearance, "dark");
+  assert.deepEqual(runtime.writes[2].disabledHosts, ["x.com"]);
+  assert.equal(runtime.writes[2].appearance, "dark");
+  assert.equal(runtime.writes[2].xSingleColumnWidth, 680);
+});
+
+test("a failed save responds with its error and does not block the next save", async () => {
+  const runtime = background({ beforeSet: (attempt) => {
+    if (attempt === 1) throw new Error("Storage write failed");
+  } });
+  const failed = runtime.send(edit({ appearance: "dark" }));
+  const next = runtime.send(edit({ xCompactLayout: true }));
+  assert.deepEqual(structuredClone(await failed), { ok: false, error: "Storage write failed" });
+  const response = await next;
+  await runtime.done();
+  assert.equal(response.ok, true);
+  assert.equal(runtime.writes.length, 1);
+  assert.equal(runtime.writes[0].appearance, "auto");
+  assert.equal(runtime.writes[0].xCompactLayout, true);
+  assert.equal(runtime.errors.length, 1);
+  assert.equal(runtime.messages.length, 1);
 });

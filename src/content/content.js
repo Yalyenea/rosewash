@@ -164,11 +164,8 @@
       return false;
     }
 
-    settingsRead++;
-    settingsCache = core.plainSettings(message.settings);
-    settingsLoaded = true;
-    applyCachedSettings();
-    sendResponse({ ok: true, stats: engine.stats() });
+    // Notifications carry no snapshot: a delayed sender must not restore old settings.
+    loadSettings().then(() => sendResponse({ ok: !disposed, stats: engine.stats() }));
     return true;
   }
 

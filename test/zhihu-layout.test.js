@@ -1,6 +1,123 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import vm from "node:vm";
+
+const runtimeSource = await readFile(new URL("../src/sites/zhihu.js", import.meta.url), "utf8");
+const layoutAttribute = "data-rosewash-zhihu-layout";
+const pageAttributes = [
+  "data-rosewash-zhihu-article",
+  "data-rosewash-zhihu-home",
+  "data-rosewash-zhihu-question"
+];
+
+function layoutRuntime({ path = "/", enabled = true } = {}) {
+  const attributes = new Set(enabled ? [layoutAttribute] : []);
+  const document = new EventTarget();
+  const root = {
+    hasAttribute: (name) => attributes.has(name),
+    toggleAttribute: (name, active) => active ? attributes.add(name) : attributes.delete(name)
+  };
+  document.documentElement = root;
+  const location = { pathname: path };
+  const navigation = new EventTarget();
+  const entries = [path];
+  let index = 0;
+  function commit() {
+    location.pathname = entries[index];
+    navigation.dispatchEvent(new Event("currententrychange"));
+  }
+  // Page-owned methods remain separate from the isolated world's wrappers.
+  const pageHistory = {
+    pushState(_data, _unused, url) {
+      entries.splice(++index, entries.length, url);
+      commit();
+    },
+    replaceState(_data, _unused, url) {
+      entries[index] = url;
+      commit();
+    },
+    back() { index--; commit(); },
+    forward() { index++; commit(); }
+  };
+  const timers = new Map();
+  let timerId = 0;
+  let rootChanged;
+  const window = {
+    location, navigation, history: { ...pageHistory },
+    addEventListener() {},
+    setTimeout(callback) { timers.set(++timerId, callback); return timerId; },
+    clearTimeout(id) { timers.delete(id); }
+  };
+  vm.runInNewContext(runtimeSource, {
+    document, window,
+    MutationObserver: class {
+      constructor(callback) { rootChanged = callback; }
+      observe(target, options) {
+        assert.equal(target, root);
+        assert.deepEqual(Array.from(options.attributeFilter), [layoutAttribute]);
+      }
+    }
+  });
+  return {
+    pageHistory,
+    flush() {
+      for (const [id, callback] of timers) {
+        timers.delete(id);
+        callback();
+      }
+    },
+    setEnabled(active, viaObserver = false) {
+      root.toggleAttribute(layoutAttribute, active);
+      if (viaObserver) rootChanged();
+      else document.dispatchEvent(new Event("rosewash:zhihu-layout-change"));
+    },
+    assertKind(kind) {
+      assert.deepEqual(pageAttributes.filter((attribute) => attributes.has(attribute)),
+        kind ? [`data-rosewash-zhihu-${kind}`] : []);
+    }
+  };
+}
+
+test("updates Zhihu markers for page-owned history navigation", () => {
+  const runtime = layoutRuntime();
+  runtime.assertKind("home");
+  runtime.pageHistory.pushState(null, "", "/question/123");
+  runtime.flush();
+  runtime.assertKind("question");
+  runtime.pageHistory.replaceState(null, "", "/p/456");
+  runtime.flush();
+  runtime.assertKind("article");
+  runtime.pageHistory.back();
+  runtime.flush();
+  runtime.assertKind("home");
+  runtime.pageHistory.forward();
+  runtime.flush();
+  runtime.assertKind("article");
+  runtime.pageHistory.pushState(null, "", "/people/example");
+  runtime.flush();
+  runtime.assertKind("");
+  for (const path of ["/follow", "/hot"]) {
+    runtime.pageHistory.pushState(null, "", path);
+    runtime.flush();
+    runtime.assertKind("home");
+  }
+});
+
+test("clears pending Zhihu markers when disabled and resumes on the current route", () => {
+  const runtime = layoutRuntime({ path: "/question/123" });
+  runtime.assertKind("question");
+  runtime.pageHistory.pushState(null, "", "/p/456");
+  runtime.setEnabled(false);
+  runtime.assertKind("");
+  runtime.flush();
+  runtime.assertKind("");
+  runtime.pageHistory.replaceState(null, "", "/hot");
+  runtime.flush();
+  runtime.assertKind("");
+  runtime.setEnabled(true, true);
+  runtime.assertKind("home");
+});
 
 test("hides Zhihu chrome outside the reading column", async () => {
   const css = await readFile(new URL("../src/sites/zhihu.css", import.meta.url), "utf8");
@@ -68,8 +185,6 @@ test("centers Zhihu home and question columns at the same width", async () => {
   assert.match(runtime, /path === "\/hot"/);
   assert.match(runtime, /data-rosewash-zhihu-home/);
   assert.match(runtime, /data-rosewash-zhihu-question/);
-  assert.match(runtime, /historyRef\.pushState/);
-  assert.match(runtime, /historyRef\.replaceState/);
   assert.match(runtime, /attributeFilter: \[LAYOUT_ATTRIBUTE\]/);
   assert.doesNotMatch(runtime, /subtree:\s*true/);
   assert.doesNotMatch(runtime, /childList:\s*true/);

@@ -1232,6 +1232,73 @@ test("late X avatar and preview backgrounds survive refresh, theme changes, and 
   assertImages();
 });
 
+test("mixed image and gradient backgrounds survive tinting and refresh", async () => {
+  const core = await loadCore();
+  const image = 'linear-gradient(rgba(0, 0, 0, 0.3), transparent), url("hero.jpg")';
+  const { document, window, byId } = createMockDom({ tree: [
+    { id: "hero", backgroundImage: image, backgroundColor: "rgb(255, 255, 255)" },
+    { id: "header", tag: "header", backgroundImage: image, backgroundColor: "rgb(0, 0, 0)" },
+    { id: "gradient", backgroundImage: "linear-gradient(#fff, #000)" }
+  ] });
+  const engine = core.createEngine({ document, window });
+  byId.get("hero").style.setProperty("background-image", image, "important");
+  for (const appearance of ["light", "dark"]) {
+    engine.apply({ appearance });
+    engine.refresh();
+    window.flushFrames();
+    assert.equal(byId.get("hero").style.getPropertyValue("background-image"), image);
+    assert.equal(byId.get("hero").style.getPropertyPriority("background-image"), "important");
+    assert.equal(byId.get("header").style.getPropertyValue("background-image"), "");
+    assert.equal(byId.get("gradient").style.getPropertyValue("background-image"), "none");
+  }
+  engine.clear();
+  assert.equal(byId.get("hero").style.getPropertyValue("background-image"), image);
+  assert.equal(byId.get("header").style.getPropertyValue("background-image"), "");
+  assert.equal(byId.get("gradient").style.getPropertyValue("background-image"), "");
+});
+
+test("root CSS variables restore their original value and priority", async () => {
+  const core = await loadCore();
+  const { document, window } = createMockDom({ rootCssVars: { "--background": "#ffffff" } });
+  const style = document.documentElement.style;
+  style.setProperty("--background", "#ffffff", "important");
+  const engine = core.createEngine({ document, window });
+  engine.apply({ appearance: "light" });
+  engine.refresh();
+  window.flushFrames();
+  engine.apply({ appearance: "dark" });
+  engine.clear();
+  assert.equal(style.getPropertyValue("--background"), "#ffffff");
+  assert.equal(style.getPropertyPriority("--background"), "important");
+  assert.equal(style.getPropertyValue("--main-surface-primary"), "");
+});
+
+test("root CSS variable restoration preserves later page writes and removals", async () => {
+  const core = await loadCore();
+  for (const action of ["clear", "reapply", "refresh", "theme"]) {
+    const { document, window } = createMockDom({ rootCssVars: { "--background": "#ffffff" } });
+    const style = document.documentElement.style;
+    style.setProperty("--background", "#ffffff");
+    const engine = core.createEngine({ document, window });
+    engine.apply({ appearance: "light" });
+    style.setProperty("--background", "#111111", "important");
+    if (action === "reapply") engine.apply({ appearance: "light" });
+    if (action === "theme") engine.apply({ appearance: "dark" });
+    if (action === "refresh") {
+      engine.refresh();
+      window.flushFrames();
+    }
+    engine.clear();
+    assert.equal(style.getPropertyValue("--background"), "#111111", action);
+    assert.equal(style.getPropertyPriority("--background"), "important", action);
+
+    engine.apply({ appearance: "light" });
+    style.removeProperty("--background");
+    engine.clear();
+    assert.equal(style.getPropertyValue("--background"), "");
+  }
+});
+
 test("restoration preserves page updates and resamples them before tinting again", async () => {
   const core = await loadCore();
   const { document, window, byId } = createMockDom({ tree: [

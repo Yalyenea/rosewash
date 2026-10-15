@@ -5,8 +5,16 @@
 - Replace the popup's site-policy dropdown with a one-click switch and a
   Use default action. Keep the shortcut beside the site switch, show external
   setting changes immediately, and fit expanded controls in a scrollable popup.
-- Apply shortcut changes directly to the active page, serialize rapid toggles,
-  and prevent older storage reads from undoing newer settings.
+- Save popup, settings-page, and shortcut changes in order through the
+  background service. Closing the popup keeps pending saves, and delayed
+  page updates use the latest saved settings.
+- Preserve changes made elsewhere when saving an open settings page. Merge
+  site-list edits and replace conflicting rules when explicitly adding a site.
+- Update Zhihu's reading layout after in-page navigation and browser
+  back/forward actions.
+- Preserve image backgrounds that include gradient layers.
+- Restore root CSS variables with their original priorities, while preserving
+  values changed later by the website.
 - Keep X profile cards open when moving from an author's avatar into the
   card. Preserve native links and controls, and dismiss the card after the
   pointer leaves.

@@ -69,6 +69,7 @@
 
   let selectedLight = DEFAULT_SETTINGS.presetLight;
   let selectedDark = DEFAULT_SETTINGS.presetDark;
+  let formBaseline = DEFAULT_SETTINGS;
 
   function normalizeHost(host) {
     return String(host || "").trim().toLowerCase().replace(/^\.+/, "");
@@ -191,6 +192,7 @@
 
   function render(settings) {
     const normalized = core.plainSettings(settings);
+    formBaseline = normalized;
     enabledInput.checked = normalized.enabled;
     defaultInput.checked = normalized.defaultEnabled;
     fontPicker.render(normalized);
@@ -211,8 +213,8 @@
     await fontPicker.load();
   }
 
-  saveButton.addEventListener("click", async () => {
-    const next = core.plainSettings({
+  function formSettings() {
+    return core.plainSettings({
       enabled: enabledInput.checked,
       defaultEnabled: defaultInput.checked,
       customFontsEnabled: customFontsInput.checked,
@@ -227,16 +229,43 @@
       disabledHosts: hostsFromTextarea(hostTextarea),
       enabledHosts: hostsFromTextarea(enabledHostsTextarea)
     });
-    await chrome.storage.sync.set(next);
-    await chrome.storage.sync.remove(["mode", "preset"]);
-    setStatus("Saved");
+  }
+
+  saveButton.addEventListener("click", async () => {
+    const next = formSettings();
+    const baseline = formBaseline;
+    saveButton.disabled = true;
+    resetButton.disabled = true;
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: "rosewash:edit-settings", baseline, settings: next
+      });
+      if (!response?.ok) throw new Error(response?.error || "Settings were not saved");
+      if (JSON.stringify(formSettings()) === JSON.stringify(next)) render(response.settings);
+      else formBaseline = next;
+      setStatus("Saved");
+    } catch (error) {
+      setStatus(`Save failed: ${error.message}`);
+    } finally {
+      saveButton.disabled = false;
+      resetButton.disabled = false;
+    }
   });
 
   resetButton.addEventListener("click", async () => {
-    await chrome.storage.sync.set(DEFAULT_SETTINGS);
-    await chrome.storage.sync.remove(["mode", "preset"]);
-    render(DEFAULT_SETTINGS);
-    setStatus("Reset");
+    saveButton.disabled = true;
+    resetButton.disabled = true;
+    try {
+      const response = await chrome.runtime.sendMessage({ type: "rosewash:reset-settings" });
+      if (!response?.ok) throw new Error(response?.error || "Settings were not reset");
+      render(response.settings);
+      setStatus("Reset");
+    } catch (error) {
+      setStatus(`Reset failed: ${error.message}`);
+    } finally {
+      saveButton.disabled = false;
+      resetButton.disabled = false;
+    }
   });
 
   xSingleWidthInput.addEventListener("input", () => {

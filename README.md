@@ -24,7 +24,8 @@ regions stay protected.
   installed system fonts with live previews.
 - Compact popup and settings page that follow the selected theme. The popup
   keeps daily controls visible and groups default rules, fonts, site layouts,
-  and column widths under **More settings**, with automatic saving.
+  and column widths under **More settings**, with automatic saving that
+  continues after the popup closes.
 - Global enable switch.
 - Default on/off policy for new sites, plus a one-click switch per site.
   **Use default** clears a site's override. Explicit choices survive changes
@@ -34,7 +35,7 @@ regions stay protected.
   native single-column.
 - Optional Zhihu clean layout: hide the top bar and side chrome on home,
   questions, and articles, then pick a reading width. Columns and controls
-  adapt to narrow windows.
+  adapt to narrow windows and follow in-page navigation and back/forward actions.
 - Default shortcut `Alt+Shift+B` saves an on/off choice for the current site
   (Option+Shift+B on Mac) and applies it immediately. The button beside the site switch shows the actual
   binding and opens the browser's shortcut settings. The settings page also
@@ -123,13 +124,18 @@ other monospace text. Fonts must be installed on each device.
 
 **Enable on all sites by default** controls sites without an explicit rule.
 It is under **More settings** in the popup, and at the top of extension settings.
-In the popup, set **Current site** to **Always on** or **Always off** to keep
-that choice when the default changes. Select **Follow default** to remove the
-current hostname's rule. Rules also cover subdomains; a more specific hostname
-rule takes priority, and clearing it restores the parent rule if one exists.
+The popup's site switch saves an explicit on/off choice that survives default
+changes. Select **Use default** to remove the current hostname's rule.
+Rules also cover subdomains; a more specific hostname rule takes priority,
+and clearing it restores the parent rule if one exists.
 
 The header switch pauses the entire extension, including sites set to always
 on. Re-enabling it restores the saved site choices.
+
+The settings page saves fields you edited and preserves changes made through
+the popup or shortcut while the page was open. Adding a hostname to one list
+replaces its opposite rule. If you explicitly include it in both lists,
+Always off takes priority.
 
 ## Docs
 

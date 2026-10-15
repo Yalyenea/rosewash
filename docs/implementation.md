@@ -21,7 +21,7 @@ manifest.json              MV3 entry: permissions, content scripts, SW, commands
 popup.html + src/popup/    Action popup (site policy, palettes, fonts, site layouts)
 options.html + src/options/ Settings (palettes, appearance, site layouts, site rules)
 src/settings/fonts.js     Shared automatic system font picker and previews
-src/background/            Service worker (keyboard commands)
+src/background/            Service worker (settings writes and commands)
 src/content/
   core.js                  Pure engine + host helpers (testable via vm)
   content.js               Chrome wiring for content world
@@ -37,22 +37,13 @@ release/                   Chrome Web Store zip (`just package`, gitignored)
 
 ## Runtime topology
 
-```text
-┌─────────────────────┐     chrome.storage.sync      ┌──────────────────────┐
-│ popup / options UI  │ ───────────────────────────► │  settings blob       │
-└─────────────────────┘                              └──────────┬───────────┘
-                                                               │ onChanged
-┌─────────────────────┐  commands.onCommand                    │
-│ background SW       │ ─── settings ──────────────────────────┤
-│ (importScripts core)│                                        │
-└─────────────────────┘                                        ▼
-                                                    ┌──────────────────────┐
-                                                    │ content.js per tab   │
-                                                    │  → RosewashCore      │
-                                                    │  → engine.apply()    │
-                                                    │  → theme.css + DOM   │
-                                                    └──────────────────────┘
-```
+Popup and options send edits to the background service worker. Keyboard
+commands enter the same queue. The worker reads current settings, merges the
+edit, and writes `chrome.storage.sync` before acknowledging the save.
+
+Content scripts learn about saves through `storage.onChanged` and background
+notifications. Both paths read current storage, replace the in-page cache,
+and apply the engine. Page responses do not hold up the write queue.
 
 | Layer | File(s) | Role |
 | --- | --- | --- |
@@ -60,8 +51,8 @@ release/                   Chrome Web Store zip (`just package`, gitignored)
 | Engine | `src/content/core.js` → `globalThis.RosewashCore` | Color parse, cover, restore, host helpers |
 | Content bootstrap | `src/content/content.js` | Stored site policy, settings cache, listeners |
 | CSS cover | `src/content/theme.css` | First-frame canvas / SPA roots / known shells |
-| Background | `src/background/background.js` | Site toggle command |
-| Popup | `src/popup/popup.js` | Daily controls + push message to active tab |
+| Background | `src/background/background.js` | Settings write queue, commands, content notifications |
+| Popup | `src/popup/popup.js` | Daily controls + immediate edit requests to background |
 | Options | `src/options/options.js` | Palettes, appearance, site layouts, block list |
 | X layout | `src/sites/x.js`, `x.css` | Compact navigation rail and centered single-column streams |
 | Zhihu layout | `src/sites/zhihu.js`, `zhihu.css` | Centered widescreen column on home, questions, and articles; hides page chrome |
@@ -163,13 +154,15 @@ On every page match, roughly:
 3. **`applyCachedSettings()`** resolves the site policy, applies layouts, and
    runs the engine. `theme.css` becomes active when the engine sets the theme
    attribute. Disabled sites clear the theme instead.
-4. Later: `storage.onChanged`, `matchMedia` dark changes, `DOMContentLoaded`,
-   `load`, `pageshow`, `visibilitychange`, and popup messages all re-apply from
-   the **in-page settings cache** (no extra storage read on system theme
-   switch). If the resolved palette did not change, ordinary re-applies skip
-   the full DOM walk and only refresh root CSS variables. `DOMContentLoaded`
-   and `load` also request a batched refresh to cover styles that arrived
-   after the initial scan.
+4. `storage.onChanged` and background notifications read current storage,
+   replace the cache, and re-apply. A read counter discards older overlapping
+   results. Notifications carry no settings snapshot.
+5. `matchMedia` dark changes, `DOMContentLoaded`, `load`, `pageshow`, and
+   `visibilitychange` re-apply from the **in-page settings cache**. System theme
+   changes need no storage read. If the resolved palette did not change,
+   ordinary re-applies skip the full DOM walk and only refresh root CSS
+   variables. `DOMContentLoaded` and `load` also request a batched refresh
+   to cover styles that arrived after the initial scan.
 
 ### Extension context safety
 
@@ -242,7 +235,8 @@ and missing (`none`) components. This covers computed colors from
 headers such as Lanyon.AI's. Other `color()` spaces are not parsed.
 
 Helpers classify near-white, dark surfaces, opaque text, low-chroma borders,
-and generated gradients vs `url()` media backgrounds.
+and generated gradients. A background containing `url()` is treated as media,
+including backgrounds with both image and gradient layers.
 
 ### Full-page cover (`processElement`)
 
@@ -289,7 +283,10 @@ Pseudo-elements cannot take per-element inline tints.
 - **Engine** (`SURFACE_VAR_*` / `TEXT_VAR_*` / `FORCED_SURFACE_VARS` in
   `core.js`): rewrite matching root custom properties to palette colors with
   `!important`. Known ChatGPT / Substack surface names are forced even for
-  unparseable values. Overrides are diffed and restored with the theme.
+  unparseable values. Records retain original and applied values and priorities.
+  Restoration writes the original declaration only if the current value and
+  priority still match the applied override. Later website writes survive;
+  re-applying captures them as the new original before tinting again.
 
 ### MutationObserver
 
@@ -358,21 +355,31 @@ Active only under `html[data-rosewash-theme]`:
 
 This is the first-frame layer; nested boxes still need the JS engine.
 
-## Background command
+## Background settings queue
 
-`src/background/background.js`:
+`src/background/background.js` loads the core helpers with `importScripts`.
+All settings writes run through `settingsQueue`: popup edits, options saves
+and resets, and the site-toggle shortcut. Each operation reads current storage,
+normalizes and merges its edit, persists it, and removes migrated legacy keys.
+A rejected operation reports an error without blocking later saves.
 
-```text
-importScripts("../content/core.js")
-→ chrome.commands.onCommand
-→ command tab (or active tab) URL → hostFromUrl
-→ toggleHostEnabled → chrome.storage.sync.set
-→ chrome.tabs.sendMessage → immediate content apply
-```
+`mergeSettingsEdits(latest, baseline, edited)` applies fields changed from the
+UI baseline. Host lists merge additions and removals with the latest lists.
+An explicit addition removes the same hostname from the opposite list; if the
+edited form includes it in both lists, the disabled rule wins. Other hosts and
+untouched fields retain external changes.
 
-Commands run in order so rapid presses read the preceding saved rule. Other
-tabs receive changes through `storage.onChanged`. Content reads discard older
-results after a newer read or direct settings message.
+The popup sends every edit immediately. Once received, the worker owns the
+save even if the popup closes. Message handlers accept write requests only
+from this extension's UI pages, checking the sender ID and extension URL.
+Replies use `{ ok: true, settings }` or `{ ok: false, error }`.
+
+The `toggle-current-site` command resolves the command tab (or active tab),
+skips protected pages, and calls `toggleHostEnabled` against current settings.
+After saving, it notifies that tab; UI saves notify all tabs. Notifications
+contain only `{ type: "rosewash:settings-updated" }`. Content scripts read
+current storage before applying, so delayed notifications cannot restore an
+old snapshot. Notification responses never block the next save.
 
 ## Popup & options
 
@@ -392,9 +399,10 @@ results after a newer read or direct settings message.
   enumeration through the shared `src/settings/fonts.js` picker.
 - Two palette selects (`presetLight` / `presetDark`); lists only families
   that expose that variant.
-- On change: write storage + `chrome.tabs.sendMessage` with
-  `{ type: "rosewash:settings-updated", settings }` (best-effort; storage
-  path still works if the content script is missing).
+- On change: immediately send the baseline and edited settings to the worker;
+  site controls send the hostname and desired policy. Pending local edits stay
+  visible while saves run. After the last response, reload current storage.
+  Reapply asks the worker to notify open tabs.
 - A button beside the site switch shows the actual binding returned by
   `chrome.commands.getAll()`, or Set key when unassigned. Clicking it opens
   `chrome://extensions/shortcuts`. The binding refreshes on opening and focus;
@@ -408,6 +416,10 @@ results after a newer read or direct settings message.
   variant.
 - Compact Appearance, Theme, Fonts, and Sites sections use flat grids and
   separators. Save / Reset follow the content.
+- Save sends the edited form and its baseline to the worker, preserving changes
+  made elsewhere to untouched fields. Edits typed while saving remain in the
+  form for the next save. Reset requests defaults through the same queue.
+  Both actions disable Save / Reset until completion and display failures.
 - Settings chrome previews the selected appearance and palette immediately,
   including system appearance changes in Auto mode.
 - The shared font picker calls `chrome.fontSettings.getFontList()` on opening
@@ -450,9 +462,10 @@ runtime marks Zhihu hosts with `data-rosewash-zhihu-layout` when Rosewash is
 enabled, Zhihu is not blocked, and `zhihuArticleLayout` is true. `zhihu.js`
 adds a page marker at every viewport width: `data-rosewash-zhihu-home` on `/`, `/follow`,
 and `/hot`; `data-rosewash-zhihu-question` on `/question/{id}`; and
-`data-rosewash-zhihu-article` on `/p/{id}`. SPA route changes go through
-`history.pushState` / `replaceState` and `popstate`; the observer only watches
-the layout attribute on `html`.
+`data-rosewash-zhihu-article` on `/p/{id}`. The isolated content script listens
+to the native `navigation.currententrychange` event, covering page-world
+`history.pushState` / `replaceState` and browser back/forward navigation.
+The observer only watches the layout attribute on `html`.
 
 - `zhihu.css` hides the top bar, right rail, and other chrome, then centers
   the remaining column at the selected width. The width shrinks to the
@@ -470,7 +483,11 @@ Popup and options load `src/content/core.js` for `PRESETS` / `listPresets` /
 
 | Message type | Direction | Purpose |
 | --- | --- | --- |
-| `rosewash:settings-updated` | popup / background → content | Immediate re-apply + `stats` response |
+| `rosewash:edit-settings` | popup / options → background | Merge `baseline` and edited `settings` into current storage |
+| `rosewash:set-host-policy` | popup → background | Apply `host` and `policy` to current settings |
+| `rosewash:reset-settings` | options → background | Save defaults through the write queue |
+| `rosewash:reapply` | popup → background | Notify open tabs to read and apply current storage |
+| `rosewash:settings-updated` | background → content | Read current storage, apply, and respond with `stats` |
 
 Storage remains the source of truth across tabs and the service worker.
 
@@ -489,7 +506,8 @@ just clean      # remove .tmp and local debug leftovers
 | --- | --- |
 | Engine unit tests | `test/core.test.js` loads `core.js` in `vm` |
 | Content startup | `test/content.test.js` verifies stored policy gating and layout changes |
-| Shortcut | `test/background.test.js` verifies direct updates, rapid toggles, and protected pages |
+| Background | `test/background.test.js` covers ordered writes, closed senders, blocked notifications, shortcut concurrency, failures, and protected pages |
+| Settings UI | `test/settings.test.js` runs UI and background scripts with mocked browser APIs; covers popup closure, stale reads, form merging, conflicting site rules, and migration |
 | Browser fixtures | `test/fixtures/*` HTML + runners (manual / scripted) |
 | Validate | Requires background runtime files, the site-toggle command, storage + `<all_urls>` |
 

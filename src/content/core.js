@@ -973,6 +973,30 @@
     };
   }
 
+  function mergeSettingsEdits(latest, baseline, edited) {
+    const result = plainSettings(latest);
+    const before = plainSettings(baseline);
+    const next = plainSettings(edited);
+    const addedHosts = new Set();
+    for (const [key, value] of Object.entries(next)) {
+      if (JSON.stringify(value) === JSON.stringify(before[key])) continue;
+      if (key === "enabledHosts" || key === "disabledHosts") {
+        const removed = new Set(before[key].filter((host) => !value.includes(host)));
+        const added = value.filter((host) => !before[key].includes(host));
+        for (const host of added) addedHosts.add(host);
+        result[key] = Array.from(new Set([...result[key].filter((host) => !removed.has(host)), ...added])).sort();
+      } else {
+        result[key] = value;
+      }
+    }
+    for (const host of addedHosts) {
+      // An explicit addition replaces the opposite rule; disabled wins a tie.
+      const opposite = next.disabledHosts.includes(host) ? "enabledHosts" : "disabledHosts";
+      result[opposite] = result[opposite].filter((rule) => rule !== host);
+    }
+    return result;
+  }
+
   // Full cover remaps any non-transparent text into the active palette.
   function shouldTintTextColor(_theme, color, _surfaceTinted) {
     return isOpaqueColor(color);
@@ -1004,7 +1028,9 @@
   }
 
   function isGeneratedBackgroundImage(value) {
-    return typeof value === "string" && /\b(?:linear|radial|conic|repeating-linear|repeating-radial|repeating-conic)-gradient\(/.test(value);
+    return typeof value === "string"
+      && !/\burl\(/i.test(value)
+      && /\b(?:linear|radial|conic|repeating-linear|repeating-radial|repeating-conic)-gradient\(/.test(value);
   }
 
   function generatedBackgroundHasDarkSurface(value) {
@@ -1183,7 +1209,7 @@
     let activeFonts = [];
     let fontKey = "[]";
     let tintedPageChrome = new WeakSet();
-    // name -> previous inline value (null if unset)
+    // Original and applied declarations, with the same ownership rules as tints.
     let cssVarOverrides = new Map();
     let observer = null;
     let pendingRoots = new Map();
@@ -1664,13 +1690,7 @@
 
     function restoreCssVarOverrides() {
       const root = document.documentElement;
-      for (const [name, previous] of cssVarOverrides) {
-        if (previous === null || previous === "") {
-          root.style.removeProperty(name);
-        } else {
-          root.style.setProperty(name, previous);
-        }
-      }
+      restoreStyleOverrides(root, Object.fromEntries(cssVarOverrides));
       cssVarOverrides = new Map();
     }
 
@@ -1685,22 +1705,22 @@
       );
       const next = new Map(nextEntries);
 
-      for (const [name, previous] of cssVarOverrides) {
+      for (const [name, item] of cssVarOverrides) {
         if (next.has(name)) {
           continue;
         }
-        if (previous === null || previous === "") {
-          root.style.removeProperty(name);
-        } else {
-          root.style.setProperty(name, previous);
-        }
+        restoreStyleOverrides(root, { [name]: item });
         cssVarOverrides.delete(name);
       }
 
       for (const [name, value] of next) {
-        if (!cssVarOverrides.has(name)) {
-          const previous = root.style.getPropertyValue(name);
-          cssVarOverrides.set(name, previous || null);
+        let item = cssVarOverrides.get(name);
+        if (!item || !matchesOverride(root, name, item)) {
+          item = {
+            value: root.style.getPropertyValue(name),
+            priority: root.style.getPropertyPriority(name)
+          };
+          cssVarOverrides.set(name, item);
         }
         // ChatGPT (and similar) dark themes set surface tokens with
         // !important on .dark; non-important inline loses that cascade.
@@ -1710,6 +1730,8 @@
         ) {
           root.style.setProperty(name, value, "important");
         }
+        item.appliedValue = root.style.getPropertyValue(name);
+        item.appliedPriority = root.style.getPropertyPriority(name);
       }
     }
 
@@ -1874,6 +1896,7 @@
     luminance,
     normalizeSettings,
     plainSettings,
+    mergeSettingsEdits,
     parseColor,
     readRootThemeSamples,
     resolveAppearance,

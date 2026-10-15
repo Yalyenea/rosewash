@@ -45,8 +45,8 @@ painted surface becomes Rose Pine:
   color can make the site turn it into a solid frame. A stroke that matches
   its own fill stays untouched.
 - CSS gradients are flattened to solid palette fills. Gradients clipped to text
-  become readable palette text without a surface fill; `url()` media
-  backgrounds are left alone.
+  become readable palette text without a surface fill. Backgrounds containing
+  `url()` images retain all their layers, including any accompanying gradients.
 - Ordinary code, keyboard labels, and sample output follow the palette. Media,
   canvas, SVG, iframes, inputs, editors, and recognized syntax-highlighting
   regions are skipped.
@@ -73,8 +73,10 @@ per-element inline tints, so:
    `--ink` to `palette.text`, with `!important`. Known ChatGPT token names
    are forced even when the current value cannot be parsed.
 
-Inverted icon/button tokens and brand accents are left alone. Overrides
-restore with the rest of the theme.
+Inverted icon/button tokens and brand accents are left alone. Root variable
+records retain the original value and priority plus the applied override.
+Restoration only changes declarations that still match the override, preserving
+later website writes. Re-applying captures those writes before tinting again.
 
 Page-tone sampling runs on initial apply and palette or font changes. Surface
 covering does not depend on the sampled tone.
@@ -97,21 +99,25 @@ new content-script instance can remove stale overrides after extension reload.
   settings cache, then requests a batched refresh for late page styles.
 - Re-applies from the cache immediately after system dark mode changes in Auto
   mode.
-- Re-checks settings when a page becomes visible again.
-- Accepts popup refresh messages.
+- Re-applies cached settings when a page becomes visible again.
+- Reads current storage after background update notifications, discarding
+  older overlapping reads.
 - Stops DOM listeners if the extension context is already invalidated.
 
 ## Background
 
 `src/background/background.js` is the MV3 service worker. It loads
-`src/content/core.js` via `importScripts` for host helpers, then handles
-`chrome.commands`:
+`src/content/core.js` via `importScripts` for settings and host helpers.
+Popup edits, settings-page saves and resets, and keyboard commands share one
+storage write queue. Each operation reads current storage, applies its edit,
+and persists the result. Accepted operations continue after the popup closes.
+A failed operation reports its error and lets later operations proceed.
 
-- `toggle-current-site` (default `Alt+Shift+B`) saves an explicit on/off rule
-  for the active hostname in `enabledHosts` or `disabledHosts` and writes
-  `chrome.storage.sync`, then sends the new settings directly to that tab.
-  Rapid presses run in order. Other content scripts pick up the change through
-  `storage.onChanged`; older reads cannot overwrite newer settings messages.
+`toggle-current-site` (default `Alt+Shift+B`) saves an explicit on/off rule
+for the command's hostname. The worker notifies that tab after saving; UI saves
+notify all tabs. Notifications contain only their message type, and content
+scripts read current storage before applying. Tab responses do not block
+subsequent writes. Storage change listeners keep other tabs synchronized.
 
 Users can rebind the shortcut under `chrome://extensions/shortcuts`.
 
@@ -155,7 +161,13 @@ hostname's rule restores its parent rule if present, otherwise the global
 default. The most specific hostname wins; a blocked rule wins a tie, and the
 global enable switch pauses every site. More settings starts collapsed and
 contains the default rule, font selectors, layout switches, and column widths.
-Each popup change saves immediately, and storage updates refresh its state.
+Each popup change immediately sends an edit to the worker. Pending local edits
+stay visible until the saves finish, then the popup reloads current storage.
+The settings page sends its edited form and baseline to the same queue.
+`mergeSettingsEdits` applies changed fields and host-list additions/removals
+to current storage. Explicit additions clear the opposite rule for that host;
+disabled wins when the edited form explicitly keeps both. Unrelated external
+changes remain intact.
 Expanded settings scroll above a persistent footer. The shortcut button beside
 the site switch shows the actual browser binding and opens extension shortcut settings.
 The settings page provides the same shortcut display and editing entry point;
@@ -182,7 +194,9 @@ The Zhihu clean layout is the same kind of optional overlay. When
 and `/p/{id}` pages hide the top bar and other chrome and center a column at
 the selected width. The column shrinks with the viewport, and controls wrap
 on narrow screens. Fixed answer actions follow the column when resized.
-Other Zhihu routes keep the native layout.
+Other Zhihu routes keep the native layout. The isolated content script listens
+to `navigation.currententrychange` for page-world `pushState`, `replaceState`,
+and back/forward navigation, then updates the page marker.
 
 ## Performance Boundary
 

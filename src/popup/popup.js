@@ -32,6 +32,7 @@
   let activeHost = "";
   let statusTimeout;
   let settingsRead = 0;
+  let pendingSaves = 0;
 
   async function refreshShortcut() {
     try {
@@ -66,14 +67,6 @@
     }
     root.style.setProperty("--accent", palette.link);
     root.style.colorScheme = core.isDarkThemeKey(themeKey) ? "dark" : "light";
-  }
-
-  async function syncContentScripts(next = settings) {
-    const tabs = await chrome.tabs.query({});
-    await Promise.all(tabs.filter((tab) => tab.id).map((tab) =>
-      chrome.tabs.sendMessage(tab.id, { type: "rosewash:settings-updated", settings: next })
-        .catch(() => undefined)
-    ));
   }
 
   function render() {
@@ -123,21 +116,43 @@
     paintPopupChrome();
   }
 
-  async function updateSettings(next) {
-    settings = core.plainSettings(next);
-    const saved = settings;
+  async function refreshSettings() {
+    if (pendingSaves) return;
+    const read = ++settingsRead;
+    try {
+      const raw = await chrome.storage.sync.get(null);
+      if (read !== settingsRead || pendingSaves) return;
+      settings = core.plainSettings(raw);
+      render();
+    } catch (error) {
+      saveStatus.textContent = `Could not read settings: ${error.message}`;
+    }
+  }
+
+  async function updateSettings(next, request) {
+    next = core.plainSettings(next);
+    const baseline = settings;
+    settings = next;
+    pendingSaves++;
     settingsRead++;
     render();
     window.clearTimeout(statusTimeout);
     saveStatus.textContent = "Saving…";
     try {
-      await chrome.storage.sync.set(saved);
-      await syncContentScripts(saved);
-      await chrome.storage.sync.remove(["mode", "preset"]);
-      saveStatus.textContent = "Saved";
-      statusTimeout = window.setTimeout(() => { saveStatus.textContent = ""; }, 1600);
+      // Dispatch before yielding: subsequent writes survive this popup being closed.
+      const response = await chrome.runtime.sendMessage(request || {
+        type: "rosewash:edit-settings", baseline, settings: next
+      });
+      if (!response?.ok) throw new Error(response?.error || "Settings were not saved");
+      if (pendingSaves === 1) {
+        saveStatus.textContent = "Saved";
+        statusTimeout = window.setTimeout(() => { saveStatus.textContent = ""; }, 1600);
+      }
     } catch (error) {
       saveStatus.textContent = `Save failed: ${error.message}`;
+    } finally {
+      pendingSaves--;
+      if (!pendingSaves) await refreshSettings();
     }
   }
 
@@ -157,28 +172,31 @@
   }
   siteInput.addEventListener("change", () => {
     if (activeHost && !core.pageRestrictionForUrl(activeTab?.url)) {
-      updateSettings(core.setHostPolicy(activeHost, siteInput.checked ? "on" : "off", settings));
+      const policy = siteInput.checked ? "on" : "off";
+      updateSettings(core.setHostPolicy(activeHost, policy, settings), {
+        type: "rosewash:set-host-policy", host: activeHost, policy
+      });
     }
   });
   siteReset.addEventListener("click", () => {
     if (activeHost && !core.pageRestrictionForUrl(activeTab?.url)) {
-      updateSettings(core.setHostPolicy(activeHost, "default", settings));
+      updateSettings(core.setHostPolicy(activeHost, "default", settings), {
+        type: "rosewash:set-host-policy", host: activeHost, policy: "default"
+      });
     }
   });
   document.querySelector("#options").addEventListener("click", () => chrome.runtime.openOptionsPage());
-  refreshButton.addEventListener("click", () => syncContentScripts());
-  systemAppearance.addEventListener("change", paintPopupChrome);
-  chrome.storage.onChanged.addListener(async (changes, areaName) => {
-    if (areaName !== "sync") return;
-    const read = ++settingsRead;
+  refreshButton.addEventListener("click", async () => {
     try {
-      const raw = await chrome.storage.sync.get(null);
-      if (read !== settingsRead) return;
-      settings = core.plainSettings(raw);
-      render();
+      const response = await chrome.runtime.sendMessage({ type: "rosewash:reapply" });
+      if (!response?.ok) throw new Error(response?.error || "Settings were not reapplied");
     } catch (error) {
-      saveStatus.textContent = `Could not read settings: ${error.message}`;
+      saveStatus.textContent = `Reapply failed: ${error.message}`;
     }
+  });
+  systemAppearance.addEventListener("change", paintPopupChrome);
+  chrome.storage.onChanged.addListener((_changes, areaName) => {
+    if (areaName === "sync") refreshSettings();
   });
 
   async function init() {
@@ -188,12 +206,13 @@
     for (const [select, widths] of [[xWidthSelect, core.X_SINGLE_COLUMN_WIDTHS], [zhihuWidthSelect, core.ZHIHU_ARTICLE_WIDTHS]]) {
       for (const width of widths) select.add(new Option(`${width} px`, String(width)));
     }
+    const read = ++settingsRead;
     const [tabs, raw] = await Promise.all([
       chrome.tabs.query({ active: true, currentWindow: true }), chrome.storage.sync.get(null)
     ]);
     activeTab = tabs[0] || null;
     activeHost = core.hostFromUrl(activeTab?.url);
-    settings = core.plainSettings(raw);
+    if (read === settingsRead && !pendingSaves) settings = core.plainSettings(raw);
     render();
     await fontPicker.load();
   }
