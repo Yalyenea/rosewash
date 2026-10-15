@@ -45,6 +45,8 @@ Guidance for coding agents working in the Rosewash repository.
 - Keep task tabs in one WebBridge session with a descriptive tab group. Leave
   the verified page visible for the user to test, and save screenshots under
   `.tmp/`.
+- Before finishing, disconnect browser debugging and verify its indicator is
+  gone. Leave the verified page open for the user.
 - If WebBridge cannot connect, follow the skill's startup instructions. Stop
   and ask the user if the connection remains blocked after a reasonable retry.
 

@@ -440,7 +440,7 @@ when Rosewash is enabled, X is not blocked, and `xCompactLayout` is true.
 `www.zhihu.com`, and `zhuanlan.zhihu.com` at `document_start`. The content
 runtime marks Zhihu hosts with `data-rosewash-zhihu-layout` when Rosewash is
 enabled, Zhihu is not blocked, and `zhihuArticleLayout` is true. `zhihu.js`
-adds a page marker from 720px: `data-rosewash-zhihu-home` on `/`, `/follow`,
+adds a page marker at every viewport width: `data-rosewash-zhihu-home` on `/`, `/follow`,
 and `/hot`; `data-rosewash-zhihu-question` on `/question/{id}`; and
 `data-rosewash-zhihu-article` on `/p/{id}`. SPA route changes go through
 `history.pushState` / `replaceState` and `popstate`; the observer only watches
@@ -448,7 +448,10 @@ the layout attribute on `html`.
 
 - `zhihu.css` hides the top bar, right rail, and other chrome, then centers
   the remaining column at the selected width. The width shrinks to the
-  available viewport.
+  available viewport with 24px gutters. Question headers clear native minimum
+  widths; author details shrink beside follow buttons. Topic metadata, home
+  composer tools, and content action bars wrap as needed. Fixed answer actions
+  and their placeholders use the reading-column width after resizing.
 - `test/zhihu-layout.test.js` covers the hide/center rules, route markers,
   and width setting.
 

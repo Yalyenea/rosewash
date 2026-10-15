@@ -8,7 +8,6 @@
     home: "data-rosewash-zhihu-home",
     question: "data-rosewash-zhihu-question"
   };
-  const compactQuery = window.matchMedia("(min-width: 720px)");
 
   let timer = 0;
   const rootObserver = new MutationObserver(handleRootChange);
@@ -30,7 +29,6 @@
   function sync() {
     timer = 0;
     const kind = document.documentElement.hasAttribute(LAYOUT_ATTRIBUTE)
-      && compactQuery.matches
       ? pageKind()
       : "";
     for (const [name, attribute] of Object.entries(PAGE_ATTRIBUTES)) {
@@ -72,7 +70,6 @@
 
   window.addEventListener("popstate", schedule, { passive: true });
   document.addEventListener(LAYOUT_EVENT, handleRootChange);
-  compactQuery.addEventListener("change", schedule);
   rootObserver.observe(document.documentElement, {
     attributes: true,
     attributeFilter: [LAYOUT_ATTRIBUTE]

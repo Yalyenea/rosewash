@@ -32,8 +32,9 @@ regions stay protected.
 - Optional compact layout for X from 720px: collapsed navigation rail,
   adjustable centered timelines, and rail-based search. Thread pages stay
   native single-column.
-- Optional Zhihu clean layout from 720px: hide the top bar and side chrome
-  on home, questions, and articles, then pick a reading width.
+- Optional Zhihu clean layout: hide the top bar and side chrome on home,
+  questions, and articles, then pick a reading width. Columns and controls
+  adapt to narrow windows.
 - Default shortcut `Alt+Shift+B` saves an on/off choice for the current site
   (Option+Shift+B on Mac). The button beside the site selector shows the actual
   binding and opens the browser's shortcut settings. The settings page also

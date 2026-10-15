@@ -176,9 +176,10 @@ layout.
 
 The Zhihu clean layout is the same kind of optional overlay. When
 `zhihuArticleLayout` is on, home (`/`, `/follow`, `/hot`), `/question/{id}`,
-and `/p/{id}` pages from 720px hide the top bar and other chrome and center a
-widescreen column at the selected width. Other Zhihu routes and mobile widths
-keep the native layout.
+and `/p/{id}` pages hide the top bar and other chrome and center a column at
+the selected width. The column shrinks with the viewport, and controls wrap
+on narrow screens. Fixed answer actions follow the column when resized.
+Other Zhihu routes keep the native layout.
 
 ## Performance Boundary
 

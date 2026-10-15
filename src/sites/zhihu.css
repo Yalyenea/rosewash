@@ -1,143 +1,225 @@
 /* Optional Zhihu reading layout. The content runtime owns the layout marker
-   so disabling Rosewash, blocking Zhihu, or turning the preset off restores
-   the native page. Page markers are added from 720px on home, questions,
-   and /p/{id} articles. */
-@media (min-width: 720px) {
-  html:is(
-    [data-rosewash-zhihu-article],
-    [data-rosewash-zhihu-home],
-    [data-rosewash-zhihu-question]
-  ) {
-    --rosewash-zhihu-column: min(
-      var(--rosewash-zhihu-article, 960px),
-      calc(100vw - 48px)
-    );
-    --container-main-column-width: var(--rosewash-zhihu-column);
-    --container-width: var(--rosewash-zhihu-column);
-    --right-sidebar-width: 0px;
-  }
+ so disabling Rosewash, blocking Zhihu, or turning the preset off restores
+ the native page. Page markers are added on home, questions,
+ and /p/{id} articles. */
+html:is(
+  [data-rosewash-zhihu-article],
+  [data-rosewash-zhihu-home],
+  [data-rosewash-zhihu-question]
+) {
+  --rosewash-zhihu-column: min(
+    var(--rosewash-zhihu-article, 960px),
+    calc(100vw - 48px)
+  );
+  --container-main-column-width: var(--rosewash-zhihu-column);
+  --container-width: var(--rosewash-zhihu-column);
+  --right-sidebar-width: 0px;
+}
 
-  html:is(
-    [data-rosewash-zhihu-article],
-    [data-rosewash-zhihu-home],
-    [data-rosewash-zhihu-question]
-  ) :is(
-    .AppHeader,
-    .LeanAppHeaderBar,
-    .MobileAppHeader,
-    .ColumnPageHeader,
-    .ColumnPageHeader-Wrapper,
-    .App > :not(.App-main),
-    div:has(> .AppHeader),
-    div:has(+ .App-main),
-    .PageHeader,
-    .CornerButtons,
-    .CornerButtonsGroup
-  ) {
-    display: none !important;
-  }
+html:is(
+  [data-rosewash-zhihu-article],
+  [data-rosewash-zhihu-home],
+  [data-rosewash-zhihu-question]
+) :is(
+  .AppHeader,
+  .LeanAppHeaderBar,
+  .MobileAppHeader,
+  .ColumnPageHeader,
+  .ColumnPageHeader-Wrapper,
+  .App > :not(.App-main),
+  div:has(> .AppHeader),
+  div:has(+ .App-main),
+  .PageHeader,
+  .CornerButtons,
+  .CornerButtonsGroup
+) {
+  display: none !important;
+}
 
-  html:is(
-    [data-rosewash-zhihu-article],
-    [data-rosewash-zhihu-home],
-    [data-rosewash-zhihu-question]
-  ) .App-main {
-    min-width: 0 !important;
-    padding-top: 0 !important;
-  }
+html:is(
+  [data-rosewash-zhihu-article],
+  [data-rosewash-zhihu-home],
+  [data-rosewash-zhihu-question]
+) .App-main {
+  min-width: 0 !important;
+  padding-top: 0 !important;
+}
 
-  html[data-rosewash-zhihu-article] .Post-content > :not(:has(.Post-Main)),
-  html[data-rosewash-zhihu-article] .Post-content > div:has(.Post-Main) > :not(:has(.Post-Main)),
-  html[data-rosewash-zhihu-article] .Recommendations-Main {
-    display: none !important;
-  }
+html[data-rosewash-zhihu-article] .Post-content > :not(:has(.Post-Main)),
+html[data-rosewash-zhihu-article] .Post-content > div:has(.Post-Main) > :not(:has(.Post-Main)),
+html[data-rosewash-zhihu-article] .Recommendations-Main {
+  display: none !important;
+}
 
-  html[data-rosewash-zhihu-article] .Post-content {
-    min-width: 0 !important;
-    padding-top: 0 !important;
-  }
+html[data-rosewash-zhihu-article] .Post-content {
+  min-width: 0 !important;
+  padding-top: 0 !important;
+}
 
-  html[data-rosewash-zhihu-article] .Post-content > div:has(.Post-Main) {
-    margin-block: 24px 48px !important;
-    margin-inline: auto !important;
-    max-width: var(--rosewash-zhihu-column) !important;
-    width: var(--rosewash-zhihu-column) !important;
-  }
+html[data-rosewash-zhihu-article] .Post-content > div:has(.Post-Main) {
+  margin-block: 24px 48px !important;
+  margin-inline: auto !important;
+  max-width: var(--rosewash-zhihu-column) !important;
+  width: var(--rosewash-zhihu-column) !important;
+}
 
-  html[data-rosewash-zhihu-article] .Post-Main,
-  html[data-rosewash-zhihu-article] .Post-Header,
-  html[data-rosewash-zhihu-article] .Post-Title,
-  html[data-rosewash-zhihu-article] .Post-Author,
-  html[data-rosewash-zhihu-article] .Post-RichTextContainer,
-  html[data-rosewash-zhihu-article] .Post-RichText {
-    max-width: none !important;
-    width: 100% !important;
-  }
+html[data-rosewash-zhihu-article] .Post-Main,
+html[data-rosewash-zhihu-article] .Post-Header,
+html[data-rosewash-zhihu-article] .Post-Title,
+html[data-rosewash-zhihu-article] .Post-Author,
+html[data-rosewash-zhihu-article] .Post-RichTextContainer,
+html[data-rosewash-zhihu-article] .Post-RichText {
+  max-width: none !important;
+  width: 100% !important;
+}
 
-  html[data-rosewash-zhihu-article] .Post-RichText img,
-  html[data-rosewash-zhihu-article] .Post-RichText figure {
-    max-width: 100% !important;
-  }
+html[data-rosewash-zhihu-article] .Post-RichText img,
+html[data-rosewash-zhihu-article] .Post-RichText figure {
+  max-width: 100% !important;
+}
 
-  html[data-rosewash-zhihu-home] .Topstory-container > :not(.Topstory-mainColumn) {
-    display: none !important;
-  }
+html[data-rosewash-zhihu-home] .Topstory-container > :not(.Topstory-mainColumn) {
+  display: none !important;
+}
 
-  html[data-rosewash-zhihu-home] .Topstory-container,
-  html[data-rosewash-zhihu-question] .QuestionPage > div:has(.Question-mainColumn) {
-    display: block !important;
-    margin-block: 24px 48px !important;
-    margin-inline: auto !important;
-    max-width: var(--rosewash-zhihu-column) !important;
-    width: var(--rosewash-zhihu-column) !important;
-    padding-inline: 0 !important;
-  }
+html[data-rosewash-zhihu-home] .Topstory-container,
+html[data-rosewash-zhihu-question] .QuestionPage > div:has(.Question-mainColumn) {
+  display: block !important;
+  margin-block: 24px 48px !important;
+  margin-inline: auto !important;
+  max-width: var(--rosewash-zhihu-column) !important;
+  width: var(--rosewash-zhihu-column) !important;
+  padding-inline: 0 !important;
+}
 
-  html[data-rosewash-zhihu-home] .Topstory-mainColumn,
-  html[data-rosewash-zhihu-home] .Topstory-mainColumnCard,
-  html[data-rosewash-zhihu-home] .Topstory-content,
-  html[data-rosewash-zhihu-home] .WriteArea {
-    margin-inline: 0 !important;
-    max-width: none !important;
-    width: 100% !important;
-  }
+html[data-rosewash-zhihu-home] .Topstory-mainColumn,
+html[data-rosewash-zhihu-home] .Topstory-mainColumnCard,
+html[data-rosewash-zhihu-home] .Topstory-content,
+html[data-rosewash-zhihu-home] .WriteArea {
+  margin-inline: 0 !important;
+  max-width: none !important;
+  width: 100% !important;
+}
 
-  html[data-rosewash-zhihu-question] .QuestionHeader-side,
-  html[data-rosewash-zhihu-question] .Question-sideColumn {
-    display: none !important;
-  }
+html[data-rosewash-zhihu-home] .WriteArea section {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+}
 
-  html[data-rosewash-zhihu-question] .QuestionHeader-content,
-  html[data-rosewash-zhihu-question] .QuestionHeader-footer-inner,
-  html[data-rosewash-zhihu-question] .AnswerFormPortalContainer {
-    display: block !important;
-    margin-inline: auto !important;
-    max-width: var(--rosewash-zhihu-column) !important;
-    padding: 0 !important;
-    width: var(--rosewash-zhihu-column) !important;
-  }
+html[data-rosewash-zhihu-home] .WriteArea section div:has(> div > button),
+html[data-rosewash-zhihu-home] .WriteArea section div:has(> button) {
+  flex-wrap: wrap !important;
+  row-gap: 8px !important;
+}
 
-  html[data-rosewash-zhihu-question] div:has(> .Question-mainColumn),
-  html[data-rosewash-zhihu-question] .Question-mainColumn,
-  html[data-rosewash-zhihu-question] .QuestionHeader-main,
-  html[data-rosewash-zhihu-question] .QuestionHeader-footer-main,
-  html[data-rosewash-zhihu-question] .Question-mainColumn .List,
-  html[data-rosewash-zhihu-question] .Question-mainColumn .Card,
-  html[data-rosewash-zhihu-question] .ContentItem,
-  html[data-rosewash-zhihu-question] .RichContent,
-  html[data-rosewash-zhihu-question] .RichContent-inner {
-    margin-inline: 0 !important;
-    max-width: none !important;
-    width: 100% !important;
-  }
+html[data-rosewash-zhihu-home] .WriteArea section div:has(> button) {
+  flex-shrink: 0 !important;
+  margin-inline-start: auto !important;
+  max-width: 100% !important;
+}
 
-  html[data-rosewash-zhihu-question] .QuestionHeader-main,
-  html[data-rosewash-zhihu-question] .QuestionHeader-footer-main {
-    padding: 0 !important;
-  }
+html[data-rosewash-zhihu-question] .QuestionHeader-side,
+html[data-rosewash-zhihu-question] .Question-sideColumn {
+  display: none !important;
+}
 
-  html[data-rosewash-zhihu-question] .RichText img,
-  html[data-rosewash-zhihu-question] .RichText figure {
-    max-width: 100% !important;
-  }
+html[data-rosewash-zhihu-question] .QuestionHeader-content,
+html[data-rosewash-zhihu-question] .QuestionHeader-footer-inner,
+html[data-rosewash-zhihu-question] .AnswerFormPortalContainer {
+  display: block !important;
+  margin-inline: auto !important;
+  max-width: var(--rosewash-zhihu-column) !important;
+  padding: 0 !important;
+  width: var(--rosewash-zhihu-column) !important;
+}
+
+html[data-rosewash-zhihu-question] div:has(> .Question-mainColumn),
+html[data-rosewash-zhihu-question] .Question-mainColumn,
+html[data-rosewash-zhihu-question] .QuestionHeader-main,
+html[data-rosewash-zhihu-question] .QuestionHeader-footer-main,
+html[data-rosewash-zhihu-question] .Question-mainColumn .List,
+html[data-rosewash-zhihu-question] .Question-mainColumn .Card,
+html[data-rosewash-zhihu-question] .ContentItem,
+html[data-rosewash-zhihu-question] .RichContent,
+html[data-rosewash-zhihu-question] .RichContent-inner {
+  margin-inline: 0 !important;
+  max-width: none !important;
+  width: 100% !important;
+}
+
+html[data-rosewash-zhihu-question] .QuestionHeader-main,
+html[data-rosewash-zhihu-question] .QuestionHeader-footer-main {
+  min-width: 0 !important;
+  padding: 0 !important;
+}
+
+html[data-rosewash-zhihu-question] .QuestionHeader {
+  min-width: 0 !important;
+}
+
+html[data-rosewash-zhihu-question] .QuestionHeader-topics,
+html[data-rosewash-zhihu-question] .QuestionHeader div:has(> .topicMetaTitle) {
+  flex-wrap: wrap !important;
+}
+
+html[data-rosewash-zhihu-question] .QuestionHeader div:has(> .topicMetaTitle) {
+  gap: 4px 8px !important;
+}
+
+html[data-rosewash-zhihu-question] .QuestionHeader div:has(> .topicMetaTitle) > * {
+  flex-shrink: 0 !important;
+  margin-inline: 0 !important;
+}
+
+html:is([data-rosewash-zhihu-home], [data-rosewash-zhihu-question])
+  .AnswerItem-authorInfo > .AuthorInfo {
+  flex: 1 1 0% !important;
+  min-width: 0 !important;
+}
+
+html[data-rosewash-zhihu-question] .QuestionHeader-footer-main,
+html[data-rosewash-zhihu-question] .QuestionHeaderActions,
+html:is(
+  [data-rosewash-zhihu-article],
+  [data-rosewash-zhihu-home],
+  [data-rosewash-zhihu-question]
+) .ContentItem-actions {
+  flex-wrap: wrap !important;
+  gap: 8px 16px !important;
+}
+
+html[data-rosewash-zhihu-question] .QuestionHeaderActions {
+  margin-inline: 0 !important;
+  min-width: 0 !important;
+}
+
+html[data-rosewash-zhihu-question] .QuestionHeaderActions > *,
+html:is(
+  [data-rosewash-zhihu-article],
+  [data-rosewash-zhihu-home],
+  [data-rosewash-zhihu-question]
+) .ContentItem-actions > .ContentItem-action {
+  margin-inline: 0 !important;
+}
+
+html:is(
+  [data-rosewash-zhihu-article],
+  [data-rosewash-zhihu-home],
+  [data-rosewash-zhihu-question]
+) .ContentItem-actions > .ContentItem-rightButton {
+  margin-inline-start: auto !important;
+}
+
+html[data-rosewash-zhihu-question] .ContentItem-actions.is-fixed {
+  inset-inline-start: calc((100vw - var(--rosewash-zhihu-column)) / 2) !important;
+  width: var(--rosewash-zhihu-column) !important;
+}
+
+html[data-rosewash-zhihu-question] .ContentItem-actions + .Sticky--holder {
+  width: var(--rosewash-zhihu-column) !important;
+}
+
+html[data-rosewash-zhihu-question] .RichText img,
+html[data-rosewash-zhihu-question] .RichText figure {
+  max-width: 100% !important;
 }

@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Make Zhihu's clean layout work below 720px. Keep question headers, author
+  controls, topic cards, and action bars within the viewport; wrap controls
+  on narrow screens and keep fixed answer actions aligned after resizing.
 - Fix X compact navigation overlapping the timeline in narrow windows. Keep
   at least 12px between the rail and content, and align navigation icons,
   the compose button, and the account avatar across desktop widths.

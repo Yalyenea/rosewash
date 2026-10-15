@@ -41,8 +41,8 @@ test("centers a viewport-capped Zhihu article column", async () => {
     css,
     /--rosewash-zhihu-column:\s*min\(\s*var\(--rosewash-zhihu-article, 960px\),\s*calc\(100vw - 48px\)\s*\)/
   );
-  assert.match(css, /@media \(min-width: 720px\)/);
-  assert.match(runtime, /const compactQuery = window\.matchMedia\("\(min-width: 720px\)"\)/);
+  assert.doesNotMatch(css, /@media \(min-width:/);
+  assert.doesNotMatch(runtime, /compactQuery|matchMedia/);
   assert.match(runtime, /\/\^\\\/p\\\/\\d\+\//);
   assert.match(runtime, /LAYOUT_ATTRIBUTE/);
   assert.match(runtime, /data-rosewash-zhihu-article/);
