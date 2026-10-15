@@ -365,20 +365,24 @@ This is the first-frame layer; nested boxes still need the JS engine.
 ```text
 importScripts("../content/core.js")
 → chrome.commands.onCommand
-→ active tab URL → hostFromUrl
+→ command tab (or active tab) URL → hostFromUrl
 → toggleHostEnabled → chrome.storage.sync.set
+→ chrome.tabs.sendMessage → immediate content apply
 ```
 
-No direct message to the content script is required; pages listen to
-`storage.onChanged`.
+Commands run in order so rapid presses read the preceding saved rule. Other
+tabs receive changes through `storage.onChanged`. Content reads discard older
+results after a newer read or direct settings message.
 
 ## Popup & options
 
 **Popup**
 
-- Reads the active tab host and offers Follow default / Always on / Always off.
-  The row also shows its effective On / Off state, inherited parent rules,
-  and global pause state.
+- Reads the active tab host and offers a one-click site switch. Toggling saves
+  an explicit on/off rule; Use default clears that override. The row shows its
+  effective On / Off state, inherited rules, and global pause state. Storage
+  changes also update the open popup.
+- Uses a 300px popup with a scrolling settings area and a persistent footer.
 - More settings starts collapsed and contains the default on/off switch,
   custom fonts, site layout switches, and column widths.
 - Shows `Unavailable` and a reason on browser-protected pages, including the
@@ -391,7 +395,7 @@ No direct message to the content script is required; pages listen to
 - On change: write storage + `chrome.tabs.sendMessage` with
   `{ type: "rosewash:settings-updated", settings }` (best-effort; storage
   path still works if the content script is missing).
-- A button beside the site selector shows the actual binding returned by
+- A button beside the site switch shows the actual binding returned by
   `chrome.commands.getAll()`, or Set key when unassigned. Clicking it opens
   `chrome://extensions/shortcuts`. The binding refreshes on opening and focus;
   its title explains that the shortcut saves an Always on / Always off choice.
@@ -466,7 +470,7 @@ Popup and options load `src/content/core.js` for `PRESETS` / `listPresets` /
 
 | Message type | Direction | Purpose |
 | --- | --- | --- |
-| `rosewash:settings-updated` | popup → content | Immediate re-apply + `stats` response |
+| `rosewash:settings-updated` | popup / background → content | Immediate re-apply + `stats` response |
 
 Storage remains the source of truth across tabs and the service worker.
 
@@ -485,6 +489,7 @@ just clean      # remove .tmp and local debug leftovers
 | --- | --- |
 | Engine unit tests | `test/core.test.js` loads `core.js` in `vm` |
 | Content startup | `test/content.test.js` verifies stored policy gating and layout changes |
+| Shortcut | `test/background.test.js` verifies direct updates, rapid toggles, and protected pages |
 | Browser fixtures | `test/fixtures/*` HTML + runners (manual / scripted) |
 | Validate | Requires background runtime files, the site-toggle command, storage + `<all_urls>` |
 

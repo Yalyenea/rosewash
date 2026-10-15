@@ -18,6 +18,7 @@
   let settingsCache = core.plainSettings(core.DEFAULT_SETTINGS);
   let settingsLoaded = false;
   let disposed = false;
+  let settingsRead = 0;
 
   function hasExtensionContext() {
     try {
@@ -112,12 +113,15 @@
       return;
     }
 
+    const read = ++settingsRead;
     try {
-      settingsCache = await readStorageSettings();
+      const next = await readStorageSettings();
+      if (disposed || read !== settingsRead) return;
+      settingsCache = next;
       settingsLoaded = true;
       applyCachedSettings();
     } catch {
-      dispose();
+      if (!disposed && read === settingsRead) dispose();
     }
   }
 
@@ -152,18 +156,7 @@
 
     // Full re-read avoids partial-merge bugs when keys are removed or when
     // multiple fields update across separate set/remove calls.
-    readStorageSettings()
-      .then((next) => {
-        if (disposed) {
-          return;
-        }
-        settingsCache = next;
-        settingsLoaded = true;
-        applyCachedSettings();
-      })
-      .catch(() => {
-        dispose();
-      });
+    loadSettings();
   }
 
   function handleMessage(message, _sender, sendResponse) {
@@ -171,6 +164,7 @@
       return false;
     }
 
+    settingsRead++;
     settingsCache = core.plainSettings(message.settings);
     settingsLoaded = true;
     applyCachedSettings();

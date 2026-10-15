@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Replace the popup's site-policy dropdown with a one-click switch and a
+  Use default action. Keep the shortcut beside the site switch, show external
+  setting changes immediately, and fit expanded controls in a scrollable popup.
+- Apply shortcut changes directly to the active page, serialize rapid toggles,
+  and prevent older storage reads from undoing newer settings.
 - Keep X profile cards open when moving from an author's avatar into the
   card. Preserve native links and controls, and dismiss the card after the
   pointer leaves.

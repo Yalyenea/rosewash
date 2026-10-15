@@ -109,8 +109,9 @@ new content-script instance can remove stale overrides after extension reload.
 
 - `toggle-current-site` (default `Alt+Shift+B`) saves an explicit on/off rule
   for the active hostname in `enabledHosts` or `disabledHosts` and writes
-  `chrome.storage.sync`. Content scripts pick up
-  the change through `storage.onChanged`.
+  `chrome.storage.sync`, then sends the new settings directly to that tab.
+  Rapid presses run in order. Other content scripts pick up the change through
+  `storage.onChanged`; older reads cannot overwrite newer settings messages.
 
 Users can rebind the shortcut under `chrome://extensions/shortcuts`.
 
@@ -147,14 +148,16 @@ and observation. Both UIs list the plain option first, followed by Rose Pine
 and the remaining families sorted by label. Legacy `preset` and `mode: auto|dawn|moon`
 storage still normalize cleanly.
 
-The popup exposes Follow default / Always on / Always off for the current
-hostname. Explicit choices persist when `defaultEnabled` changes. Clearing a
+The popup exposes a one-click on/off switch for the current hostname, with
+Use default to clear its override. Explicit choices persist when
+`defaultEnabled` changes. Clearing a
 hostname's rule restores its parent rule if present, otherwise the global
 default. The most specific hostname wins; a blocked rule wins a tie, and the
 global enable switch pauses every site. More settings starts collapsed and
 contains the default rule, font selectors, layout switches, and column widths.
-Each popup change saves immediately. The shortcut button beside the site
-selector shows the actual browser binding and opens extension shortcut settings.
+Each popup change saves immediately, and storage updates refresh its state.
+Expanded settings scroll above a persistent footer. The shortcut button beside
+the site switch shows the actual browser binding and opens extension shortcut settings.
 The settings page provides the same shortcut display and editing entry point;
 both refresh the binding when reopened or focused.
 

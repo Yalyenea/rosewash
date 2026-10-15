@@ -26,8 +26,8 @@ regions stay protected.
   keeps daily controls visible and groups default rules, fonts, site layouts,
   and column widths under **More settings**, with automatic saving.
 - Global enable switch.
-- Default on/off policy for new sites, plus per-site **Follow default**,
-  **Always on**, and **Always off** choices. Explicit choices survive changes
+- Default on/off policy for new sites, plus a one-click switch per site.
+  **Use default** clears a site's override. Explicit choices survive changes
   to the default; settings lists manage always-on and always-off sites.
 - Optional compact layout for X from 720px: collapsed navigation rail,
   adjustable centered timelines, and rail-based search. Thread pages stay
@@ -36,7 +36,7 @@ regions stay protected.
   questions, and articles, then pick a reading width. Columns and controls
   adapt to narrow windows.
 - Default shortcut `Alt+Shift+B` saves an on/off choice for the current site
-  (Option+Shift+B on Mac). The button beside the site selector shows the actual
+  (Option+Shift+B on Mac) and applies it immediately. The button beside the site switch shows the actual
   binding and opens the browser's shortcut settings. The settings page also
   offers **Change shortcut**.
 - Full-page paper cover for light, dark, and cool-paper sites.

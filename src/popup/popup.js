@@ -7,7 +7,8 @@
   const customFontsInput = document.querySelector("#custom-fonts-enabled");
   const lightSelect = document.querySelector("#preset-light");
   const darkSelect = document.querySelector("#preset-dark");
-  const siteSelect = document.querySelector("#site-policy");
+  const siteInput = document.querySelector("#site-enabled");
+  const siteReset = document.querySelector("#site-reset");
   const siteShortcut = document.querySelector("#site-shortcut");
   const refreshButton = document.querySelector("#refresh");
   const saveStatus = document.querySelector("#save-status");
@@ -30,20 +31,21 @@
   let activeTab = null;
   let activeHost = "";
   let statusTimeout;
+  let settingsRead = 0;
 
   async function refreshShortcut() {
     try {
       const commands = await chrome.commands.getAll();
       const shortcut = commands.find((command) => command.name === "toggle-current-site")?.shortcut;
       siteShortcut.textContent = shortcut || "Set key";
-      siteSelect.title = shortcut
+      siteShortcut.title = shortcut
         ? `${shortcut} toggles this site between Always on and Always off.`
-        : "Shortcut not set. Assign one in Settings → Change shortcut.";
+        : "Shortcut not set.";
     } catch (error) {
       siteShortcut.textContent = "Unavailable";
-      siteSelect.title = `Could not read shortcut: ${error.message}`;
+      siteShortcut.title = `Could not read shortcut: ${error.message}`;
     }
-    siteShortcut.title = `${siteSelect.title} Click to change the shortcut in browser settings.`;
+    siteShortcut.title += " Click to change the shortcut in browser settings.";
   }
   window.addEventListener("focus", refreshShortcut);
   siteShortcut.addEventListener("click", async () => {
@@ -66,10 +68,10 @@
     root.style.colorScheme = core.isDarkThemeKey(themeKey) ? "dark" : "light";
   }
 
-  async function syncContentScripts() {
+  async function syncContentScripts(next = settings) {
     const tabs = await chrome.tabs.query({});
     await Promise.all(tabs.filter((tab) => tab.id).map((tab) =>
-      chrome.tabs.sendMessage(tab.id, { type: "rosewash:settings-updated", settings })
+      chrome.tabs.sendMessage(tab.id, { type: "rosewash:settings-updated", settings: next })
         .catch(() => undefined)
     ));
   }
@@ -77,13 +79,20 @@
   function render() {
     const restriction = core.pageRestrictionForUrl(activeTab?.url);
     enabledInput.checked = settings.enabled;
+    document.querySelector("#global-status").textContent = settings.enabled ? "Page appearance" : "Paused on all sites";
     defaultInput.checked = settings.defaultEnabled;
     document.querySelector("#host").textContent = activeHost || "unsupported page";
+    document.querySelector("#host").title = activeHost;
     document.querySelector("#default-status").textContent = settings.defaultEnabled
       ? "New sites are on · exceptions still apply"
       : "New sites are off · enable them individually";
     lightSelect.value = settings.presetLight;
     darkSelect.value = settings.presetDark;
+    for (const [variant, preset] of [["light", settings.presetLight], ["dark", settings.presetDark]]) {
+      const palette = core.PALETTES[`${preset}-${variant}`];
+      document.querySelector(`#swatch-${variant}`).style.background =
+        `linear-gradient(90deg, ${palette.base} 50%, ${palette.link} 50%)`;
+    }
     fontPicker.render(settings);
     xLayoutInput.checked = settings.xCompactLayout;
     zhihuLayoutInput.checked = settings.zhihuArticleLayout;
@@ -98,10 +107,13 @@
     const policy = core.hostPolicyForHost(activeHost, settings);
     const inherited = policy === "default"
       && core.isHostDisabled(activeHost, [...settings.enabledHosts, ...settings.disabledHosts]);
-    siteSelect.value = policy;
-    siteSelect.disabled = Boolean(restriction) || !activeHost;
+    siteInput.checked = allowed;
+    siteInput.disabled = Boolean(restriction) || !activeHost;
+    siteInput.title = settings.enabled ? "Toggle Rosewash on this site" : "Site preference; Rosewash is paused globally";
+    siteReset.hidden = siteInput.disabled || policy === "default";
     document.querySelector("#site-source").textContent = restriction || !activeHost ? "Unavailable"
-      : !settings.enabled ? "Paused" : `${allowed ? "On" : "Off"}${inherited ? " · parent rule" : ""}`;
+      : !settings.enabled ? "Paused" : `${allowed ? "On" : "Off"}${policy === "default" ? inherited ? " · parent rule" : " · default" : ""}`;
+    document.querySelector("#site-source").dataset.active = String(!restriction && Boolean(activeHost) && settings.enabled && allowed);
     const siteStatus = document.querySelector("#site-status");
     siteStatus.hidden = !restriction;
     siteStatus.textContent = restriction === "webstore"
@@ -113,13 +125,15 @@
 
   async function updateSettings(next) {
     settings = core.plainSettings(next);
+    const saved = settings;
+    settingsRead++;
     render();
     window.clearTimeout(statusTimeout);
     saveStatus.textContent = "Saving…";
     try {
-      await chrome.storage.sync.set(settings);
+      await chrome.storage.sync.set(saved);
+      await syncContentScripts(saved);
       await chrome.storage.sync.remove(["mode", "preset"]);
-      await syncContentScripts();
       saveStatus.textContent = "Saved";
       statusTimeout = window.setTimeout(() => { saveStatus.textContent = ""; }, 1600);
     } catch (error) {
@@ -141,14 +155,31 @@
   for (const button of appearanceButtons) {
     button.addEventListener("click", () => updateSettings({ ...settings, appearance: button.dataset.appearance }));
   }
-  siteSelect.addEventListener("change", () => {
+  siteInput.addEventListener("change", () => {
     if (activeHost && !core.pageRestrictionForUrl(activeTab?.url)) {
-      updateSettings(core.setHostPolicy(activeHost, siteSelect.value, settings));
+      updateSettings(core.setHostPolicy(activeHost, siteInput.checked ? "on" : "off", settings));
+    }
+  });
+  siteReset.addEventListener("click", () => {
+    if (activeHost && !core.pageRestrictionForUrl(activeTab?.url)) {
+      updateSettings(core.setHostPolicy(activeHost, "default", settings));
     }
   });
   document.querySelector("#options").addEventListener("click", () => chrome.runtime.openOptionsPage());
-  refreshButton.addEventListener("click", syncContentScripts);
+  refreshButton.addEventListener("click", () => syncContentScripts());
   systemAppearance.addEventListener("change", paintPopupChrome);
+  chrome.storage.onChanged.addListener(async (changes, areaName) => {
+    if (areaName !== "sync") return;
+    const read = ++settingsRead;
+    try {
+      const raw = await chrome.storage.sync.get(null);
+      if (read !== settingsRead) return;
+      settings = core.plainSettings(raw);
+      render();
+    } catch (error) {
+      saveStatus.textContent = `Could not read settings: ${error.message}`;
+    }
+  });
 
   async function init() {
     for (const [select, variant] of [[lightSelect, "light"], [darkSelect, "dark"]]) {

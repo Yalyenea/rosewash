@@ -4,14 +4,15 @@ importScripts("../content/core.js");
 
 const core = globalThis.RosewashCore;
 const TOGGLE_SITE_COMMAND = "toggle-current-site";
+let toggleQueue = Promise.resolve();
 
 async function activeTab() {
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   return tabs[0] || null;
 }
 
-async function toggleCurrentSite() {
-  const tab = await activeTab();
+async function toggleCurrentSite(tab) {
+  tab = tab || await activeTab();
   if (!tab || core.pageRestrictionForUrl(tab.url)) {
     return;
   }
@@ -23,11 +24,17 @@ async function toggleCurrentSite() {
 
   const raw = await chrome.storage.sync.get(null);
   const settings = core.plainSettings(raw);
-  await chrome.storage.sync.set(core.toggleHostEnabled(host, settings));
+  const next = core.toggleHostEnabled(host, settings);
+  await chrome.storage.sync.set(next);
+  // Apply to the command's page directly, without waiting for its storage re-read.
+  // Other tabs continue to receive the persisted change through storage.onChanged.
+  await chrome.tabs.sendMessage(tab.id, { type: "rosewash:settings-updated", settings: next })
+    .catch(() => undefined); // Protected or not-yet-loaded tabs have no receiver.
 }
 
-chrome.commands.onCommand.addListener((command) => {
+chrome.commands.onCommand.addListener((command, tab) => {
   if (command === TOGGLE_SITE_COMMAND) {
-    toggleCurrentSite();
+    toggleQueue = toggleQueue.then(() => toggleCurrentSite(tab))
+      .catch((error) => console.error("Could not toggle Rosewash on this site:", error));
   }
 });
