@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fix X compact navigation overlapping the timeline in narrow windows. Keep
+  at least 12px between the rail and content, and align navigation icons,
+  the compose button, and the account avatar across desktop widths.
 - Fix light headers left behind in dark mode when their computed backgrounds
   use `color(srgb ...)`, including Lanyon.AI. Parse sRGB colors produced by
   `color-mix()` and relative colors so surfaces, text, and borders follow the

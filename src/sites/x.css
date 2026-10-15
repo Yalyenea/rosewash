@@ -17,8 +17,11 @@
 
   html[data-rosewash-x-compact] header[role="banner"],
   html[data-rosewash-x-compact] header[role="banner"] div:has(nav) {
+    align-items: center !important;
+    margin-inline: 0 !important;
     max-width: var(--rosewash-x-rail) !important;
     min-width: var(--rosewash-x-rail) !important;
+    padding-inline: 0 !important;
     width: var(--rosewash-x-rail) !important;
   }
 
@@ -31,6 +34,7 @@
   html[data-rosewash-x-compact] header[role="banner"] nav [role="button"],
   html[data-rosewash-x-compact] header[role="banner"] [data-testid="SideNav_NewTweet_Button"] {
     align-items: center !important;
+    align-self: center !important;
     display: flex !important;
     justify-content: center !important;
     padding-inline: 0 !important;
@@ -40,6 +44,7 @@
   html[data-rosewash-x-compact]
     header[role="banner"]
     [data-testid="SideNav_AccountSwitcher_Button"] {
+    align-self: center !important;
     background-color: transparent !important;
     border-radius: 0 !important;
     box-shadow: none !important;
@@ -151,8 +156,12 @@
   html[data-rosewash-x-compact]
     main[role="main"] > div:has([data-testid="primaryColumn"]) {
     flex: 0 0 var(--rosewash-x-column) !important;
-    inset-inline-start: calc(var(--rosewash-x-rail) / -2) !important;
-    margin-inline: auto !important;
+    inset-inline-start: 0 !important;
+    margin-inline-start: max(
+      12px,
+      calc((100vw - var(--rosewash-x-column)) / 2 - var(--rosewash-x-rail))
+    ) !important;
+    margin-inline-end: auto !important;
     max-width: var(--rosewash-x-column) !important;
     width: var(--rosewash-x-column) !important;
   }

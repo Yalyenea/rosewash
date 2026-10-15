@@ -425,8 +425,12 @@ when Rosewash is enabled, X is not blocked, and `xCompactLayout` is true.
 - `x.css` collapses the navigation rail, keeps X's Explore/search entry in that
   rail, hides the redundant right search column, and stretches virtualized post
   cells to the selected single-column width from `min-width: 720px`. The width
-  shrinks to the available viewport. Home, bookmarks, profiles, search, and
-  thread pages share that column. Below 720px, X keeps its native mobile layout.
+  shrinks to the available viewport. The column stays viewport-centered when
+  space permits and keeps at least 12px clear of the 88px navigation rail.
+  Rail containers reset native horizontal margins and padding, with navigation
+  icons, the compose button, and the account avatar centered in the rail.
+  Home, bookmarks, profiles, search, and thread pages share that column.
+  Below 720px, X keeps its native mobile layout.
 - `test/x-layout.test.js` covers the rail, centering, width setting, and the
   absence of a split-thread overlay.
 

@@ -7,9 +7,12 @@ test("constrains every navigation ancestor to the compact rail hit area", async 
   const rule = css.match(/header\[role="banner"\] div:has\(nav\)\s*\{([^}]*)\}/)?.[1];
 
   assert.ok(rule);
+  assert.match(rule, /align-items:\s*center !important/);
+  assert.match(rule, /margin-inline:\s*0 !important/);
   assert.match(rule, /max-width:\s*var\(--rosewash-x-rail\) !important/);
   assert.match(rule, /min-width:\s*var\(--rosewash-x-rail\) !important/);
   assert.match(rule, /width:\s*var\(--rosewash-x-rail\) !important/);
+  assert.match(rule, /padding-inline:\s*0 !important/);
   assert.doesNotMatch(rule, /flex:/);
 });
 
@@ -42,7 +45,9 @@ test("centers native single-column pages such as home and bookmarks", async () =
 
   assert.ok(rule);
   assert.match(rule, /flex:\s*0 0 var\(--rosewash-x-column\) !important/);
-  assert.match(rule, /margin-inline:\s*auto !important/);
+  assert.match(rule, /inset-inline-start:\s*0 !important/);
+  assert.match(rule, /margin-inline-start:\s*max\(\s*12px,\s*calc\(\(100vw - var\(--rosewash-x-column\)\) \/ 2 - var\(--rosewash-x-rail\)\)\s*\) !important/);
+  assert.match(rule, /margin-inline-end:\s*auto !important/);
   assert.match(rule, /width:\s*var\(--rosewash-x-column\) !important/);
   assert.match(
     css,
