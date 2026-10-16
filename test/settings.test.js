@@ -115,11 +115,18 @@ async function settingsUI(page, initial = {}) {
   const runtime = {
     id: "test-extension",
     getURL: (path) => `chrome-extension://test-extension/${path}`,
-    onMessage: { addListener: (listener) => { messageListener = listener; } }
+    onMessage: { addListener: (listener) => { messageListener = listener; } },
+    onStartup: { addListener() {} },
+    onInstalled: { addListener() {} }
   };
   const backgroundContext = vm.createContext({
     URL, console,
-    chrome: { runtime, tabs, storage: { sync: storage }, commands: { onCommand: { addListener() {} } } }
+    chrome: {
+      runtime, tabs: { ...tabs, onUpdated: { addListener() {} } },
+      storage: { sync: storage, onChanged: { addListener() {} } },
+      action: { setIcon: async () => {} },
+      commands: { onCommand: { addListener() {} } }
+    }
   });
   backgroundContext.importScripts = () => vm.runInContext(source("src/content/core.js"), backgroundContext);
   vm.runInContext(source("src/background/background.js"), backgroundContext);
@@ -308,3 +315,20 @@ for (const page of ["popup", "options"]) {
     assert.equal("preset" in ui.raw(), false);
   });
 }
+
+test("popup and options save image dimming with its brightness", async () => {
+  const popup = await settingsUI("popup", {});
+  popup.element("#dim-images").checked = true;
+  await popup.element("#dim-images").emit("change");
+  popup.element("#image-brightness").value = "70";
+  await popup.element("#image-brightness").emit("change");
+  assert.equal(popup.raw().dimImages, true);
+  assert.equal(popup.raw().imageBrightness, 70);
+
+  const options = await settingsUI("options", {});
+  options.element("#dim-images").checked = true;
+  options.element("#image-brightness").value = "2";
+  await options.element("#save").emit("click");
+  assert.equal(options.raw().dimImages, true);
+  assert.equal(options.raw().imageBrightness, 90);
+});

@@ -29,14 +29,12 @@
       </section>
 
       <section class="panel shortcut-panel" aria-labelledby="shortcut-heading">
-        <div>
-          <h2 id="shortcut-heading">Keyboard shortcut</h2>
-          <p>Toggle the current site between Always on and Always off.</p>
+        <h2 id="shortcut-heading">Keyboard shortcuts</h2>
+        <div class="shortcut-list">
+          <div class="shortcut-row"><span>Toggle the current site between Always on and Always off</span><kbd id="shortcut-site" aria-live="polite">Loading…</kbd></div>
+          <div class="shortcut-row"><span>Pause or resume Rosewash on all sites</span><kbd id="shortcut-global" aria-live="polite">Loading…</kbd></div>
         </div>
-        <div class="shortcut-controls">
-          <kbd id="shortcut-binding" aria-live="polite">Loading…</kbd>
-          <button id="edit-shortcut" type="button">Change shortcut</button>
-        </div>
+        <button id="edit-shortcut" type="button">Change shortcuts</button>
       </section>
 
       <section class="panel general-panel">
@@ -61,6 +59,21 @@
         </div>
       </section>
 
+      <section class="panel images-panel">
+        <div class="site-layout">
+          <label class="site-layout-toggle">
+            <span><strong>Dim images</strong><small id="dim-status">Lower image and video brightness with dark palettes</small></span>
+            <span class="toggle"><input id="dim-images" type="checkbox"><span class="toggle-track"></span></span>
+          </label>
+          <label class="site-width-control" for="image-brightness">
+            <span class="site-width-heading">
+              <strong>Brightness</strong>
+              <output id="image-brightness-value" for="image-brightness">80%</output>
+            </span>
+            <input id="image-brightness" aria-label="Image brightness" type="range" min="0" max="2" step="1" value="1">
+          </label>
+        </div>
+      </section>
       <section class="panel theme-panel">
         <div class="section-heading">
           <h2>Theme</h2>
@@ -173,6 +186,13 @@
         </div>
       </section>
 
+      <section class="panel ignored-panel" aria-labelledby="ignored-heading">
+        <div class="section-heading">
+          <h2 id="ignored-heading">Ignored elements</h2>
+          <p>Use Pick element in the popup to leave part of a page untouched.</p>
+        </div>
+        <div id="ignored-list"></div>
+      </section>
       <footer class="actions">
         <span id="status" role="status"></span>
         <button id="reset" type="button">Reset</button>

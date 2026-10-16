@@ -37,6 +37,13 @@
         "mac": "Alt+Shift+B"
       },
       "description": "Toggle Always on / Always off for the current site"
+    },
+    "toggle-enabled": {
+      "suggested_key": {
+        "default": "Alt+Shift+P",
+        "mac": "Alt+Shift+P"
+      },
+      "description": "Pause or resume Rosewash on all sites"
     }
   },
   "content_scripts": [
@@ -49,7 +56,8 @@
       ],
       "js": [
         "src/content/core.js",
-        "src/content/content.js"
+        "src/content/content.js",
+        "src/content/picker.js"
       ],
       "all_frames": true,
       "match_about_blank": true,

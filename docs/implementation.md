@@ -18,14 +18,15 @@ Stage with `just dist` and load the `dist/` folder as an unpacked extension
 
 ```text
 manifest.json              MV3 entry: permissions, content scripts, SW, commands, icons
-icons/                     icon.svg source and the 16/32/48/128 PNGs it renders
-popup.html + src/popup/    Action popup (site policy, palettes, fonts, site layouts)
-options.html + src/options/ Settings (palettes, appearance, site layouts, site rules)
+icons/                     icon.svg / icon-off.svg sources and their 16/32/48/128 PNGs
+popup.html + src/popup/    Action popup (site policy, picker, palettes, images, fonts, site layouts)
+options.html + src/options/ Settings (palettes, appearance, images, site layouts, site and element rules)
 src/settings/fonts.js     Shared automatic system font picker and previews
 src/background/            Service worker (settings writes and commands)
 src/content/
   core.js                  Pure engine + host helpers (testable via vm)
   content.js               Chrome wiring for content world
+  picker.js                Element picker overlay (top frame only)
   theme.css                Immediate CSS cover when data-rosewash-theme is set
 src/sites/                 Optional site-specific layout runtimes and styles
 test/                      Node tests + HTML fixtures
@@ -78,8 +79,11 @@ Stored in **`chrome.storage.sync`**.
   "xSingleColumnWidth": 600,
   "zhihuArticleLayout": false,
   "zhihuArticleWidth": 960,
+  "dimImages": false,
+  "imageBrightness": 80,
   "disabledHosts": [],
-  "enabledHosts": []
+  "enabledHosts": [],
+  "ignoredElements": {}
 }
 ```
 
@@ -96,12 +100,18 @@ Stored in **`chrome.storage.sync`**.
 | `xSingleColumnWidth` | 520 / 600 / 680 / 760 | Centered X timeline width |
 | `zhihuArticleLayout` | boolean | Enables the centered Zhihu reading layout on home, questions, and articles |
 | `zhihuArticleWidth` | 720 / 840 / 960 / 1080 | Centered Zhihu column width |
+| `dimImages` | boolean | Dims images and videos while a tinted dark palette is active |
+| `imageBrightness` | 70 / 80 / 90 | Image brightness in percent when dimming applies |
 | `disabledHosts` | string[] | Hostnames (and parents) where Rosewash is blocked |
 | `enabledHosts` | string[] | Hostnames (and parents) where Rosewash is explicitly enabled |
+| `ignoredElements` | `{ host: selector[] }` | Picker rules; matched elements and their contents stay untouched on that exact host |
 
 Normalization lives in `RosewashCore.normalizeSettings()`:
 
 - Hosts lowercased, leading dots stripped, deduped, sorted.
+- `ignoredElements` hosts follow the same rules; selectors are trimmed,
+  deduped, sorted, and dropped beyond 300 characters. Hosts without selectors
+  are removed.
 - Unknown or variant-missing `presetLight` / `presetDark` become `rose-pine`.
 - Unknown `appearance` falls back to `auto`.
 - Legacy blobs with only `preset` copy that family into both slots when the
@@ -149,7 +159,12 @@ effective state as an explicit choice; the background shortcut uses this helper.
   copies them, and `scripts/validate.mjs` checks that they exist.
 - Background service worker: `src/background/background.js`.
 - Command `toggle-current-site`: suggested key **`Alt+Shift+B`** (Mac:
-  Option+Shift+B). User-rebindable at `chrome://extensions/shortcuts`.
+  Option+Shift+B). Command `toggle-enabled`: suggested key **`Alt+Shift+P`**
+  pauses or resumes Rosewash everywhere. Both are user-rebindable at
+  `chrome://extensions/shortcuts`; Chrome may leave a new command unassigned
+  on update, and the settings page then shows Not set.
+- `src/content/picker.js` loads after `content.js` in every frame but only
+  runs in the top frame.
 
 ## Content pipeline (critical path)
 
@@ -207,6 +222,7 @@ Attributes used:
 | `data-rosewash-style-overrides` | Original and applied declarations for properties changed by the engine |
 | `data-rosewash-had-style`, `data-rosewash-original-style` | Whole-style snapshots from earlier versions, read only during stale cleanup |
 | `data-rosewash-ignore` | Opt-out marker (also in `SKIP_SELECTOR`) |
+| `data-rosewash-dim` | Image dimming is active; `--rosewash-image-brightness` holds the factor |
 
 ## Engine (`src/content/core.js`)
 
@@ -401,6 +417,8 @@ A rejected operation reports an error without blocking later saves.
 
 `mergeSettingsEdits(latest, baseline, edited)` applies fields changed from the
 UI baseline. Host lists merge additions and removals with the latest lists.
+`ignoredElements` merges the same way per host, so a picker save made while the
+settings page is open survives that page's next Save.
 An explicit addition removes the same hostname from the opposite list; if the
 edited form includes it in both lists, the disabled rule wins. Other hosts and
 untouched fields retain external changes.
@@ -409,6 +427,19 @@ The popup sends every edit immediately. Once received, the worker owns the
 save even if the popup closes. Message handlers accept write requests only
 from this extension's UI pages, checking the sender ID and extension URL.
 Replies use `{ ok: true, settings }` or `{ ok: false, error }`.
+
+The picker's `rosewash:ignore-element` message is the only write accepted from
+a content script. It must come from this extension and from the tab's top
+frame (`frameId` 0); the host is taken from the sender tab's URL, never from
+the message. The worker appends the selector and notifies that tab.
+
+`toggle-enabled` flips `enabled` and notifies all tabs.
+
+The worker also sets a per-tab toolbar icon with `chrome.action.setIcon`:
+`icons/icon-*.png` while Rosewash runs on the tab's site, `icons/icon-off-*.png`
+when it is paused globally, the site is off, or the page is protected. Icons
+refresh when a tab starts loading or changes URL, on every sync storage change,
+and on startup and install.
 
 The `toggle-current-site` command resolves the command tab (or active tab),
 skips protected pages, and calls `toggleHostEnabled` against current settings.
@@ -439,6 +470,13 @@ old snapshot. Notification responses never block the next save.
   site controls send the hostname and desired policy. Pending local edits stay
   visible while saves run. After the last response, reload current storage.
   Reapply asks the worker to notify open tabs.
+- Pick element sends `rosewash:start-picker` to the tab's top frame and closes
+  the popup. It is disabled when Rosewash is paused, the site is off, or the
+  page is protected. The row shows how many elements are ignored on the site,
+  and Clear removes them all.
+- Images, under More settings, holds the dimming switch and a 70 / 80 / 90%
+  brightness select. Its status reads Dark palettes when off, Active when the
+  current palette dims images, or Waits for a dark palette.
 - A button beside the site switch shows the actual binding returned by
   `chrome.commands.getAll()`, or Set key when unassigned. Clicking it opens
   `chrome://extensions/shortcuts`. The binding refreshes on opening and focus;
@@ -462,9 +500,45 @@ old snapshot. Notification responses never block the next save.
   either UI. It shows display names and stores font IDs. Enumeration errors
   and unavailable preview fonts are reported explicitly.
 - Four independent previews use the same local FontFace definitions as pages.
-- The Keyboard shortcut row shows the current browser binding or Not set,
-  with Change shortcut opening the browser's extension shortcut settings.
-  Opening, focus, and returning to a visible page refresh the binding.
+- Keyboard shortcuts list both commands with their current binding or Not
+  set; Change shortcuts opens the browser's extension shortcut settings.
+  Opening, focus, and returning to a visible page refresh the bindings.
+- Images: the dimming switch and a brightness slider, disabled while dimming
+  is off. The status line says whether the selected palette dims images.
+- Ignored elements lists picker rules by site. Remove edits the form; Save
+  applies it through the per-site merge.
+
+## Element picker
+
+`src/content/picker.js` starts on `rosewash:start-picker` from an extension
+page. It draws a highlight box and a tooltip inside a closed shadow root on a
+host marked `data-rosewash-ignore`, so neither the engine nor page styles
+touch it. Pointer movement selects the element under the cursor, read from
+`composedPath()` so open shadow roots resolve to the inner element. ↑ widens
+the selection to the parent and ↓ steps back. Clicks and pointer presses are
+blocked in the capture phase, so selecting a link does not follow it. A click
+saves the selector; Esc cancels.
+
+`selectorForElement(element, countMatches)` in `core.js` builds the shortest
+`>` path that matches only the element in its document or shadow root. It
+prefers ids without long digit runs, then the tag with up to two stable
+classes, and adds `:nth-of-type()` among same-tag siblings. Hashed build
+classes (`css-1jxf684`, `r-bcqeeo`) and state classes (`is-active`, `open`, …)
+never anchor a selector.
+
+The engine joins the site's queryable selectors into one list. Elements that
+match it, or sit inside a match across shadow boundaries, are skipped by the
+scan queue: no tint and no custom font. Changing the list restores and rescans
+like a palette change, so newly ignored elements return to their page styles.
+
+## Image dimming
+
+`applyImageDimming` sets `data-rosewash-dim` and
+`--rosewash-image-brightness` on `html` only when `dimImages` is on and the
+resolved theme is a tinted dark palette; plain Dark leaves pages unchanged.
+`theme.css` then applies `filter: brightness(...)` to `img`, `video`, and SVG
+`image` elements. `clear()` removes both. The stylesheet does not reach inside
+shadow roots, and CSS background images are not dimmed.
 
 ## X compact layout
 
@@ -523,6 +597,8 @@ Popup and options load `src/content/core.js` for `PRESETS` / `listPresets` /
 | `rosewash:set-host-policy` | popup → background | Apply `host` and `policy` to current settings |
 | `rosewash:reset-settings` | options → background | Save defaults through the write queue |
 | `rosewash:reapply` | popup → background | Notify open tabs to read and apply current storage |
+| `rosewash:start-picker` | popup → content (top frame) | Start the element picker |
+| `rosewash:ignore-element` | picker → background | Save `selector` for the sender tab's host |
 | `rosewash:settings-updated` | background → content | Read current storage, apply, and respond with `stats` |
 
 Storage remains the source of truth across tabs and the service worker.

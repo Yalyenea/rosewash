@@ -41,17 +41,29 @@
   const saveButton = document.querySelector("#save");
   const resetButton = document.querySelector("#reset");
   const status = document.querySelector("#status");
-  const shortcutBinding = document.querySelector("#shortcut-binding");
+  const shortcutBindings = [
+    ["toggle-current-site", document.querySelector("#shortcut-site")],
+    ["toggle-enabled", document.querySelector("#shortcut-global")]
+  ];
+  const dimInput = document.querySelector("#dim-images");
+  const brightnessInput = document.querySelector("#image-brightness");
+  const brightnessValue = document.querySelector("#image-brightness-value");
+  const ignoredList = document.querySelector("#ignored-list");
+  let ignoredElements = {};
 
   async function refreshShortcut() {
     try {
       const commands = await chrome.commands.getAll();
-      const shortcut = commands.find((command) => command.name === "toggle-current-site")?.shortcut;
-      shortcutBinding.textContent = shortcut || "Not set";
-      shortcutBinding.title = shortcut ? "Current browser shortcut" : "Assign a shortcut in the browser's extension settings.";
+      for (const [name, binding] of shortcutBindings) {
+        const shortcut = commands.find((command) => command.name === name)?.shortcut;
+        binding.textContent = shortcut || "Not set";
+        binding.title = shortcut ? "Current browser shortcut" : "Assign a shortcut in the browser's extension settings.";
+      }
     } catch (error) {
-      shortcutBinding.textContent = "Unavailable";
-      shortcutBinding.title = `Could not read shortcut: ${error.message}`;
+      for (const [, binding] of shortcutBindings) {
+        binding.textContent = "Unavailable";
+        binding.title = `Could not read shortcut: ${error.message}`;
+      }
     }
   }
 
@@ -124,6 +136,66 @@
     zhihuWidthValue.value = `${width} px`;
   }
 
+  function selectedImageBrightness() {
+    return core.IMAGE_BRIGHTNESS_LEVELS[Number(brightnessInput.value)];
+  }
+
+  function renderImageBrightness(level) {
+    brightnessInput.value = String(core.IMAGE_BRIGHTNESS_LEVELS.indexOf(level));
+    brightnessValue.value = `${level}%`;
+  }
+
+  function renderImageDimming() {
+    brightnessInput.disabled = !dimInput.checked;
+    const form = {
+      dimImages: dimInput.checked, appearance: selectedAppearance(), presetLight: selectedLight, presetDark: selectedDark
+    };
+    document.querySelector("#dim-status").textContent = !dimInput.checked
+      ? "Lower image and video brightness with dark palettes"
+      : core.imageDimmingActive(form, systemAppearance.matches) ? "Active with the current palette"
+        : "Takes effect with a dark palette";
+  }
+
+  // Removing a rule only edits the form; Save merges it per site like host lists.
+  function renderIgnoredElements() {
+    const sites = Object.entries(ignoredElements);
+    if (!sites.length) {
+      const empty = document.createElement("p");
+      empty.textContent = "No ignored elements.";
+      ignoredList.replaceChildren(empty);
+      return;
+    }
+    ignoredList.replaceChildren(...sites.map(([host, selectors]) => {
+      const site = document.createElement("div");
+      site.className = "ignored-site";
+      const heading = document.createElement("h3");
+      heading.textContent = host;
+      heading.title = host;
+      const rules = document.createElement("div");
+      for (const selector of selectors) {
+        const row = document.createElement("div");
+        row.className = "ignored-rule";
+        const code = document.createElement("code");
+        code.textContent = selector;
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.textContent = "Remove";
+        remove.addEventListener("click", () => {
+          const rest = ignoredElements[host].filter((item) => item !== selector);
+          ignoredElements = { ...ignoredElements, [host]: rest };
+          if (!rest.length) delete ignoredElements[host];
+          renderIgnoredElements();
+        });
+        row.appendChild(code);
+        row.appendChild(remove);
+        rules.appendChild(row);
+      }
+      site.appendChild(heading);
+      site.appendChild(rules);
+      return site;
+    }));
+  }
+
   function setStatus(text) {
     status.textContent = text;
     window.setTimeout(() => {
@@ -182,12 +254,14 @@
     selectedLight = presetId;
     markSelected(lightList, presetId);
     paintSettingsChrome();
+    renderImageDimming();
   }
 
   function selectDark(presetId) {
     selectedDark = presetId;
     markSelected(darkList, presetId);
     paintSettingsChrome();
+    renderImageDimming();
   }
 
   function render(settings) {
@@ -200,6 +274,11 @@
     renderXSingleColumnWidth(normalized.xSingleColumnWidth);
     zhihuLayoutInput.checked = normalized.zhihuArticleLayout;
     renderZhihuArticleWidth(normalized.zhihuArticleWidth);
+    dimInput.checked = normalized.dimImages;
+    renderImageBrightness(normalized.imageBrightness);
+    renderImageDimming();
+    ignoredElements = normalized.ignoredElements;
+    renderIgnoredElements();
     document.querySelector(`input[name='appearance'][value='${normalized.appearance}']`).checked = true;
     hostTextarea.value = normalized.disabledHosts.join("\n");
     enabledHostsTextarea.value = normalized.enabledHosts.join("\n");
@@ -226,8 +305,11 @@
       xSingleColumnWidth: selectedXSingleColumnWidth(),
       zhihuArticleLayout: zhihuLayoutInput.checked,
       zhihuArticleWidth: selectedZhihuArticleWidth(),
+      dimImages: dimInput.checked,
+      imageBrightness: selectedImageBrightness(),
       disabledHosts: hostsFromTextarea(hostTextarea),
-      enabledHosts: hostsFromTextarea(enabledHostsTextarea)
+      enabledHosts: hostsFromTextarea(enabledHostsTextarea),
+      ignoredElements
     });
   }
 
@@ -276,10 +358,15 @@
     renderZhihuArticleWidth(selectedZhihuArticleWidth());
   });
 
+  brightnessInput.addEventListener("input", () => {
+    renderImageBrightness(selectedImageBrightness());
+  });
+  dimInput.addEventListener("change", renderImageDimming);
+
   for (const input of document.querySelectorAll("input[name='appearance']")) {
-    input.addEventListener("change", paintSettingsChrome);
+    input.addEventListener("change", () => { paintSettingsChrome(); renderImageDimming(); });
   }
-  systemAppearance.addEventListener("change", paintSettingsChrome);
+  systemAppearance.addEventListener("change", () => { paintSettingsChrome(); renderImageDimming(); });
 
   fillPresetList(lightList, "light", selectLight);
   fillPresetList(darkList, "dark", selectDark);

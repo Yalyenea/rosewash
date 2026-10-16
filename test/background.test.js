@@ -21,6 +21,9 @@ function background({ url = "https://x.com/home", messageError = false, beforeSe
   let commandListener;
   let messageListener;
   let writeAttempts = 0;
+  const icons = [];
+  let tabUpdated;
+  let storageChanged;
   const extensionUrl = "chrome-extension://test/";
   const context = { URL, console: { error: (...args) => errors.push(args) } };
   context.globalThis = context;
@@ -29,10 +32,14 @@ function background({ url = "https://x.com/home", messageError = false, beforeSe
     runtime: {
       id: "test",
       getURL: (path) => extensionUrl + path,
-      onMessage: { addListener: (fn) => { messageListener = fn; } }
+      onMessage: { addListener: (fn) => { messageListener = fn; } },
+      onStartup: { addListener() {} },
+      onInstalled: { addListener() {} }
     },
+    action: { setIcon: async (details) => { icons.push(structuredClone(details)); } },
     commands: { onCommand: { addListener: (fn) => { commandListener = fn; } } },
     tabs: {
+      onUpdated: { addListener: (fn) => { tabUpdated = fn; } },
       query: async () => [{ id: 1, url }],
       sendMessage: async (tabId, message) => {
         messages.push({ tabId, message: structuredClone(message) });
@@ -40,7 +47,7 @@ function background({ url = "https://x.com/home", messageError = false, beforeSe
         if (notify) await notify();
       }
     },
-    storage: { sync: {
+    storage: { onChanged: { addListener: (fn) => { storageChanged = fn; } }, sync: {
       get: async () => structuredClone(stored),
       set: async (next) => {
         await flush();
@@ -54,8 +61,14 @@ function background({ url = "https://x.com/home", messageError = false, beforeSe
   vm.runInNewContext(backgroundSource, context);
   const sender = { id: "test", url: extensionUrl + "popup.html" };
   return {
-    writes, messages, errors,
-    command: (tab) => commandListener("toggle-current-site", tab),
+    writes, messages, errors, icons,
+    command: (tab, name = "toggle-current-site") => commandListener(name, tab),
+    tabUpdated: (tab, changeInfo) => tabUpdated(tab.id, changeInfo, tab),
+    storageChanged: () => storageChanged({}, "sync"),
+    store: (next) => { stored = structuredClone(next); },
+    receiveFrom: (message, from) => new Promise((resolve) => {
+      if (!messageListener(message, from, resolve)) resolve(null);
+    }),
     receive: (message, sendResponse) => messageListener(message, sender, sendResponse),
     send: (message) => new Promise((resolve) => messageListener(message, sender, resolve)),
     done: () => vm.runInNewContext("settingsQueue", context)
@@ -162,4 +175,44 @@ test("a failed save responds with its error and does not block the next save", a
   assert.equal(runtime.writes[0].xCompactLayout, true);
   assert.equal(runtime.errors.length, 1);
   assert.equal(runtime.messages.length, 1);
+});
+
+test("global shortcut pauses and resumes Rosewash and notifies every tab", async () => {
+  const runtime = background();
+  runtime.command(undefined, "toggle-enabled");
+  runtime.command(undefined, "toggle-enabled");
+  await runtime.done();
+  assert.deepEqual(runtime.writes.map((settings) => settings.enabled), [false, true]);
+  await flush();
+  assert.equal(runtime.messages.length, 2);
+});
+
+test("picker saves take the site from the sender's top-frame tab", async () => {
+  const runtime = background();
+  const tab = { id: 4, url: "https://news.example.com/story" };
+  const selector = "#comments > div.card";
+  const saved = await runtime.receiveFrom({ type: "rosewash:ignore-element", selector, host: "evil.com" },
+    { id: "test", tab, frameId: 0, url: tab.url });
+  assert.equal(saved.ok, true);
+  assert.deepEqual(runtime.writes.at(-1).ignoredElements, { "news.example.com": [selector] });
+  for (const sender of [{ id: "test", tab, frameId: 3 }, { id: "other", tab, frameId: 0 }]) {
+    assert.equal(await runtime.receiveFrom({ type: "rosewash:ignore-element", selector: "p" }, sender), null);
+  }
+  assert.equal(runtime.writes.length, 1);
+});
+
+test("toolbar icon is gray when the tab's site is off, paused, or protected", async () => {
+  const runtime = background();
+  runtime.store({ disabledHosts: ["blocked.com"] });
+  const icon = async (url) => {
+    runtime.tabUpdated({ id: 9, url }, { url });
+    await flush();
+    await flush();
+    return runtime.icons.at(-1).path[16];
+  };
+  assert.equal(await icon("https://example.com/"), "/icons/icon-16.png");
+  assert.equal(await icon("https://docs.blocked.com/"), "/icons/icon-off-16.png");
+  assert.equal(await icon("chrome://extensions/"), "/icons/icon-off-16.png");
+  runtime.store({ enabled: false });
+  assert.equal(await icon("https://example.com/"), "/icons/icon-off-16.png");
 });

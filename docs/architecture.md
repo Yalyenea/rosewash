@@ -25,6 +25,11 @@ content pipeline, and change recipes, see
 The content scripts run in every frame. Embedded frames follow the tab's
 top-level site rule, and site layouts only apply to the top-level page.
 
+An element picker in the top frame saves CSS selectors per site. The engine
+leaves matched elements and their contents untouched. With image dimming on,
+a tinted dark palette also lowers image and video brightness through
+`theme.css`.
+
 At `document_start` the content runtime reads stored settings before applying
 colors, fonts, or layouts. Disabled sites stay untouched while storage loads.
 Enabled sites receive `data-rosewash-theme`, activating the CSS canvas cover.

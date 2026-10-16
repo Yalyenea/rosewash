@@ -12,7 +12,16 @@
 - Tint embedded frames, including cross-origin and blank frames. Frames follow
   the current site's on/off rule; X and Zhihu layouts stay on the top page.
 - Tint content inside open shadow roots, such as Reddit's components.
-- Add the Rosewash icon to the toolbar and extension pages.
+- Add a Rosewash icon to the toolbar and extension pages, styled after the
+  browser's lettered placeholder. It fades when Rosewash is paused, off for
+  the current site, or blocked on the page.
+- Pause or resume Rosewash on all sites with `Alt+Shift+P`. The settings page
+  lists both shortcuts.
+- Pick an element in the popup to leave it, and everything inside it,
+  untouched on the current site. The popup shows how many elements are
+  ignored and clears them; the settings page lists and removes each rule.
+- Dim images and videos with dark palettes at 70, 80, or 90% brightness. The
+  popup and settings page show whether dimming applies to the current palette.
 - Replace the popup's site-policy dropdown with a one-click switch and a
   Use default action. Keep the shortcut beside the site switch, show external
   setting changes immediately, and fit expanded controls in a scrollable popup.

@@ -600,6 +600,9 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
     enabled: true,
     defaultEnabled: true,
     enabledHosts: [],
+    dimImages: false,
+    imageBrightness: 80,
+    ignoredElements: {},
     presetLight: "catppuccin",
     customFontsEnabled: false,
     fontEnglish: "",
@@ -620,6 +623,13 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
   assert.equal(core.plainSettings({ zhihuArticleWidth: 900 }).zhihuArticleWidth, 960);
   assert.deepEqual(plain(core.X_SINGLE_COLUMN_WIDTHS), [520, 600, 680, 760]);
   assert.deepEqual(plain(core.ZHIHU_ARTICLE_WIDTHS), [720, 840, 960, 1080]);
+  const media = core.plainSettings({
+    dimImages: "true", imageBrightness: 75,
+    ignoredElements: { " Docs.Example.com ": ["#nav", " #nav ", "", "x".repeat(301)], "empty.com": [], bad: "#x" }
+  });
+  assert.equal(media.dimImages, false);
+  assert.equal(media.imageBrightness, 80);
+  assert.deepEqual(plain(media.ignoredElements), { "docs.example.com": ["#nav"] });
 });
 
 test("covers opaque text colors in both dawn and moon", async () => {
@@ -1378,6 +1388,70 @@ test("late stylesheets and class changes repair existing gradient text without a
   assert.equal(title.style.getPropertyValue("color"), "");
 });
 
+test("picker selectors skip hashed and state classes and stop once unique", async () => {
+  const core = await loadCore();
+  const { all } = createMockDom({ tree: [{ tag: "main", children: [
+    { tag: "div", className: "card css-1jxf684 is-active", children: [{ tag: "p" }, { tag: "p" }] },
+    { tag: "div", className: "card r-bcqeeo" }
+  ] }] });
+  const target = all.filter((node) => node.tagName === "P")[1];
+  const expected = "div.card:nth-of-type(1) > p:nth-of-type(2)";
+  assert.equal(core.selectorForElement(target, (selector) => selector === expected ? 1 : 2), expected);
+  target.parentElement.id = "comments";
+  assert.equal(core.selectorForElement(target, (selector) => selector === "#comments > p:nth-of-type(2)" ? 1 : 2),
+    "#comments > p:nth-of-type(2)");
+  target.parentElement.id = "post-12345";
+  assert.equal(core.selectorForElement(target, (selector) => selector === expected ? 1 : 2), expected);
+});
+
+test("ignored element edits merge per site with picker saves made elsewhere", async () => {
+  const core = await loadCore();
+  const baseline = core.plainSettings({ ignoredElements: { "a.com": ["#ad", "#nav"], "b.com": ["#x"] } });
+  const latest = core.addIgnoredSelector("a.com", "#popup", baseline);
+  const edited = core.clearIgnoredSelectors("b.com", { ...baseline, ignoredElements: { ...baseline.ignoredElements, "a.com": ["#nav"] } });
+  assert.deepEqual(plain(core.mergeSettingsEdits(latest, baseline, edited).ignoredElements), { "a.com": ["#nav", "#popup"] });
+});
+
+test("picker rules restore ignored elements with their contents and leave them untouched", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [
+    { id: "broken", backgroundColor: "rgb(255, 255, 255)", attrs: { "data-broken": "" }, children: [
+      { id: "inner", backgroundColor: "rgb(255, 255, 255)" }
+    ] },
+    { id: "other", backgroundColor: "rgb(255, 255, 255)" }
+  ] });
+  const engine = core.createEngine({ document, window });
+  const fill = (id) => byId.get(id).style.getPropertyValue("background-color");
+  engine.apply({ appearance: "light" });
+  assert.ok(fill("broken") && fill("inner"));
+  engine.apply({ appearance: "light", ignoredElements: { "example.com": ["[data-broken]", "a:::bad"] } });
+  assert.equal(fill("broken"), "");
+  assert.equal(fill("inner"), "");
+  assert.equal(byId.get("inner").hasAttribute("data-rosewash-tinted"), false);
+  assert.ok(fill("other"));
+  window.deliverMutations([{ type: "attributes", attributeName: "class", target: byId.get("broken") }]);
+  window.flushFrames();
+  assert.equal(fill("inner"), "");
+});
+
+test("image dimming applies only to dark tinted palettes", async () => {
+  const core = await loadCore();
+  const { document, window } = createMockDom({});
+  const root = document.documentElement;
+  const engine = core.createEngine({ document, window });
+  engine.apply({ appearance: "dark", dimImages: true, imageBrightness: 70 });
+  assert.equal(root.hasAttribute("data-rosewash-dim"), true);
+  assert.equal(root.style.getPropertyValue("--rosewash-image-brightness"), "0.7");
+  for (const settings of [{ appearance: "light" }, { appearance: "dark", presetDark: "dark" }, { appearance: "dark", dimImages: false }]) {
+    engine.apply({ dimImages: true, ...settings });
+    assert.equal(root.hasAttribute("data-rosewash-dim"), false, JSON.stringify(settings));
+  }
+  engine.apply({ appearance: "dark", dimImages: true });
+  engine.clear();
+  assert.equal(root.hasAttribute("data-rosewash-dim"), false);
+  assert.equal(root.style.getPropertyValue("--rosewash-image-brightness"), "");
+});
+
 test("large scans continue across frames and keep previous tints until each slice repaints", async () => {
   const core = await loadCore();
   const tree = Array.from({ length: 450 }, (_, index) => ({ id: `card-${index}`, backgroundColor: "rgb(255, 255, 255)" }));
@@ -1987,6 +2061,9 @@ test("normalizes settings and blocked hosts", async () => {
     enabled: true,
     defaultEnabled: true,
     enabledHosts: [],
+    dimImages: false,
+    imageBrightness: 80,
+    ignoredElements: {},
     presetLight: "rose-pine",
     presetDark: "rose-pine",
     customFontsEnabled: false,
@@ -2011,6 +2088,9 @@ test("normalizes settings and blocked hosts", async () => {
     enabled: true,
     defaultEnabled: true,
     enabledHosts: [],
+    dimImages: false,
+    imageBrightness: 80,
+    ignoredElements: {},
     presetLight: "catppuccin",
     presetDark: "catppuccin",
     customFontsEnabled: false,
@@ -2035,6 +2115,9 @@ test("normalizes settings and blocked hosts", async () => {
     enabled: true,
     defaultEnabled: true,
     enabledHosts: [],
+    dimImages: false,
+    imageBrightness: 80,
+    ignoredElements: {},
     presetLight: "rose-pine",
     presetDark: "dracula",
     customFontsEnabled: false,

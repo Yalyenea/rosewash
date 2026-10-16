@@ -35,11 +35,23 @@ h3, .setting-label { font-size: 12px; font-weight: 500; color: var(--muted); }
 .defaults-panel .site-layout-toggle { margin: 0; }
 .defaults-panel strong { font-size: 12px; font-weight: 500; }
 .defaults-panel small { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
-.shortcut-panel, .shortcut-controls { display: flex; align-items: center; gap: 12px; }
-.shortcut-panel { justify-content: space-between; flex-wrap: wrap; }
-.shortcut-panel p { color: var(--muted); font-size: 11px; margin-top: 3px; }
-.shortcut-controls { flex-wrap: wrap; }
-#shortcut-binding { font: 12px/1.4 ui-monospace, monospace; padding: 4px 8px; border: 1px solid var(--border); border-radius: 3px; background: var(--surface); }
+.shortcut-panel { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px 28px; }
+.shortcut-list { display: grid; gap: 6px; }
+.shortcut-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 12px; }
+.shortcut-row kbd { font: 12px/1.4 ui-monospace, monospace; padding: 2px 8px; border: 1px solid var(--border); border-radius: 3px; background: var(--surface); color: var(--text); }
+.images-panel .site-layout { display: grid; grid-template-columns: 1fr minmax(160px, 260px); align-items: center; gap: 28px; }
+.images-panel .site-layout-toggle { margin: 0; }
+.images-panel strong { font-size: 12px; font-weight: 500; }
+.images-panel small, .ignored-panel p { display: block; color: var(--muted); font-size: 11px; margin-top: 3px; }
+.ignored-panel .section-heading { justify-content: flex-start; gap: 16px; }
+.ignored-panel .section-heading p { margin: 0; }
+.ignored-site { display: grid; grid-template-columns: 180px 1fr; gap: 12px; padding: 6px 0; border-top: 1px solid var(--border); }
+.ignored-site:first-child { border-top: 0; }
+.ignored-site h3 { padding-top: 4px; overflow: hidden; text-overflow: ellipsis; }
+.ignored-rule { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 26px; }
+.ignored-rule code { font: 12px/1.4 ui-monospace, monospace; overflow-wrap: anywhere; }
+.ignored-rule button { border-color: transparent; color: var(--muted); font-size: 11px; padding: 2px 6px; }
+.ignored-rule button:hover { color: var(--accent); }
 .toggle { display: inline-flex; position: relative; flex: none; }
 .toggle input, .modes input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .toggle-track {
@@ -113,6 +125,7 @@ textarea { width: 100%; min-height: 60px; resize: vertical; padding: 6px 8px; ba
   .font-field { grid-template-columns: 1fr; }
   .font-field small, .font-preview { grid-column: 1; }
   .site-columns { grid-template-columns: 1fr; gap: 14px; }
+  .shortcut-panel, .images-panel .site-layout, .ignored-site { grid-template-columns: 1fr; gap: 10px; }
   .site-group:not(.blocked-sites) { gap: 18px; }
   .font-list-controls .font-help { max-width: 150px; text-align: right; }
 }
@@ -127,3 +140,4 @@ textarea { width: 100%; min-height: 60px; resize: vertical; padding: 6px 8px; ba
   .font-list-controls { position: static; flex-direction: row; justify-content: flex-start; margin-bottom: 10px; }
   .font-list-controls .font-help { max-width: none; text-align: left; }
 }
+.site-width-control input:disabled { opacity: 0.45; }

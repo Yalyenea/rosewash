@@ -59,8 +59,16 @@ const scriptFiles = [
   "scripts/release-notes.mjs"
 ].filter((file, index, files) => files.indexOf(file) === index);
 
-if (!manifest.commands?.["toggle-current-site"]?.suggested_key?.default) {
-  throw new Error("toggle-current-site command with suggested_key.default is required");
+for (const command of ["toggle-current-site", "toggle-enabled"]) {
+  if (!manifest.commands?.[command]?.suggested_key?.default) {
+    throw new Error(`${command} command with suggested_key.default is required`);
+  }
+}
+
+const iconStates = ["", "-off"].flatMap((state) => [16, 32, 48, 128].map((size) => `icons/icon${state}-${size}.png`));
+const missingIcons = iconStates.filter((file) => !existsSync(join(root, file)));
+if (missingIcons.length > 0) {
+  throw new Error(`Missing toolbar icons: ${missingIcons.join(", ")}`);
 }
 
 if (!manifest.background?.service_worker) {

@@ -120,3 +120,8 @@ html[data-rosewash-theme] [class*="threadFooterContentFade"]::after {
   background-image: none !important;
 }
 
+
+/* Image dimming: set only for dark palettes when the user turns it on. */
+html[data-rosewash-dim] :is(img, video, image) {
+  filter: brightness(var(--rosewash-image-brightness));
+}

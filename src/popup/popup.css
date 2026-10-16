@@ -46,6 +46,11 @@ button:hover { background: var(--overlay); }
 button:disabled, select:disabled { opacity: 0.5; cursor: default; }
 :where(button, select, summary):focus-visible, .switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 #site-status { margin-top: 8px; white-space: normal; }
+.site-tools { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.site-tools small { flex: 1; min-width: 0; font-size: 10px; }
+#pick-element { background: var(--surface); font-size: 11px; padding: 4px 8px; }
+#clear-ignored { border: 0; padding: 2px 0; color: var(--muted); font-size: 10px; }
+#clear-ignored:hover { color: var(--accent); background: transparent; }
 .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; background: var(--overlay); padding: 2px; border-radius: 5px; margin: 8px 0; }
 .modes button { border: 0; font-size: 11px; min-height: 28px; padding: 4px; color: var(--muted); }
 .modes button[aria-pressed="true"] { color: var(--text); background: var(--surface); }

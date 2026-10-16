@@ -3,6 +3,7 @@
 
   const THEME_ATTRIBUTE = "data-rosewash-theme";
   const TINT_ATTRIBUTE = "data-rosewash-tinted";
+  const DIM_ATTRIBUTE = "data-rosewash-dim";
   const STYLE_OVERRIDES_ATTRIBUTE = "data-rosewash-style-overrides";
   const HAD_STYLE_ATTRIBUTE = "data-rosewash-had-style";
   const ORIGINAL_STYLE_ATTRIBUTE = "data-rosewash-original-style";
@@ -217,6 +218,8 @@
 
   const X_SINGLE_COLUMN_WIDTHS = Object.freeze([520, 600, 680, 760]);
   const ZHIHU_ARTICLE_WIDTHS = Object.freeze([720, 840, 960, 1080]);
+  const IMAGE_BRIGHTNESS_LEVELS = Object.freeze([70, 80, 90]);
+  const MAX_IGNORED_SELECTOR_LENGTH = 300;
 
   const DEFAULT_SETTINGS = Object.freeze({
     enabled: true,
@@ -233,8 +236,11 @@
     xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
     zhihuArticleWidth: 960,
+    dimImages: false,
+    imageBrightness: 80,
     disabledHosts: [],
-    enabledHosts: []
+    enabledHosts: [],
+    ignoredElements: Object.freeze({})
   });
 
   const VALID_APPEARANCES = new Set(["auto", "light", "dark"]);
@@ -866,9 +872,50 @@
       zhihuArticleWidth: ZHIHU_ARTICLE_WIDTHS.includes(source.zhihuArticleWidth)
         ? source.zhihuArticleWidth
         : DEFAULT_SETTINGS.zhihuArticleWidth,
+      dimImages: source.dimImages === true,
+      imageBrightness: IMAGE_BRIGHTNESS_LEVELS.includes(source.imageBrightness)
+        ? source.imageBrightness
+        : DEFAULT_SETTINGS.imageBrightness,
       disabledHosts: Array.from(new Set(disabledHosts)).sort(),
-      enabledHosts: Array.from(new Set(enabledHosts)).sort()
+      enabledHosts: Array.from(new Set(enabledHosts)).sort(),
+      ignoredElements: normalizeIgnoredElements(source.ignoredElements)
     };
+  }
+
+  function normalizeSelector(value) {
+    const selector = String(value || "").trim();
+    return selector.length <= MAX_IGNORED_SELECTOR_LENGTH ? selector : "";
+  }
+
+  // { host: [selector] } with sorted hosts and selectors; empty hosts dropped.
+  function normalizeIgnoredElements(value) {
+    const result = {};
+    if (!value || typeof value !== "object" || Array.isArray(value)) return result;
+    for (const [rawHost, selectors] of Object.entries(value)) {
+      const host = normalizeHost(rawHost);
+      if (!host || !Array.isArray(selectors)) continue;
+      const list = selectors.map(normalizeSelector).filter(Boolean);
+      result[host] = Array.from(new Set([...(result[host] || []), ...list])).sort();
+      if (!result[host].length) delete result[host];
+    }
+    return Object.fromEntries(Object.entries(result).sort(([a], [b]) => a.localeCompare(b)));
+  }
+
+  function ignoredSelectorsForHost(host, settings) {
+    return normalizeSettings(settings).ignoredElements[normalizeHost(host)] || [];
+  }
+
+  function addIgnoredSelector(host, selector, settings) {
+    const next = plainSettings(settings);
+    const key = normalizeHost(host);
+    next.ignoredElements[key] = [...(next.ignoredElements[key] || []), selector];
+    return plainSettings(next);
+  }
+
+  function clearIgnoredSelectors(host, settings) {
+    const next = plainSettings(settings);
+    delete next.ignoredElements[normalizeHost(host)];
+    return next;
   }
 
   function isZhihuHost(host) {
@@ -984,8 +1031,13 @@
       xSingleColumnWidth: normalized.xSingleColumnWidth,
       zhihuArticleLayout: normalized.zhihuArticleLayout,
       zhihuArticleWidth: normalized.zhihuArticleWidth,
+      dimImages: normalized.dimImages,
+      imageBrightness: normalized.imageBrightness,
       disabledHosts: normalized.disabledHosts.slice(),
-      enabledHosts: normalized.enabledHosts.slice()
+      enabledHosts: normalized.enabledHosts.slice(),
+      ignoredElements: Object.fromEntries(
+        Object.entries(normalized.ignoredElements).map(([host, selectors]) => [host, selectors.slice()])
+      )
     };
   }
 
@@ -997,10 +1049,17 @@
     for (const [key, value] of Object.entries(next)) {
       if (JSON.stringify(value) === JSON.stringify(before[key])) continue;
       if (key === "enabledHosts" || key === "disabledHosts") {
-        const removed = new Set(before[key].filter((host) => !value.includes(host)));
         const added = value.filter((host) => !before[key].includes(host));
         for (const host of added) addedHosts.add(host);
-        result[key] = Array.from(new Set([...result[key].filter((host) => !removed.has(host)), ...added])).sort();
+        result[key] = mergeListEdit(result[key], before[key], value);
+      } else if (key === "ignoredElements") {
+        // Merge per site so a picker save elsewhere survives this edit.
+        for (const host of new Set([...Object.keys(before[key]), ...Object.keys(value)])) {
+          const merged = mergeListEdit(result[key][host] || [], before[key][host] || [], value[host] || []);
+          if (merged.length) result[key][host] = merged;
+          else delete result[key][host];
+        }
+        result[key] = normalizeIgnoredElements(result[key]);
       } else {
         result[key] = value;
       }
@@ -1011,6 +1070,12 @@
       result[opposite] = result[opposite].filter((rule) => rule !== host);
     }
     return result;
+  }
+
+  function mergeListEdit(latest, before, edited) {
+    const removed = new Set(before.filter((item) => !edited.includes(item)));
+    const added = edited.filter((item) => !before.includes(item));
+    return Array.from(new Set([...latest.filter((item) => !removed.has(item)), ...added])).sort();
   }
 
   // Full cover remaps any non-transparent text into the active palette.
@@ -1220,6 +1285,63 @@
     return Boolean(element.closest(SKIP_SELECTOR));
   }
 
+  const SELECTOR_TOKEN = /^[A-Za-z][\w-]*$/;
+  // Hashed build classes (css-1jxf684, r-bcqeeo) and state classes change
+  // between visits, so they never anchor a saved selector.
+  const UNSTABLE_CLASS = /\d{3,}|^[a-z]{1,4}-[a-z0-9]{5,}$|^(?:is|has)-|^(?:active|open|hover|focus|selected|current)$/i;
+
+  function stableClasses(element) {
+    return String(element.getAttribute("class") || "").split(/\s+/)
+      .filter((token) => SELECTOR_TOKEN.test(token) && !UNSTABLE_CLASS.test(token))
+      .slice(0, 2);
+  }
+
+  // Shortest ancestor path that matches only this element in its tree.
+  // countMatches(selector) reports matches in the element's document or shadow root.
+  function selectorForElement(element, countMatches) {
+    const parts = [];
+    for (let current = element; current && current.tagName !== "HTML"; current = current.parentElement) {
+      if (current.id && SELECTOR_TOKEN.test(current.id) && !/\d{3,}/.test(current.id)) {
+        parts.unshift(`#${current.id}`);
+        if (countMatches(parts.join(" > ")) === 1) return parts.join(" > ");
+        continue;
+      }
+      let part = [current.tagName.toLowerCase(), ...stableClasses(current).map((name) => `.${name}`)].join("");
+      const siblings = current.parentElement
+        ? Array.from(current.parentElement.children).filter((node) => node.tagName === current.tagName)
+        : [];
+      if (siblings.length > 1) part += `:nth-of-type(${siblings.indexOf(current) + 1})`;
+      parts.unshift(part);
+      if (countMatches(parts.join(" > ")) === 1) return parts.join(" > ");
+    }
+    return parts.join(" > ");
+  }
+
+  // Dimming needs a tinted dark palette; plain Dark leaves pages as they are.
+  function themeDimsImages(theme) {
+    const palette = PALETTES[theme];
+    return Boolean(palette) && palette.tint !== false && isDarkThemeKey(theme);
+  }
+
+  function imageDimmingActive(settings, prefersDark) {
+    const normalized = normalizeSettings(settings);
+    return normalized.dimImages && themeDimsImages(resolveSettingsThemeKey(normalized, prefersDark));
+  }
+
+  function applyImageDimming(root, settings, theme) {
+    if (settings.dimImages && themeDimsImages(theme)) {
+      root.setAttribute(DIM_ATTRIBUTE, "");
+      root.style.setProperty("--rosewash-image-brightness", String(settings.imageBrightness / 100));
+    } else {
+      clearImageDimming(root);
+    }
+  }
+
+  function clearImageDimming(root) {
+    root.removeAttribute(DIM_ATTRIBUTE);
+    root.style.removeProperty("--rosewash-image-brightness");
+  }
+
   function createEngine({ document, window }) {
     const originalStyles = new WeakMap();
     const dirtyElements = new Set();
@@ -1237,6 +1359,8 @@
     // Elements awaiting a scan slice, each with whether to restore it first.
     let scanQueue = [];
     let scanIndex = 0;
+    // Site rules from the element picker: matched elements and their contents stay untouched.
+    let ignoredSelector = "";
     let activePresetLight = null;
     let activePresetDark = null;
     let activeAppearance = null;
@@ -1615,6 +1739,25 @@
       tintBorders(element, snapshot, palette);
     }
 
+    function isSiteIgnored(element) {
+      if (!ignoredSelector) return false;
+      for (let current = element; current; current = composedParent(current)) {
+        if (current.matches(ignoredSelector)) return true;
+      }
+      return false;
+    }
+
+    function queryableSelectors(selectors) {
+      return selectors.filter((selector) => {
+        try {
+          document.documentElement.matches(selector);
+          return true;
+        } catch {
+          return false;
+        }
+      });
+    }
+
     function forgetElement(element) {
       if (element.hasAttribute(TINT_ATTRIBUTE)) restoreElement(element);
       surfaceRecords.delete(element);
@@ -1661,6 +1804,7 @@
         // Read the whole batch before writing, so styles recalculate once.
         const snapshots = [];
         for (const [element] of elements) {
+          if (isSiteIgnored(element)) continue;
           if (activeFonts.length || !shouldSkipElement(element)) snapshots.push(readTintSnapshot(element));
         }
         for (const snapshot of snapshots) processSnapshot(snapshot, activeTheme);
@@ -1904,6 +2048,8 @@
       restoreTintedElements();
       restoreCssVarOverrides();
       surfaceRecords = new WeakMap();
+      ignoredSelector = "";
+      clearImageDimming(document.documentElement);
       activePresetLight = null;
       activePresetDark = null;
       activeAppearance = null;
@@ -1926,6 +2072,9 @@
 
       const definitions = fontDefinitions(normalized);
       const fontsChanged = JSON.stringify(definitions) !== fontKey;
+      const nextIgnoredSelector = queryableSelectors(ignoredSelectorsForHost(host, normalized)).join(", ");
+      // New fonts or picker rules restore and rescan like a palette change.
+      const rulesChanged = fontsChanged || (Boolean(activeTheme) && nextIgnoredSelector !== ignoredSelector);
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
       const theme = resolveSettingsThemeKey(normalized, prefersDark);
       const nextPalette = PALETTES[theme];
@@ -1945,7 +2094,7 @@
       // restore when the resolved palette actually changes — never on mixed
       // re-detect (that path flashed the whole page white on every load).
       const scans = tintEnabled || definitions.length > 0;
-      if (themeChanged || fontsChanged) {
+      if (themeChanged || rulesChanged) {
         disconnectObserver();
         // A rescan restores each element in its own slice.
         if (scans) forgetElement(document.documentElement);
@@ -1954,7 +2103,8 @@
       }
 
       if (fontsChanged) replaceFonts(definitions);
-      const redundant = Boolean(activeTheme) && !themeChanged && !fontsChanged;
+      ignoredSelector = nextIgnoredSelector;
+      const redundant = Boolean(activeTheme) && !themeChanged && !rulesChanged;
       if (!redundant) {
         activePageTone = tintEnabled ? detectPageTone() : "mixed";
       }
@@ -1963,9 +2113,10 @@
       activeAppearance = normalized.appearance;
       activeTheme = theme;
       applyRootTheme(theme);
+      applyImageDimming(document.documentElement, normalized, theme);
       if (scans) {
         if (!redundant) {
-          enqueueSubtree(document.documentElement, themeChanged || fontsChanged);
+          enqueueSubtree(document.documentElement, themeChanged || rulesChanged);
           drainScanQueue();
         }
         observe();
@@ -2003,8 +2154,14 @@
     PALETTES,
     X_SINGLE_COLUMN_WIDTHS,
     ZHIHU_ARTICLE_WIDTHS,
+    IMAGE_BRIGHTNESS_LEVELS,
     listPresets,
     createEngine,
+    selectorForElement,
+    imageDimmingActive,
+    ignoredSelectorsForHost,
+    addIgnoredSelector,
+    clearIgnoredSelectors,
     createFontFaces,
     classifyPageTone,
     hostFromUrl,

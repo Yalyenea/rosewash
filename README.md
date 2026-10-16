@@ -26,7 +26,13 @@ regions stay protected.
   keeps daily controls visible and groups default rules, fonts, site layouts,
   and column widths under **More settings**, with automatic saving that
   continues after the popup closes.
-- Global enable switch.
+- Global enable switch, with the shortcut `Alt+Shift+P` to pause or resume.
+- Toolbar icon fades when Rosewash is paused, off for the current site, or
+  blocked by the browser.
+- Pick element: click a part of a page that looks wrong to leave it, and
+  everything inside it, untouched on that site. The popup shows how many
+  elements are ignored, and the settings page lists them.
+- Optional image dimming for dark palettes at 70, 80, or 90% brightness.
 - Default on/off policy for new sites, plus a one-click switch per site.
   **Use default** clears a site's override. Explicit choices survive changes
   to the default; settings lists manage always-on and always-off sites.
@@ -38,8 +44,8 @@ regions stay protected.
   adapt to narrow windows and follow in-page navigation and back/forward actions.
 - Default shortcut `Alt+Shift+B` saves an on/off choice for the current site
   (Option+Shift+B on Mac) and applies it immediately. The button beside the site switch shows the actual
-  binding and opens the browser's shortcut settings. The settings page also
-  offers **Change shortcut**.
+  binding and opens the browser's shortcut settings. The settings page lists
+  both shortcuts and offers **Change shortcuts**.
 - Full-page paper cover for light, dark, and cool-paper sites.
 - Default transparent `html`/`body` canvases (legacy pages such as jmlr.org).
 - Page-level headers and navigation bars blend into the active page base,

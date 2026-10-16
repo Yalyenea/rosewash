@@ -149,8 +149,11 @@
       "xSingleColumnWidth",
       "zhihuArticleLayout",
       "zhihuArticleWidth",
+      "dimImages",
+      "imageBrightness",
       "disabledHosts",
-      "enabledHosts"
+      "enabledHosts",
+      "ignoredElements"
     ];
     if (!watched.some((key) => Object.prototype.hasOwnProperty.call(changes, key))) {
       return;

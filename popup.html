@@ -25,6 +25,11 @@
             <label class="switch" aria-label="Enable on current site"><input id="site-enabled" type="checkbox" disabled><span></span></label>
           </div>
         </div>
+        <div class="site-tools">
+          <button id="pick-element" type="button" title="Click an element on the page to leave it untouched on this site">Pick element</button>
+          <small id="ignored-count"></small>
+          <button id="clear-ignored" type="button" title="Tint every element on this site again" hidden>Clear</button>
+        </div>
         <p id="site-status" role="status" hidden></p>
       </section>
 
@@ -53,6 +58,14 @@
             <label class="field"><span>Chinese</span><span class="select-control"><select id="font-chinese"><option value="">Page default</option></select></span></label>
             <label class="field"><span>MathML</span><span class="select-control"><select id="font-math"><option value="">Page default</option></select></span></label>
             <label class="field"><span>Monospace</span><span class="select-control"><select id="font-monospace"><option value="">Page default</option></select></span></label>
+          </div>
+        </section>
+
+        <section class="section" aria-label="Images">
+          <h2>Images</h2>
+          <div class="layout-row">
+            <label class="setting-row"><span><strong>Dim images</strong><small id="dim-status">Dark palettes</small></span><span class="switch"><input id="dim-images" type="checkbox"><span></span></span></label>
+            <span class="select-control"><select id="image-brightness" aria-label="Image brightness"></select></span>
           </div>
         </section>
 
