@@ -15,6 +15,8 @@ dist:
     find dist -mindepth 1 -delete
     cp manifest.json popup.html options.html dist/
     cp -R src dist/src
+    mkdir -p dist/icons
+    cp icons/*.png dist/icons/
     find dist -name .DS_Store -delete
     @echo "staged dist/ — Load unpacked this folder"
 

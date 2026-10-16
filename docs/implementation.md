@@ -17,7 +17,8 @@ Stage with `just dist` and load the `dist/` folder as an unpacked extension
 ## Repository layout
 
 ```text
-manifest.json              MV3 entry: permissions, content scripts, SW, commands
+manifest.json              MV3 entry: permissions, content scripts, SW, commands, icons
+icons/                     icon.svg source and the 16/32/48/128 PNGs it renders
 popup.html + src/popup/    Action popup (site policy, palettes, fonts, site layouts)
 options.html + src/options/ Settings (palettes, appearance, site layouts, site rules)
 src/settings/fonts.js     Shared automatic system font picker and previews
@@ -123,6 +124,11 @@ Host matching (`isHostDisabled`): exact match or subdomain of a listed host
 `disabledHosts`, otherwise `defaultEnabled`. A disabled rule wins a tie.
 The global `enabled` flag takes priority over every site choice.
 
+Embedded frames use the tab's top-level host. `policyHostForLocation` reads the
+last entry of `location.ancestorOrigins`, which Chromium exposes even to
+cross-origin and `about:blank` frames, so an iframe on a site that is turned off
+stays untouched.
+
 `hostPolicyForHost` returns the current hostname's explicit `on` / `off`
 choice, or `default`. `setHostPolicy` removes that exact hostname from both
 lists, then adds it to the chosen list for `on` or `off`, even when its value
@@ -136,7 +142,11 @@ effective state as an explicit choice; the background shortcut uses this helper.
 - **MV3**, version must match `package.json` (`scripts/validate.mjs` enforces).
 - Permissions: `storage`, `fontSettings`; host access via `"host_permissions": ["<all_urls>"]`.
 - Content scripts at `document_start`: `theme.css`, then `core.js`, then
-  `content.js` (order matters: engine must exist before bootstrap).
+  `content.js` (order matters: engine must exist before bootstrap). They run
+  in every frame (`all_frames`, `match_about_blank`); site layouts only apply
+  to the top-level page.
+- `icons` and `action.default_icon` list the PNGs under `icons/`; `just dist`
+  copies them, and `scripts/validate.mjs` checks that they exist.
 - Background service worker: `src/background/background.js`.
 - Command `toggle-current-site`: suggested key **`Alt+Shift+B`** (Mac:
   Option+Shift+B). User-rebindable at `chrome://extensions/shortcuts`.
@@ -182,9 +192,11 @@ website updates and untouched properties, such as X's asynchronously loaded
 background images, remain in place. Restored records are discarded so the
 next tint captures the current page styles.
 
-Records are mirrored onto `data-rosewash-style-overrides`. A new content-script
-instance calls `restoreStaleTintedElements()` on first apply to remove orphaned
-tints. Whole-style snapshots from earlier versions are also cleaned up.
+Records are mirrored onto `data-rosewash-style-overrides`, written once per
+element after each scan slice rather than once per property. A new
+content-script instance calls `restoreStaleTintedElements()` on first apply to
+remove orphaned tints, including those inside open shadow roots. Whole-style
+snapshots from earlier versions are also cleaned up.
 
 Attributes used:
 
@@ -288,13 +300,36 @@ Pseudo-elements cannot take per-element inline tints.
   priority still match the applied override. Later website writes survive;
   re-applying captures them as the new original before tinting again.
 
+### Scan slices
+
+Scans run through a queue in document order, so ancestors are painted before
+their descendants. Each frame processes batches of 200 elements until 8 ms
+have passed, then continues in the next frame. A batch restores the elements
+it is about to refresh, reads all of their computed styles, then writes, so
+styles recalculate once per batch. Elements waiting in the queue keep their
+previous tint; refreshes and theme changes do not flash page colors. A
+document refresh, theme change, or clear resets the queue.
+
+### Shadow DOM
+
+Open shadow roots are queued right after their host, remembered, and observed
+with the same options as the document. Ancestor lookups for shared paper and
+page chrome cross from a shadow root to its host. Restore, stats, and stale
+cleanup include shadow content. Closed shadow roots, and custom elements that
+attach a shadow root after their host was scanned, are not covered.
+
 ### MutationObserver
 
 - Observes added nodes and class changes. New subtrees are scanned directly;
   class changes restore and rescan only the affected subtree.
 - Inserting or editing a `style` element, or loading a stylesheet `link`,
-  requests a full refresh. Refresh restores tint properties and surface
-  records before reading the new page styles, then reapplies root tokens.
+  reads that sheet's rules. Only rules that declare colors, backgrounds,
+  borders, fonts, or custom properties matter; their selectors are queried in
+  the sheet's own document or shadow root, and the matched elements refresh as
+  subtrees. A rule that matches `html` refreshes the whole page, as do sheets
+  whose rules cannot be read (cross-origin links) or selectors that cannot be
+  queried. Unrelated rules, such as `will-change` styles injected on X, cause
+  no refresh.
 - Nested scan requests are folded into their queued ancestor; a child refresh
   promotes that ancestor to refresh too. Inline style changes made by the
   engine are not observed, avoiding a scan loop.
@@ -311,7 +346,8 @@ Pseudo-elements cannot take per-element inline tints.
   theme tokens, and skip page-tone sampling and color overrides. With no
   custom fonts selected, skip DOM scanning and disconnect the observer.
   Custom fonts and site layouts remain independent of palette tinting.
-- Theme/mode change → restore previous tints, then full rescan.
+- Theme/mode change → full rescan that restores each element in its own
+  slice. Switching to a state with nothing to scan restores everything at once.
 - Same resolved theme (tab focus, `pageshow`) refreshes root CSS
   variables and keeps the observer, but does **not** walk the whole document.
   New nodes still arrive through the mutation scan.
@@ -519,7 +555,8 @@ branch other than `main`.
 1. **No site-specific rules** until generic cover fails; known chrome classes
    (Zhihu) are narrow exceptions already documented.
 2. **Bounded DOM work**: added nodes and class changes scan their subtrees;
-   page completion and stylesheet updates request batched full refreshes.
+   stylesheets refresh only the elements their color rules select; page
+   completion requests a full refresh. Scans run in time-boxed slices.
    No continuous `getComputedStyle` loops.
 3. **Cache-driven Auto**: system theme flips re-apply from memory, never
    re-read storage in the content script path.

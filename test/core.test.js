@@ -41,6 +41,14 @@ test("recognizes Chromium's Web Store domain restriction, including developer da
   }
 });
 
+test("embedded frames follow the top-level site rule", async () => {
+  const core = await loadCore();
+  const frame = { href: "https://embed.example.net/widget", ancestorOrigins: ["https://news.example.com", "https://Blocked.com"] };
+  assert.equal(core.policyHostForLocation(frame), "blocked.com");
+  assert.equal(core.policyHostForLocation({ href: "about:blank", ancestorOrigins: ["https://blocked.com"] }), "blocked.com");
+  assert.equal(core.policyHostForLocation({ href: "https://top.example.org/", ancestorOrigins: [] }), "top.example.org");
+});
+
 test("parses rgb, rgba, and hex colors", async () => {
   const core = await loadCore();
   assert.deepEqual(plain(core.parseColor("rgb(255, 250, 243)")), {
@@ -902,6 +910,7 @@ function createMockDom(nodes) {
       }
       return element._computed;
     },
+    performance: { now: () => 0 },
     matchMedia() {
       return { matches: Boolean(nodes.prefersDark) };
     },
@@ -1350,7 +1359,8 @@ test("late stylesheets and class changes repair existing gradient text without a
     backgroundImage: "linear-gradient(#e879f9, #3b82f6)"
   });
   document.dispatchEvent({ type: "load", target: {
-    tagName: "LINK", relList: { contains: (token) => token === "stylesheet" }
+    tagName: "LINK", relList: { contains: (token) => token === "stylesheet" },
+    sheet: { get cssRules() { throw new Error("cross-origin"); } }
   } });
   window.flushFrames();
   assert.equal(title.style.getPropertyValue("-webkit-text-fill-color"), "currentColor");
@@ -1366,6 +1376,89 @@ test("late stylesheets and class changes repair existing gradient text without a
   assert.ok(!readIds.includes("unrelated"));
   engine.clear();
   assert.equal(title.style.getPropertyValue("color"), "");
+});
+
+test("large scans continue across frames and keep previous tints until each slice repaints", async () => {
+  const core = await loadCore();
+  const tree = Array.from({ length: 450 }, (_, index) => ({ id: `card-${index}`, backgroundColor: "rgb(255, 255, 255)" }));
+  const { document, window, byId } = createMockDom({ tree });
+  let now = 0;
+  window.performance = { now: () => (now += 10) };
+  const engine = core.createEngine({ document, window });
+  const fill = (id) => byId.get(id).style.getPropertyValue("background-color");
+  engine.apply({ appearance: "light" });
+  assert.ok(fill("card-0"));
+  assert.equal(fill("card-449"), "");
+  window.flushFrames();
+  window.flushFrames();
+  const tinted = fill("card-449");
+  assert.ok(tinted);
+
+  engine.refresh();
+  window.flushFrames();
+  assert.equal(fill("card-449"), tinted);
+  window.flushFrames();
+  window.flushFrames();
+  assert.equal(fill("card-449"), tinted);
+  assert.equal(byId.get("card-449").getAttribute("data-rosewash-tinted"), "rose-pine-light");
+});
+
+test("open shadow roots are tinted, observed, counted, and restored", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [{ id: "host", tag: "x-card" }] });
+  const inner = createMockDom({ tree: [{ id: "inner", backgroundColor: "rgb(255, 255, 255)", color: "rgb(0, 0, 0)" }] }).byId.get("inner");
+  const host = byId.get("host");
+  const shadow = {
+    host,
+    querySelectorAll: (selector) => selector === "*" ? [inner] : [inner].filter((node) => node.matches(selector)),
+    addEventListener() {},
+    removeEventListener() {}
+  };
+  Object.assign(inner, { parentElement: null, parentNode: shadow });
+  host.shadowRoot = shadow;
+  const observed = [];
+  window.MutationObserver = class {
+    observe(target) { observed.push(target); }
+    disconnect() {}
+  };
+  const engine = core.createEngine({ document, window });
+  engine.apply({ appearance: "light" });
+  assert.ok(inner.style.getPropertyValue("background-color"));
+  assert.equal(inner.style.getPropertyValue("color"), core.PALETTES.dawn.text);
+  assert.ok(observed.includes(shadow));
+  assert.ok(engine.stats().tinted >= 1);
+  engine.clear();
+  assert.equal(inner.style.getPropertyValue("background-color"), "");
+  assert.equal(inner.hasAttribute("data-rosewash-tinted"), false);
+});
+
+test("injected styles refresh only existing elements their color rules select", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [
+    { id: "card", backgroundColor: "rgb(255, 255, 255)" },
+    { id: "other", backgroundColor: "rgb(255, 255, 255)" },
+    { id: "styles", tag: "style" }
+  ] });
+  const engine = core.createEngine({ document, window });
+  engine.apply({ appearance: "light" });
+  const queryAll = document.querySelectorAll;
+  document.querySelectorAll = (selector) => selector === ".card" ? [byId.get("card")] : queryAll(selector);
+  const readStyle = window.getComputedStyle;
+  const readIds = [];
+  window.getComputedStyle = (element) => { readIds.push(element.id); return readStyle(element); };
+  const styles = byId.get("styles");
+  const inject = (rules) => {
+    styles.sheet = { ownerNode: { getRootNode: () => document }, cssRules: rules };
+    window.deliverMutations([{ type: "childList", target: document.body, addedNodes: [styles] }]);
+    window.flushFrames();
+  };
+
+  inject([{ selectorText: ".card", style: ["will-change"] }]);
+  assert.ok(!readIds.includes("card"));
+
+  inject([{ cssRules: [{ selectorText: ".card", style: ["background-color"] }] }]);
+  assert.ok(readIds.includes("card"));
+  assert.ok(!readIds.includes("other"));
 });
 
 test("page completion and injected style updates coalesce, and disabling cancels pending repair", async () => {

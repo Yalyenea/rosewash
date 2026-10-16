@@ -30,6 +30,7 @@ test("startup waits for site policy and storage changes update site layouts", as
     matchMedia: () => ({ matches: false, addEventListener() {} }),
     addEventListener() {}
   };
+  context.window.top = context.window;
   context.CustomEvent = class {};
   context.RosewashCore = { ...core, createEngine: () => ({
     apply: (settings) => applied.push(settings), refresh() {}, stats: () => ({})

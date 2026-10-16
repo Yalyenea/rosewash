@@ -60,7 +60,9 @@
 
     const settings = core.normalizeSettings(settingsCache);
     const host = window.location.hostname.toLowerCase();
-    const allowed = settings.enabled
+    // Site layouts belong to the top-level page, never to embedded frames.
+    const allowed = window.top === window
+      && settings.enabled
       && core.isHostEnabled(host, settings);
     const xActive = allowed && host === "x.com" && settings.xCompactLayout;
     if (xActive) {

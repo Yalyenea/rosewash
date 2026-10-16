@@ -19,7 +19,11 @@ content pipeline, and change recipes, see
 - Default site policy and per-host on/off rules, with subdomain matching.
 - DOM tinting and restoration.
 - A batched `MutationObserver` for inserted elements, class changes, and
-  stylesheet edits, plus a listener for stylesheet loads.
+  stylesheet edits, plus a listener for stylesheet loads. Open shadow roots
+  are scanned and observed with the document.
+
+The content scripts run in every frame. Embedded frames follow the tab's
+top-level site rule, and site layouts only apply to the top-level page.
 
 At `document_start` the content runtime reads stored settings before applying
 colors, fonts, or layouts. Disabled sites stay untouched while storage loads.
@@ -201,14 +205,20 @@ and back/forward navigation, then updates the page marker.
 ## Performance Boundary
 
 The engine scans the initial DOM, then scans added subtrees and restores and
-rescans subtrees whose classes change. Page completion, stylesheet loads, and
-inserted or edited styles request full refreshes. Requests coalesce into the
-next frame; nested subtrees are scanned only through their queued ancestor.
-If the resolved theme, appearance, or custom font selection changes, tinted
-elements are restored before the next scan. Ordinary re-applies with the same
-palette, including tab focus, skip the document walk. The engine does not walk
-every element on each mutation or read computed styles in a continuous loop.
-Each scan reads computed styles in one pass, then writes inline tints.
+rescans subtrees whose classes change. Page completion requests a full refresh.
+Stylesheet loads and inserted or edited styles refresh only the existing
+elements their color, border, font, or custom-property rules select; unreadable
+sheets refresh the whole page. Requests coalesce into the next frame; nested
+subtrees are scanned only through their queued ancestor.
+
+Scans run in slices of about 8 ms per frame, in document order. Each batch
+restores the elements it refreshes, reads their computed styles, then writes
+inline tints, so elements waiting for a later slice keep their previous tint.
+If the resolved theme, appearance, or custom font selection changes, the
+rescan restores each element in its own slice. Ordinary re-applies with the
+same palette, including tab focus, skip the document walk. The engine does not
+walk every element on each mutation or read computed styles in a continuous
+loop.
 
 System theme changes do not call `chrome.storage` again and do not wait for an
 extra animation frame. This avoids both the common MV3 reload/update failure

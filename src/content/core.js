@@ -243,6 +243,16 @@
     dawn: "light",
     moon: "dark"
   });
+  // Scan slices: elements read per batch and time spent per frame.
+  const SCAN_BATCH_SIZE = 200;
+  const SCAN_BUDGET_MS = 8;
+  const OBSERVER_OPTIONS = Object.freeze({
+    childList: true, subtree: true, characterData: true,
+    attributes: true, attributeFilter: ["class"]
+  });
+  // Declarations that can change colors, borders, or fonts read by the engine.
+  const STYLE_RULE_PROPERTY = /^(?:--|all$|color$|background|border|font|-webkit-text-fill-color$|-webkit-background-clip$)/;
+
   const SKIP_SELECTOR = [
     "img",
     "picture",
@@ -698,6 +708,12 @@
     } catch {
       return "";
     }
+  }
+
+  // Embedded frames follow the tab's top-level site rule.
+  function policyHostForLocation(location) {
+    const origins = location.ancestorOrigins;
+    return hostFromUrl(origins?.length ? origins[origins.length - 1] : location.href);
   }
 
   function pageRestrictionForUrl(value) {
@@ -1206,6 +1222,7 @@
 
   function createEngine({ document, window }) {
     const originalStyles = new WeakMap();
+    const dirtyElements = new Set();
     let activeFonts = [];
     let fontKey = "[]";
     let tintedPageChrome = new WeakSet();
@@ -1214,6 +1231,12 @@
     let observer = null;
     let pendingRoots = new Map();
     let pendingFrame = null;
+    let pendingSheets = new Set();
+    // Open shadow roots found while scanning; observed with the document.
+    let shadowRoots = new Set();
+    // Elements awaiting a scan slice, each with whether to restore it first.
+    let scanQueue = [];
+    let scanIndex = 0;
     let activePresetLight = null;
     let activePresetDark = null;
     let activeAppearance = null;
@@ -1251,8 +1274,16 @@
       styles[property].appliedValue = element.style.getPropertyValue(property);
       styles[property].appliedPriority = element.style.getPropertyPriority(property);
       originalStyles.set(element, styles);
-      element.setAttribute(STYLE_OVERRIDES_ATTRIBUTE, JSON.stringify(styles));
-      element.setAttribute(TINT_ATTRIBUTE, activeTheme);
+      dirtyElements.add(element);
+    }
+
+    // Mirror each element's records once per pass instead of once per property.
+    function flushStyleRecords() {
+      for (const element of dirtyElements) {
+        element.setAttribute(STYLE_OVERRIDES_ATTRIBUTE, JSON.stringify(originalStyles.get(element)));
+        element.setAttribute(TINT_ATTRIBUTE, activeTheme);
+      }
+      dirtyElements.clear();
     }
 
     function connectedTintedElements() {
@@ -1262,7 +1293,35 @@
       if (root?.hasAttribute(TINT_ATTRIBUTE) && !descendants.includes(root)) {
         descendants.unshift(root);
       }
+      for (const shadow of connectedShadowRoots()) descendants.push(...shadow.querySelectorAll(selector));
       return descendants;
+    }
+
+    function connectedShadowRoots() {
+      for (const shadow of shadowRoots) {
+        if (shadow.host.isConnected === false) shadowRoots.delete(shadow);
+      }
+      return shadowRoots;
+    }
+
+    function rememberShadowRoot(shadow) {
+      if (shadowRoots.has(shadow)) return;
+      shadowRoots.add(shadow);
+      if (observer) observeShadowRoot(shadow);
+    }
+
+    // Find open shadow roots below a root, including nested ones.
+    function discoverShadowRoots(root) {
+      for (const element of root.querySelectorAll("*")) {
+        if (!element.shadowRoot) continue;
+        rememberShadowRoot(element.shadowRoot);
+        discoverShadowRoots(element.shadowRoot);
+      }
+    }
+
+    // Cross shadow boundaries so shadow content follows its host's paper.
+    function composedParent(element) {
+      return element.parentElement || element.parentNode?.host || null;
     }
 
     function restoreStyleOverrides(element, styles) {
@@ -1282,6 +1341,7 @@
       const styles = originalStyles.get(element);
       if (styles) restoreStyleOverrides(element, styles);
       originalStyles.delete(element);
+      dirtyElements.delete(element);
       element.removeAttribute(TINT_ATTRIBUTE);
       element.removeAttribute(STYLE_OVERRIDES_ATTRIBUTE);
       element.removeAttribute(HAD_STYLE_ATTRIBUTE);
@@ -1297,9 +1357,11 @@
 
     function restoreStaleTintedElements() {
       const selector = `[${TINT_ATTRIBUTE}]`;
+      discoverShadowRoots(document);
       const staleElements = [
         ...(document.documentElement.matches(selector) ? [document.documentElement] : []),
-        ...document.querySelectorAll(selector)
+        ...document.querySelectorAll(selector),
+        ...[...shadowRoots].flatMap((shadow) => [...shadow.querySelectorAll(selector)])
       ];
       for (const element of staleElements) {
         if (element.hasAttribute(STYLE_OVERRIDES_ATTRIBUTE)) {
@@ -1350,7 +1412,7 @@
       if (!isOpaqueColor(color)) {
         return null;
       }
-      for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+      for (let parent = composedParent(element); parent; parent = composedParent(parent)) {
         const record = surfaceRecords.get(parent);
         if (!record || !isOpaqueColor(record.original)) {
           continue;
@@ -1407,7 +1469,7 @@
     }
 
     function isInsideTintedPageChrome(element) {
-      for (let current = element; current; current = current.parentElement) {
+      for (let current = element; current; current = composedParent(current)) {
         if (tintedPageChrome.has(current)) {
           return true;
         }
@@ -1553,69 +1615,116 @@
       tintBorders(element, snapshot, palette);
     }
 
-    function scan(root, theme) {
-      const start = isElementNode(root) ? root : document.documentElement;
-      const elements = [];
-      if (activeFonts.length || !shouldSkipElement(start)) {
-        elements.push(start);
-      }
-      for (const element of start.querySelectorAll("*")) {
-        if (activeFonts.length || !shouldSkipElement(element)) {
-          elements.push(element);
-        }
-      }
+    function forgetElement(element) {
+      if (element.hasAttribute(TINT_ATTRIBUTE)) restoreElement(element);
+      surfaceRecords.delete(element);
+      tintedPageChrome.delete(element);
+    }
 
-      const snapshots = [];
-      for (const element of elements) {
-        snapshots.push(readTintSnapshot(element));
+    // Queue a subtree in document order so ancestors are painted before
+    // descendants. Restoring descendants is deferred to their own slice, so
+    // elements keep their previous tint instead of flashing page colors.
+    function enqueueSubtree(root, restoreDescendants) {
+      scanQueue.push([root, false]);
+      enqueueShadowContent(root, restoreDescendants);
+      enqueueDescendants(root, restoreDescendants);
+    }
+
+    function enqueueDescendants(root, restore) {
+      for (const element of root.querySelectorAll("*")) {
+        scanQueue.push([element, restore]);
+        enqueueShadowContent(element, restore);
       }
-      for (const snapshot of snapshots) {
-        processSnapshot(snapshot, theme);
+    }
+
+    function enqueueShadowContent(host, restore) {
+      if (!host.shadowRoot) return;
+      rememberShadowRoot(host.shadowRoot);
+      enqueueDescendants(host.shadowRoot, restore);
+    }
+
+    function resetScanQueue() {
+      scanQueue = [];
+      scanIndex = 0;
+    }
+
+    // Large pages are tinted across frames instead of one long task.
+    function drainScanQueue() {
+      const started = window.performance.now();
+      while (scanIndex < scanQueue.length) {
+        const batch = scanQueue.slice(scanIndex, scanIndex + SCAN_BATCH_SIZE);
+        scanIndex += batch.length;
+        const elements = batch.filter(([element]) => element.isConnected !== false);
+        for (const [element, restoreFirst] of elements) {
+          if (restoreFirst) forgetElement(element);
+        }
+        // Read the whole batch before writing, so styles recalculate once.
+        const snapshots = [];
+        for (const [element] of elements) {
+          if (activeFonts.length || !shouldSkipElement(element)) snapshots.push(readTintSnapshot(element));
+        }
+        for (const snapshot of snapshots) processSnapshot(snapshot, activeTheme);
+        if (window.performance.now() - started >= SCAN_BUDGET_MS) break;
+      }
+      flushStyleRecords();
+      if (scanIndex < scanQueue.length) {
+        requestFlush();
+      } else {
+        resetScanQueue();
       }
     }
 
     function flushPending() {
       pendingFrame = null;
+      const sheets = pendingSheets;
+      pendingSheets = new Set();
       if (!activeTheme) {
         pendingRoots = new Map();
         return;
       }
 
+      for (const sheet of sheets) markStyleSheetTargets(sheet);
       const roots = pendingRoots;
       pendingRoots = new Map();
       for (const [root, refresh] of roots) {
         if (!refresh) continue;
-        for (let parent = root.parentElement; parent; parent = parent.parentElement) {
+        for (let parent = composedParent(root); parent; parent = composedParent(parent)) {
           if (roots.has(parent)) roots.set(parent, true);
         }
       }
       for (const [root, refresh] of roots) {
         let covered = false;
-        for (let parent = root.parentElement; parent; parent = parent.parentElement) {
+        for (let parent = composedParent(root); parent; parent = composedParent(parent)) {
           if (roots.has(parent)) { covered = true; break; }
         }
         if (covered) continue;
         if (isElementNode(root) && root.isConnected !== false) {
-          if (refresh) {
-            for (const element of [root, ...root.querySelectorAll("*")]) {
-              if (element.hasAttribute(TINT_ATTRIBUTE)) restoreElement(element);
-              surfaceRecords.delete(element);
-              tintedPageChrome.delete(element);
-            }
-            if (root === document.documentElement) {
-              restoreCssVarOverrides();
-              applyRootTheme(activeTheme);
-            }
+          if (refresh) forgetElement(root);
+          if (refresh && root === document.documentElement) {
+            resetScanQueue();
+            restoreCssVarOverrides();
+            applyRootTheme(activeTheme);
           }
-          scan(root, activeTheme);
+          enqueueSubtree(root, refresh);
         }
       }
+      drainScanQueue();
     }
 
     // Coalesce SPA mutations to the next frame — not 250ms — so new white
     // nodes cover before the next paint when possible.
     function scheduleScan(root, refresh = false) {
       pendingRoots.set(root, refresh || pendingRoots.get(root) === true);
+      requestFlush();
+    }
+
+    function scheduleStyleSheet(sheet) {
+      if (!sheet) return;
+      pendingSheets.add(sheet);
+      requestFlush();
+    }
+
+    function requestFlush() {
       if (pendingFrame !== null) {
         return;
       }
@@ -1624,6 +1733,25 @@
         pendingFrame = window.requestAnimationFrame(flushPending);
       } else {
         pendingFrame = window.setTimeout(flushPending, 0);
+      }
+    }
+
+    // A new sheet only refreshes existing elements its color rules select.
+    // Unreadable sheets and unqueryable selectors refresh the whole page.
+    function markStyleSheetTargets(sheet) {
+      try {
+        const scope = sheet.ownerNode.getRootNode();
+        collectStyleRuleTargets(scope, sheet.cssRules, (element) => pendingRoots.set(element, true));
+      } catch {
+        pendingRoots.set(document.documentElement, true);
+      }
+    }
+
+    function collectStyleRuleTargets(scope, rules, mark) {
+      for (const rule of rules) {
+        if (rule.cssRules?.length) collectStyleRuleTargets(scope, rule.cssRules, mark);
+        if (!rule.selectorText || ![...rule.style].some((name) => STYLE_RULE_PROPERTY.test(name))) continue;
+        for (const element of scope.querySelectorAll(rule.selectorText)) mark(element);
       }
     }
 
@@ -1643,23 +1771,29 @@
             continue;
           }
           const target = isElementNode(record.target) ? record.target : record.target.parentElement;
-          if (target?.closest("style")) {
-            refresh();
+          const style = target?.closest("style");
+          if (style) {
+            scheduleStyleSheet(style.sheet);
             continue;
           }
           for (const node of record.addedNodes || []) {
             if (isElementNode(node)) {
-              if (node.tagName === "STYLE" || node.querySelectorAll("style").length) refresh();
+              const styles = node.tagName === "STYLE" ? [node] : node.querySelectorAll("style");
+              for (const element of styles) scheduleStyleSheet(element.sheet);
               scheduleScan(node);
             }
           }
         }
       });
-      observer.observe(document.documentElement, {
-        childList: true, subtree: true, characterData: true,
-        attributes: true, attributeFilter: ["class"]
-      });
+      observer.observe(document.documentElement, OBSERVER_OPTIONS);
       document.addEventListener("load", handleStylesheetLoad, true);
+      for (const shadow of connectedShadowRoots()) observeShadowRoot(shadow);
+    }
+
+    // Mutations and stylesheet loads do not cross shadow boundaries.
+    function observeShadowRoot(shadow) {
+      observer.observe(shadow, OBSERVER_OPTIONS);
+      shadow.addEventListener("load", handleStylesheetLoad, true);
     }
 
     function refresh() {
@@ -1669,7 +1803,9 @@
     }
 
     function handleStylesheetLoad(event) {
-      if (event.target.tagName === "LINK" && event.target.relList.contains("stylesheet")) refresh();
+      if (event.target.tagName === "LINK" && event.target.relList.contains("stylesheet")) {
+        scheduleStyleSheet(event.target.sheet);
+      }
     }
 
     function disconnectObserver() {
@@ -1677,6 +1813,7 @@
         observer.disconnect();
         observer = null;
         document.removeEventListener("load", handleStylesheetLoad, true);
+        for (const shadow of shadowRoots) shadow.removeEventListener("load", handleStylesheetLoad, true);
       }
       if (pendingFrame !== null) {
         if (typeof window.cancelAnimationFrame === "function") {
@@ -1686,6 +1823,8 @@
         pendingFrame = null;
       }
       pendingRoots = new Map();
+      pendingSheets = new Set();
+      resetScanQueue();
     }
 
     function restoreCssVarOverrides() {
@@ -1744,6 +1883,7 @@
         isDarkThemeKey(theme) ? "dark" : "light"
       );
       setStyle(document.documentElement, "scrollbar-color", `${palette.muted} ${palette.base}`);
+      flushStyleRecords();
       applyCssVarSurfaces(theme);
       return palette;
     }
@@ -1778,7 +1918,7 @@
       }
 
       const normalized = normalizeSettings(settings);
-      const host = hostFromUrl(document.location.href);
+      const host = policyHostForLocation(document.location);
       if (!normalized.enabled || !isHostEnabled(host, normalized)) {
         clear();
         return { enabled: false, theme: null, tinted: 0 };
@@ -1804,8 +1944,12 @@
       // Full-cover no longer depends on pageTone for surface decisions. Only
       // restore when the resolved palette actually changes — never on mixed
       // re-detect (that path flashed the whole page white on every load).
+      const scans = tintEnabled || definitions.length > 0;
       if (themeChanged || fontsChanged) {
-        restoreTintedElements();
+        disconnectObserver();
+        // A rescan restores each element in its own slice.
+        if (scans) forgetElement(document.documentElement);
+        else restoreTintedElements();
         restoreCssVarOverrides();
       }
 
@@ -1819,9 +1963,10 @@
       activeAppearance = normalized.appearance;
       activeTheme = theme;
       applyRootTheme(theme);
-      if (tintEnabled || activeFonts.length) {
+      if (scans) {
         if (!redundant) {
-          scan(document.documentElement, theme);
+          enqueueSubtree(document.documentElement, themeChanged || fontsChanged);
+          drainScanQueue();
         }
         observe();
       } else {
@@ -1863,6 +2008,7 @@
     createFontFaces,
     classifyPageTone,
     hostFromUrl,
+    policyHostForLocation,
     pageRestrictionForUrl,
     isDarkNeutralColor,
     isDarkSurfaceColor,

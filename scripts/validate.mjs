@@ -14,6 +14,8 @@ const requiredFiles = [
   "popup.html",
   "options.html",
   ...(manifest.background?.service_worker ? [manifest.background.service_worker] : []),
+  ...Object.values(manifest.icons || {}),
+  ...Object.values(manifest.action?.default_icon || {}),
   ...(manifest.content_scripts || []).flatMap((entry) => [
     ...(entry.css || []),
     ...(entry.js || [])

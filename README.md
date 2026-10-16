@@ -51,7 +51,10 @@ regions stay protected.
   `oklch()` pages, including sRGB colors computed from `color-mix()` and
   relative RGB colors.
 - Automatic tint repair after page loading, stylesheet updates, and element
-  class changes, including during in-page navigation.
+  class changes, including during in-page navigation. Style updates repaint
+  only the elements they affect, and large pages are tinted across frames.
+- Embedded frames and open shadow roots follow the page palette and the
+  current site's on/off rule.
 - Media, canvas, SVG, inputs, editors, and syntax-highlighting region protection.
 - No runtime dependencies or build step.
 

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Keep scrolling smooth on pages that insert styles while they load content.
+  New styles repaint only the elements their color, border, or font rules
+  select, instead of the whole page. On X, scrolling no longer triggers
+  page-wide repaints.
+- Tint large pages across several frames instead of one long pause. Elements
+  awaiting their turn keep the previous colors, so refreshes and theme changes
+  do not flash the original page.
+- Tint embedded frames, including cross-origin and blank frames. Frames follow
+  the current site's on/off rule; X and Zhihu layouts stay on the top page.
+- Tint content inside open shadow roots, such as Reddit's components.
+- Add the Rosewash icon to the toolbar and extension pages.
 - Replace the popup's site-policy dropdown with a one-click switch and a
   Use default action. Keep the shortcut beside the site switch, show external
   setting changes immediately, and fit expanded controls in a scrollable popup.
