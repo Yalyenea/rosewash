@@ -60,7 +60,7 @@
         fonts = Array.from(new Map(list.map((font) => [font.fontId, font])).values())
           .sort((a, b) => a.displayName.localeCompare(b.displayName));
         for (const { input } of fields) fill(input, input.value);
-        status.textContent = fonts.length ? `${fonts.length} system fonts` : "No system fonts found.";
+        status.textContent = fonts.length ? "" : "No system fonts found.";
         preview();
       } catch (error) {
         status.textContent = `Could not load system fonts: ${error.message}`;

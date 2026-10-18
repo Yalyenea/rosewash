@@ -36,6 +36,7 @@ async function settingsUI(page, initial = {}) {
     addEventListener(name, listener) { (this.listeners[name] ||= []).push(listener); }
     emit(name) { return Promise.all((this.listeners[name] || []).map((listener) => listener())); }
     setAttribute(name, value) { this.attributes[name] = value; }
+    removeAttribute(name) { delete this.attributes[name]; }
     replaceChildren(...children) { this.options = children; this.children = children; }
     add(option) { this.options.push(option); }
     appendChild(child) { this.children.push(child); }
@@ -57,6 +58,7 @@ async function settingsUI(page, initial = {}) {
   const messages = [];
   const writes = [];
   const requests = [];
+  const windowListeners = new Map();
   let messageListener;
   let closed = false;
   let raw = plain(initial);
@@ -94,7 +96,7 @@ async function settingsUI(page, initial = {}) {
   const document = {
     documentElement: new Element(), fonts: { add() {}, delete() {} },
     addEventListener() {}, createElement: () => new Element(),
-    querySelectorAll: (query) => query === "[data-appearance]" ? appearanceButtons : radios,
+    querySelectorAll: (query) => query === "[data-appearance]" ? appearanceButtons : query === "input[name='appearance']" ? radios : [],
     querySelector(query) {
       if (query === "input[name='appearance']:checked") return radios.find((radio) => radio.checked);
       if (query.startsWith("input[name='appearance'][value=")) return element(`radio-${query.match(/value='([^']+)'/)[1]}`);
@@ -135,7 +137,10 @@ async function settingsUI(page, initial = {}) {
     Option: class { constructor(label, value) { this.text = label; this.value = value; } },
     window: {
       matchMedia: () => ({ matches: false, addEventListener() {} }),
-      addEventListener() {}, clearTimeout() {}, setTimeout() {},
+      addEventListener(name, listener) {
+        if (!windowListeners.has(name)) windowListeners.set(name, []);
+        windowListeners.get(name).push(listener);
+      }, clearTimeout() {}, setTimeout() { return 1; },
       FontFace: class { constructor(family) { this.family = family; } async load() { return this; } }
     },
     chrome: {
@@ -156,6 +161,8 @@ async function settingsUI(page, initial = {}) {
   await settle();
   return {
     element, messages, writes, storage, requests,
+    change: (query = "#enabled") => element(query).emit("change"),
+    emitWindow: (name) => (windowListeners.get(name) || []).forEach((listener) => listener()),
     raw: () => plain(raw),
     close() { closed = true; changed.length = 0; },
     done: () => vm.runInContext("settingsQueue", backgroundContext),
@@ -206,12 +213,12 @@ test("popup discards a storage read that predates local edits", async () => {
   const held = ui.holdRead();
   await ui.storage.set({ appearance: "dark", fontEnglish: "Georgia" });
   const light = ui.element("button-light").emit("click");
-  ui.element("#default-enabled").checked = false;
-  const defaults = ui.element("#default-enabled").emit("change");
+  ui.element("#enabled").checked = false;
+  const paused = ui.element("#enabled").emit("change");
   held.resolve();
-  await Promise.all([light, defaults]);
+  await Promise.all([light, paused]);
   assert.equal(ui.raw().appearance, "light");
-  assert.equal(ui.raw().defaultEnabled, false);
+  assert.equal(ui.raw().enabled, false);
   assert.equal(ui.raw().fontEnglish, "Georgia");
   assert.equal(ui.element("button-light").attributes["aria-pressed"], "true");
 });
@@ -232,11 +239,34 @@ test("popup keeps pending edits when the preceding write emits onChanged", async
   assert.equal(ui.raw().appearance, "light");
 });
 
+test("classic popup site button toggles explicit policy without changing other sites", async () => {
+  const ui = await settingsUI("popup", { defaultEnabled: false, disabledHosts: ["other.com"] });
+  assert.equal(ui.element("#site-toggle").textContent, "Blocked");
+  await ui.element("#site-toggle").emit("click");
+  await ui.done();
+  await settle();
+  assert.deepEqual(ui.raw().enabledHosts, ["example.com"]);
+  assert.deepEqual(ui.raw().disabledHosts, ["other.com"]);
+  assert.equal(ui.element("#site-toggle").textContent, "Allowed");
+  await ui.element("#site-toggle").emit("click");
+  await ui.done();
+  await settle();
+  assert.deepEqual(ui.raw().enabledHosts, []);
+  assert.deepEqual(ui.raw().disabledHosts, ["example.com", "other.com"]);
+  assert.equal(ui.element("#site-toggle").textContent, "Blocked");
+});
+
+test("classic popup reports global pause and disables element picking", async () => {
+  const ui = await settingsUI("popup", { enabled: false });
+  assert.equal(ui.element("#site-toggle").textContent, "Paused");
+  assert.equal(ui.element("#pick-element").disabled, true);
+});
+
 test("options saves only edited fields and retains settings changed by another UI", async () => {
   const ui = await settingsUI("options", { enabled: true, disabledHosts: [] });
   await ui.storage.set({ disabledHosts: ["example.com"], enabledHosts: ["other.com"], appearance: "dark", fontEnglish: "Georgia" });
   ui.element("#enabled").checked = false;
-  await ui.element("#save").emit("click");
+  await ui.change();
   assert.equal(ui.raw().enabled, false);
   assert.deepEqual(ui.raw().disabledHosts, ["example.com"]);
   assert.deepEqual(ui.raw().enabledHosts, ["other.com"]);
@@ -244,18 +274,46 @@ test("options saves only edited fields and retains settings changed by another U
   assert.equal(ui.raw().fontEnglish, "Georgia");
 });
 
+test("options dispatches rapid reversals before closing while an earlier save is pending", async () => {
+  const ui = await settingsUI("options", { enabled: true });
+  const held = ui.holdWrite();
+  ui.element("#enabled").checked = false;
+  ui.change();
+  await settle();
+  ui.element("#enabled").checked = true;
+  ui.change();
+  assert.equal(ui.requests.length, 2);
+  ui.close();
+  held.resolve();
+  await ui.done();
+  assert.deepEqual(ui.writes.map((settings) => settings.enabled), [false, true]);
+  assert.equal(ui.raw().enabled, true);
+});
+
+test("options flushes pending domain input when leaving the page", async () => {
+  const ui = await settingsUI("options");
+  ui.element("#disabled-hosts").value = "later.com";
+  await ui.element("#disabled-hosts").emit("input");
+  assert.equal(ui.requests.length, 0);
+  ui.emitWindow("pagehide");
+  assert.equal(ui.requests.length, 1);
+  ui.close();
+  await ui.done();
+  assert.deepEqual(ui.raw().disabledHosts, ["later.com"]);
+});
+
 test("options merges host additions and removals with external rule changes", async () => {
   const ui = await settingsUI("options", { disabledHosts: ["remove.com", "unchanged.com"], enabledHosts: ["old.com"] });
   await ui.storage.set({ disabledHosts: ["external.com", "remove.com"], enabledHosts: ["external-on.com", "old.com"] });
   ui.element("#disabled-hosts").value = "unchanged.com\nadded.com";
   ui.element("#enabled-hosts").value = "new.com";
-  await ui.element("#save").emit("click");
+  await ui.change();
   assert.deepEqual(ui.raw().disabledHosts, ["added.com", "external.com"]);
   assert.deepEqual(ui.raw().enabledHosts, ["external-on.com", "new.com"]);
-  assert.equal(ui.element("#disabled-hosts").value, "added.com\nexternal.com");
+  assert.equal(ui.element("#disabled-hosts").value, "unchanged.com\nadded.com");
   await ui.storage.set({ disabledHosts: ["added.com", "external.com", "later.com"] });
   ui.element("#enabled").checked = false;
-  await ui.element("#save").emit("click");
+  await ui.change();
   assert.deepEqual(ui.raw().disabledHosts, ["added.com", "external.com", "later.com"]);
 });
 
@@ -263,13 +321,13 @@ test("options retains edits made while saving and writes them on the next save",
   const ui = await settingsUI("options", { enabled: true });
   const held = ui.holdRead();
   ui.element("#enabled").checked = false;
-  const saving = ui.element("#save").emit("click");
+  const saving = ui.change();
   ui.element("#disabled-hosts").value = "later.com";
   held.resolve();
   await saving;
   assert.equal(ui.element("#disabled-hosts").value, "later.com");
   assert.deepEqual(ui.raw().disabledHosts, []);
-  await ui.element("#save").emit("click");
+  await ui.change("#disabled-hosts");
   assert.deepEqual(ui.raw().disabledHosts, ["later.com"]);
 });
 
@@ -281,7 +339,7 @@ for (const [selected, opposite] of [["enabledHosts", "disabledHosts"], ["disable
       [opposite]: ["example.com", opposite === "enabledHosts" ? "external-on.com" : "external-off.com"]
     });
     ui.element(selected === "enabledHosts" ? "#enabled-hosts" : "#disabled-hosts").value = "example.com";
-    await ui.element("#save").emit("click");
+    await ui.change();
     assert.deepEqual(ui.raw()[selected], ["example.com", selected === "enabledHosts" ? "external-on.com" : "external-off.com"]);
     assert.deepEqual(ui.raw()[opposite], [opposite === "enabledHosts" ? "external-on.com" : "external-off.com"]);
   });
@@ -297,7 +355,7 @@ test("options gives disabled precedence for explicit additions while preserving 
   });
   ui.element("#disabled-hosts").value = "existing-off.com\nuntouched.com\nboth.com";
   ui.element("#enabled-hosts").value = "untouched.com\nexisting-off.com\nboth.com\nnew-on.com";
-  await ui.element("#save").emit("click");
+  await ui.change();
   assert.deepEqual(ui.raw().disabledHosts, ["both.com", "existing-off.com", "external-off.com", "untouched.com"]);
   assert.deepEqual(ui.raw().enabledHosts, ["external-on.com", "new-on.com", "untouched.com"]);
 });
@@ -307,7 +365,6 @@ for (const page of ["popup", "options"]) {
     const ui = await settingsUI(page, { mode: "moon", preset: "rose-pine" });
     ui.element("#enabled").checked = false;
     await ui.element("#enabled").emit("change");
-    if (page === "options") await ui.element("#save").emit("click");
     assert.equal(ui.raw().appearance, "dark");
     assert.equal(ui.raw().presetLight, "rose-pine");
     assert.equal(ui.raw().presetDark, "rose-pine");
@@ -316,19 +373,11 @@ for (const page of ["popup", "options"]) {
   });
 }
 
-test("popup and options save image dimming with its brightness", async () => {
-  const popup = await settingsUI("popup", {});
-  popup.element("#dim-images").checked = true;
-  await popup.element("#dim-images").emit("change");
-  popup.element("#image-brightness").value = "70";
-  await popup.element("#image-brightness").emit("change");
-  assert.equal(popup.raw().dimImages, true);
-  assert.equal(popup.raw().imageBrightness, 70);
-
+test("options saves image dimming with its brightness", async () => {
   const options = await settingsUI("options", {});
   options.element("#dim-images").checked = true;
   options.element("#image-brightness").value = "2";
-  await options.element("#save").emit("click");
+  await options.element("#dim-images").emit("change");
   assert.equal(options.raw().dimImages, true);
   assert.equal(options.raw().imageBrightness, 90);
 });

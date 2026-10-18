@@ -9,198 +9,263 @@
   <body>
     <main>
       <header class="page-header">
-        <div>
+        <div class="brand">
           <h1>Rosewash</h1>
+          <span>Settings</span>
         </div>
         <label class="master-toggle">
           <span>Enabled</span>
           <span class="toggle">
-            <input id="enabled" type="checkbox">
-            <span class="toggle-track"></span>
+            <input id="enabled" type="checkbox" aria-label="Enable Rosewash">
+            <span class="toggle-track">
+            </span>
           </span>
         </label>
       </header>
-
-      <section class="panel defaults-panel">
-        <label class="site-layout-toggle">
-          <span><strong>Enable on all sites by default</strong><small>Turn off to enable sites individually. Site exceptions take priority.</small></span>
-          <span class="toggle"><input id="default-enabled" type="checkbox"><span class="toggle-track"></span></span>
-        </label>
-      </section>
-
-      <section class="panel shortcut-panel" aria-labelledby="shortcut-heading">
-        <h2 id="shortcut-heading">Keyboard shortcuts</h2>
-        <div class="shortcut-list">
-          <div class="shortcut-row"><span>Toggle the current site between Always on and Always off</span><kbd id="shortcut-site" aria-live="polite">Loading…</kbd></div>
-          <div class="shortcut-row"><span>Pause or resume Rosewash on all sites</span><kbd id="shortcut-global" aria-live="polite">Loading…</kbd></div>
-        </div>
-        <button id="edit-shortcut" type="button">Change shortcuts</button>
-      </section>
-
-      <section class="panel general-panel">
-        <div class="section-heading">
-          <h2>Appearance</h2>
-        </div>
-        <div class="setting-row">
-          <div class="modes" aria-label="Appearance">
-            <label>
-              <input name="appearance" type="radio" value="auto">
-              <span>Auto</span>
-            </label>
-            <label>
-              <input name="appearance" type="radio" value="light">
-              <span>Light</span>
-            </label>
-            <label>
-              <input name="appearance" type="radio" value="dark">
-              <span>Dark</span>
-            </label>
+      <nav class="tabs" aria-label="Settings sections">
+        <button type="button" data-panel="appearance" aria-current="page">Appearance</button>
+        <button type="button" data-panel="fonts">Fonts</button>
+        <button type="button" data-panel="sites">Sites</button>
+        <button type="button" data-panel="shortcuts">Shortcuts</button>
+      </nav>
+      <div class="tab-content">
+        <section id="appearance" class="tab-panel" aria-label="Appearance">
+          <div class="setting-row mode-row">
+            <div>
+              <h3>Color mode</h3>
+            </div>
+            <div class="modes" aria-label="Appearance">
+              <label>
+                <input name="appearance" type="radio" value="auto">
+                <span>Auto</span>
+              </label>
+              <label>
+                <input name="appearance" type="radio" value="light">
+                <span>Light</span>
+              </label>
+              <label>
+                <input name="appearance" type="radio" value="dark">
+                <span>Dark</span>
+              </label>
+            </div>
           </div>
-        </div>
-      </section>
-
-      <section class="panel images-panel">
-        <div class="site-layout">
-          <label class="site-layout-toggle">
-            <span><strong>Dim images</strong><small id="dim-status">Lower image and video brightness with dark palettes</small></span>
-            <span class="toggle"><input id="dim-images" type="checkbox"><span class="toggle-track"></span></span>
-          </label>
-          <label class="site-width-control" for="image-brightness">
-            <span class="site-width-heading">
-              <strong>Brightness</strong>
-              <output id="image-brightness-value" for="image-brightness">80%</output>
+          <div class="palette-columns">
+            <section class="palette-group" data-variant="light">
+              <div class="palette-title">
+                <span class="palette-caption">Light palette</span>
+                <span class="selected-name">Rose Pine</span>
+              </div>
+              <div class="palette-options">
+                <div id="preset-light-list" class="preset-list" role="listbox" aria-label="Light palette">
+                </div>
+              </div>
+            </section>
+            <section class="palette-group" data-variant="dark">
+              <div class="palette-title">
+                <span class="palette-caption">Dark palette</span>
+                <span class="selected-name">Rose Pine</span>
+              </div>
+              <div class="palette-options">
+                <div id="preset-dark-list" class="preset-list" role="listbox" aria-label="Dark palette">
+                </div>
+              </div>
+            </section>
+          </div>
+          <div class="settings-group images">
+            <div class="setting-row">
+              <label for="dim-images">
+                <h3>Dim images</h3>
+              </label>
+              <div class="image-controls">
+                <span class="toggle">
+                  <input id="dim-images" type="checkbox" aria-label="Dim images">
+                  <span class="toggle-track">
+                  </span>
+                </span>
+                <input id="image-brightness" aria-label="Image brightness" type="range" min="0" max="2" step="1" value="1">
+                <output id="image-brightness-value" for="image-brightness">80%</output>
+              </div>
+            </div>
+            <span id="dim-status" hidden>
             </span>
-            <input id="image-brightness" aria-label="Image brightness" type="range" min="0" max="2" step="1" value="1">
-          </label>
-        </div>
-      </section>
-      <section class="panel theme-panel">
-        <div class="section-heading">
-          <h2>Theme</h2>
-        </div>
-        <div class="palette-columns">
-          <div class="palette-group">
-            <h3>Light</h3>
-            <div id="preset-light-list" class="preset-list" role="listbox" aria-label="Light palette"></div>
           </div>
-          <div class="palette-group">
-            <h3>Dark</h3>
-            <div id="preset-dark-list" class="preset-list" role="listbox" aria-label="Dark palette"></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="panel fonts-panel">
-        <div class="section-heading">
-          <h2>Fonts</h2>
-          <label class="master-toggle">
-            <span>Custom fonts</span>
+        </section>
+        <section id="fonts" class="tab-panel" aria-label="Fonts" hidden>
+          <label class="setting-row">
+            <span>
+              <h3>Custom fonts</h3>
+            </span>
             <span class="toggle">
-              <input id="custom-fonts-enabled" type="checkbox">
-              <span class="toggle-track"></span>
+              <input id="custom-fonts-enabled" type="checkbox" aria-label="Custom fonts">
+              <span class="toggle-track">
+              </span>
             </span>
           </label>
-        </div>
-        <div class="font-list-controls">
-          <span id="font-list-status" class="font-help" role="status"></span>
-        </div>
-        <div class="font-columns">
-          <label class="font-field" for="font-english">
-            <span class="setting-label">English</span>
-            <select id="font-english" aria-label="English"><option value="">Page default</option></select>
-            <small id="font-status-english" aria-live="polite"></small>
-            <span id="font-preview-english" class="font-preview" lang="en">Aa Bb Cc · 0123456789</span>
-          </label>
-          <label class="font-field" for="font-chinese">
-            <span class="setting-label">Chinese</span>
-            <select id="font-chinese" aria-label="Chinese"><option value="">Page default</option></select>
-            <small id="font-status-chinese" aria-live="polite"></small>
-            <span id="font-preview-chinese" class="font-preview" lang="zh-CN">中文字体 · 你好世界</span>
-          </label>
-          <label class="font-field" for="font-math">
-            <span class="setting-label">MathML</span>
-            <select id="font-math" aria-label="MathML"><option value="">Page default</option></select>
-            <small id="font-status-math" aria-live="polite"></small>
-            <math id="font-preview-math" class="font-preview"><msup><mi>x</mi><mn>2</mn></msup><mo>+</mo><msup><mi>y</mi><mn>2</mn></msup><mo>=</mo><msup><mi>z</mi><mn>2</mn></msup></math>
+          <div class="font-columns">
+                      <label class="font-field" for="font-english">
+                        <span class="setting-label">English</span>
+                        <select id="font-english" aria-label="English">
+            <option value="">Page default</option>
+          </select>
+                      <small id="font-status-english" aria-live="polite">
+        </small>
+                    <span id="font-preview-english" class="font-preview" lang="en">Aa Bb Cc · 0123456789</span>
+                  </label>
+                  <label class="font-field" for="font-chinese">
+                    <span class="setting-label">Chinese</span>
+                    <select id="font-chinese" aria-label="Chinese">
+        <option value="">Page default</option>
+      </select>
+                  <small id="font-status-chinese" aria-live="polite">
+    </small>
+                <span id="font-preview-chinese" class="font-preview" lang="zh-CN">中文字体 · 你好世界</span>
+              </label>
+              <label class="font-field" for="font-math">
+                <span class="setting-label">MathML</span>
+                <select id="font-math" aria-label="MathML">
+    <option value="">Page default</option>
+  </select>
+              <small id="font-status-math" aria-live="polite">
+</small>
+            <math id="font-preview-math" class="font-preview">
+<msup>
+  <mi>x</mi>
+  <mn>2</mn>
+</msup>
+<mo>+</mo>
+<msup>
+  <mi>y</mi>
+  <mn>2</mn>
+</msup>
+<mo>=</mo>
+<msup>
+  <mi>z</mi>
+  <mn>2</mn>
+</msup>
+</math>
           </label>
           <label class="font-field" for="font-monospace">
             <span class="setting-label">Monospace</span>
-            <select id="font-monospace" aria-label="Monospace"><option value="">Page default</option></select>
-            <small id="font-status-monospace" aria-live="polite"></small>
+            <select id="font-monospace" aria-label="Monospace">
+<option value="">Page default</option>
+</select>
+            <small id="font-status-monospace" aria-live="polite">
+</small>
             <code id="font-preview-monospace" class="font-preview">const n = 42;</code>
           </label>
-        </div>
-      </section>
-
-      <section class="panel sites-panel">
-        <div class="section-heading">
-          <h2>Sites</h2>
-        </div>
-        <div class="site-columns">
-          <div class="site-group">
-            <div class="site-layout">
-              <label class="site-layout-toggle">
-                <span>
-                  <strong>X · Compact layout</strong>
-                </span>
-                <span class="toggle">
-                  <input id="x-compact-layout" type="checkbox">
-                  <span class="toggle-track"></span>
-                </span>
-              </label>
-              <label class="site-width-control" for="x-single-column-width">
-                <span class="site-width-heading">
-                  <strong>Width</strong>
-                  <output id="x-single-column-width-value" for="x-single-column-width">600 px</output>
-                </span>
-                <input id="x-single-column-width" aria-label="X column width" type="range" min="0" max="3" step="1" value="1">
-              </label>
-            </div>
-            <div class="site-layout">
-              <label class="site-layout-toggle">
-                <span>
-                  <strong>Zhihu · Clean layout</strong>
-                </span>
-                <span class="toggle">
-                  <input id="zhihu-article-layout" type="checkbox">
-                  <span class="toggle-track"></span>
-                </span>
-              </label>
-              <label class="site-width-control" for="zhihu-article-width">
-                <span class="site-width-heading">
-                  <strong>Width</strong>
-                  <output id="zhihu-article-width-value" for="zhihu-article-width">960 px</output>
-                </span>
-                <input id="zhihu-article-width" aria-label="Zhihu column width" type="range" min="0" max="3" step="1" value="2">
-              </label>
-            </div>
-          </div>
-          <label class="site-group blocked-sites">
-            <h3>Always on</h3>
-            <textarea id="enabled-hosts" aria-label="Always enabled sites" spellcheck="false" placeholder="example.com"></textarea>
-          </label>
-          <label class="site-group blocked-sites">
-            <h3>Always off</h3>
-            <textarea id="disabled-hosts" aria-label="Always disabled sites" spellcheck="false" placeholder="example.com"></textarea>
-          </label>
-        </div>
-      </section>
-
-      <section class="panel ignored-panel" aria-labelledby="ignored-heading">
-        <div class="section-heading">
-          <h2 id="ignored-heading">Ignored elements</h2>
-          <p>Use Pick element in the popup to leave part of a page untouched.</p>
-        </div>
-        <div id="ignored-list"></div>
-      </section>
-      <footer class="actions">
-        <span id="status" role="status"></span>
-        <button id="reset" type="button">Reset</button>
-        <button id="save" type="button">Save</button>
-      </footer>
-    </main>
-    <script src="src/content/core.js"></script>
-    <script src="src/settings/fonts.js"></script>
-    <script src="src/options/options.js"></script>
-  </body>
+</div>
+<p id="font-list-status" class="font-help" role="status">
+</p>
+</section>
+<section id="sites" class="tab-panel" aria-label="Sites" hidden>
+  <label class="setting-row default-row">
+    <span>
+      <h3>Enable new sites</h3>
+    </span>
+    <span class="toggle">
+      <input id="default-enabled" type="checkbox" aria-label="Enable new sites">
+      <span class="toggle-track">
+      </span>
+    </span>
+  </label>
+  <div class="subheading">
+    <h3>Clean Layout</h3>
+  </div>
+  <div class="layout-columns">
+    <div class="layout-card">
+      <label class="site-layout-toggle">
+        <strong class="site-identity">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+            <path fill="currentColor" d="M18.9 2H22l-6.8 7.8L23.2 22h-6.3L12 14.6 5.5 22H2.4l7.3-8.5L1 2h6.5l5.2 6.9L18.9 2zm-1.1 18h1.7L6.6 3.9H4.8L17.8 20z"/>
+          </svg>
+          <span>X.com</span>
+        </strong>
+        <span class="toggle">
+          <input id="x-compact-layout" type="checkbox" aria-label="Compact X layout">
+          <span class="toggle-track">
+          </span>
+        </span>
+      </label>
+      <label class="site-width-control" for="x-single-column-width">
+        <span class="site-width-heading">
+          <span>Column width</span>
+          <output id="x-single-column-width-value" for="x-single-column-width">600 px</output>
+        </span>
+        <input id="x-single-column-width" aria-label="Column width" type="range" min="0" max="3" step="1" value="1">
+      </label>
+    </div>
+    <div class="layout-card">
+      <label class="site-layout-toggle">
+        <strong class="site-identity">
+          <span>知乎</span>
+          <span class="site-domain">zhihu.com</span>
+        </strong>
+        <span class="toggle">
+          <input id="zhihu-article-layout" type="checkbox" aria-label="知乎布局">
+          <span class="toggle-track">
+          </span>
+        </span>
+      </label>
+      <label class="site-width-control" for="zhihu-article-width">
+        <span class="site-width-heading">
+          <span>Column width</span>
+          <output id="zhihu-article-width-value" for="zhihu-article-width">960 px</output>
+        </span>
+        <input id="zhihu-article-width" aria-label="Column width" type="range" min="0" max="3" step="1" value="1">
+      </label>
+    </div>
+  </div>
+  <div class="subheading rules-heading">
+    <h3>Site rules</h3>
+  </div>
+  <div class="rules-columns">
+    <label>
+      <span>Always on</span>
+      <textarea id="enabled-hosts" aria-label="Always enabled sites" spellcheck="false" placeholder="example.com">
+      </textarea>
+    </label>
+    <label>
+      <span>Always off</span>
+      <textarea id="disabled-hosts" aria-label="Always disabled sites" spellcheck="false" placeholder="example.com">
+      </textarea>
+    </label>
+  </div>
+  <details class="ignored-panel">
+    <summary>
+      <span>Ignored elements</span>
+      <span class="chevron">
+      </span>
+    </summary>
+    <div id="ignored-list">
+    </div>
+  </details>
+</section>
+<section id="shortcuts" class="tab-panel" aria-label="Shortcuts" hidden>
+  <div class="shortcut-list">
+    <div class="shortcut-row">
+      <span>
+        <h3>Toggle current site</h3>
+      </span>
+      <kbd id="shortcut-site" aria-live="polite">Not set</kbd>
+    </div>
+    <div class="shortcut-row">
+      <span>
+        <h3>Pause Rosewash</h3>
+      </span>
+      <kbd id="shortcut-global" aria-live="polite">Not set</kbd>
+    </div>
+  </div>
+  <button id="edit-shortcut" class="secondary" type="button">Change shortcuts ↗</button>
+</section>
+</div>
+<div id="status" class="save-feedback" role="status" aria-live="polite">
+</div>
+</main>
+<script src="src/content/core.js">
+</script>
+<script src="src/settings/fonts.js">
+</script>
+<script src="src/options/options.js">
+</script>
+</body>
 </html>

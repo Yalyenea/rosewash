@@ -736,7 +736,7 @@ function createMockDom(nodes) {
       className: spec.className || "",
       classList: {
         contains(token) {
-          return String(spec.className || "").split(/\s+/).includes(token);
+          return String(node.className || "").split(/\s+/).includes(token);
         }
       },
       parentElement: parent,
@@ -1074,9 +1074,23 @@ test("custom fonts leave code, editors, and icon typography intact", async () =>
   const engine = core.createEngine({ document, window });
   engine.apply({ customFontsEnabled: true, fontEnglish: "Arial" });
   for (const id of ["code", "pre-child", "editor", "icon", "role-icon"]) {
-    assert.ok(!byId.get(id).style.getPropertyValue("font-family").includes("Rosewash"), id);
+    assert.equal(byId.get(id).style.getPropertyValue("font-family"), "", id);
   }
   assert.equal(byId.get("text").style.getPropertyValue("font-family"), '"RosewashEnglish", Georgia');
+});
+
+test("inherited custom font faces need no per-element override", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [
+    { id: "inherited", tag: "p", fontFamily: 'RosewashEnglish, "RosewashChinese", serif' },
+    { id: "partial", tag: "p", fontFamily: '"RosewashEnglish", serif' },
+    { id: "page-font", tag: "p", fontFamily: '"Page Font", serif' }
+  ] });
+  const engine = core.createEngine({ document, window });
+  engine.apply({ customFontsEnabled: true, fontEnglish: "Georgia", fontChinese: "Songti SC" });
+  assert.equal(byId.get("inherited").style.getPropertyValue("font-family"), "");
+  assert.equal(byId.get("partial").style.getPropertyValue("font-family"), '"RosewashEnglish", "RosewashChinese", serif');
+  assert.equal(byId.get("page-font").style.getPropertyValue("font-family"), '"RosewashEnglish", "RosewashChinese", "Page Font", serif');
 });
 
 test("math and monospace fonts target their own content without replacing prose", async () => {
@@ -1098,8 +1112,8 @@ test("math and monospace fonts target their own content without replacing prose"
   const settings = { customFontsEnabled: true, fontMath: "STIX Two Math", fontMonospace: "Menlo" };
   engine.apply(settings);
   assert.equal(document.fonts.size, 2);
-  assert.equal(byId.get("prose").style.getPropertyValue("font-family"), "Georgia");
-  assert.equal(byId.get("named-mono").style.getPropertyValue("font-family"), '"Monospace Display", serif');
+  assert.equal(byId.get("prose").style.getPropertyValue("font-family"), "");
+  assert.equal(byId.get("named-mono").style.getPropertyValue("font-family"), "");
   for (const id of ["math", "math-child"]) {
     assert.equal(byId.get(id).style.getPropertyValue("font-family"), '"RosewashMath", math', id);
   }
@@ -1131,10 +1145,44 @@ test("math and monospace overrides preserve rendered formulas, editors, ignored 
   const engine = core.createEngine({ document, window });
   engine.apply({ customFontsEnabled: true, fontEnglish: "Arial", fontChinese: "Songti SC", fontMath: "STIX Two Math", fontMonospace: "Menlo" });
   for (const [id, element] of byId) {
-    assert.ok(!element.style.getPropertyValue("font-family").includes("Rosewash"), id);
-    const value = element.style.getPropertyValue("font-family");
-    assert.ok(value === "" || value === element._computed.fontFamily, id);
+    assert.equal(element.style.getPropertyValue("font-family"), "", id);
   }
+});
+
+test("protected formula subtrees never read computed styles or write font overrides", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [
+    // Keep the formula below a page shell, outside the bounded page-tone sample.
+    { children: [{ className: "katex", children: [
+      { id: "formula-text", tag: "span", fontFamily: "KaTeX_Main" },
+      { id: "formula-math", tag: "math", children: [{ id: "formula-symbol", tag: "mi" }] }
+    ] }] },
+    { id: "native-math", tag: "math" },
+    { id: "prose", tag: "p" }
+  ] });
+  const getComputedStyle = window.getComputedStyle;
+  for (const id of ["formula-text", "formula-math", "formula-symbol"]) {
+    byId.get(id).closest = () => assert.fail("Formula descendants must reuse their parent's skip decision");
+  }
+  window.getComputedStyle = (element) => {
+    assert.equal(element.closest(".katex"), null, "KaTeX must be rejected before style reads");
+    return getComputedStyle(element);
+  };
+  const engine = core.createEngine({ document, window });
+  const settings = { customFontsEnabled: true, fontEnglish: "Arial", fontMath: "STIX Two Math" };
+  engine.apply(settings);
+  assert.ok(byId.get("native-math").style.getPropertyValue("font-family").includes("RosewashMath"));
+  engine.refresh();
+  window.flushFrames();
+  engine.apply({ ...settings, appearance: "dark" });
+  for (const id of ["formula-text", "formula-math", "formula-symbol"]) {
+    const element = byId.get(id);
+    assert.equal(element.style.getPropertyValue("font-family"), "", id);
+    assert.equal(element.hasAttribute("data-rosewash-tinted"), false, id);
+    assert.equal(element.hasAttribute("data-rosewash-style-overrides"), false, id);
+  }
+  engine.clear();
+  assert.equal(byId.get("native-math").style.getPropertyValue("font-family"), "");
 });
 
 test("changing only math or monospace settings rescans the same theme and restores inline fonts", async () => {
@@ -1454,7 +1502,7 @@ test("image dimming applies only to dark tinted palettes", async () => {
 
 test("large scans continue across frames and keep previous tints until each slice repaints", async () => {
   const core = await loadCore();
-  const tree = Array.from({ length: 450 }, (_, index) => ({ id: `card-${index}`, backgroundColor: "rgb(255, 255, 255)" }));
+  const tree = Array.from({ length: 2050 }, (_, index) => ({ id: `card-${index}`, backgroundColor: "rgb(255, 255, 255)" }));
   const { document, window, byId } = createMockDom({ tree });
   let now = 0;
   window.performance = { now: () => (now += 10) };
@@ -1462,24 +1510,65 @@ test("large scans continue across frames and keep previous tints until each slic
   const fill = (id) => byId.get(id).style.getPropertyValue("background-color");
   engine.apply({ appearance: "light" });
   assert.ok(fill("card-0"));
-  assert.equal(fill("card-449"), "");
+  assert.equal(fill("card-2049"), "");
   window.flushFrames();
   window.flushFrames();
-  const tinted = fill("card-449");
+  const tinted = fill("card-2049");
   assert.ok(tinted);
 
   engine.refresh();
   window.flushFrames();
-  assert.equal(fill("card-449"), tinted);
+  assert.equal(fill("card-2049"), tinted);
   window.flushFrames();
   window.flushFrames();
-  assert.equal(fill("card-449"), tinted);
-  assert.equal(byId.get("card-449").getAttribute("data-rosewash-tinted"), "rose-pine-light");
+  assert.equal(fill("card-2049"), tinted);
+  assert.equal(byId.get("card-2049").getAttribute("data-rosewash-tinted"), "rose-pine-light");
+});
+
+test("protected formula nodes do not delay text behind them in the scan queue", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [
+    { className: "katex", children: Array.from({ length: 1000 }, () => ({ tag: "span" })) },
+    { id: "text-after-formula", tag: "p" }
+  ] });
+  let now = 0;
+  window.performance = { now: () => (now += 10) };
+  const engine = core.createEngine({ document, window });
+  engine.apply({ customFontsEnabled: true, fontEnglish: "Georgia" });
+  assert.ok(byId.get("text-after-formula").style.getPropertyValue("font-family").includes("RosewashEnglish"));
+});
+
+test("newly protected subtrees still restore their previous overrides", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [
+    { id: "formula", children: [{ id: "symbol", tag: "span" }] }
+  ] });
+  const engine = core.createEngine({ document, window });
+  engine.apply({ customFontsEnabled: true, fontEnglish: "Georgia" });
+  assert.ok(byId.get("symbol").hasAttribute("data-rosewash-tinted"));
+  byId.get("formula").setAttribute("class", "katex");
+  window.deliverMutations([{ type: "attributes", attributeName: "class", target: byId.get("formula") }]);
+  window.flushFrames();
+  assert.equal(byId.get("symbol").hasAttribute("data-rosewash-tinted"), false);
+  assert.equal(byId.get("symbol").style.getPropertyValue("font-family"), "");
+  assert.equal(byId.get("symbol").style.getPropertyValue("color"), "");
+});
+
+test("skip caching preserves a selected native math font inside highlighted content", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [
+    { className: "hljs", children: [
+      { tag: "span", children: [{ id: "math-symbol", tag: "math", fontFamily: "math" }] }
+    ] }
+  ] });
+  const engine = core.createEngine({ document, window });
+  engine.apply({ customFontsEnabled: true, fontMath: "STIX Two Math" });
+  assert.equal(byId.get("math-symbol").style.getPropertyValue("font-family"), '"RosewashMath", math');
 });
 
 test("open shadow roots are tinted, observed, counted, and restored", async () => {
   const core = await loadCore();
-  const { document, window, byId } = createMockDom({ tree: [{ id: "host", tag: "x-card" }] });
+  const { document, window, byId } = createMockDom({ tree: [{ id: "host", tag: "x-card", className: "katex" }] });
   const inner = createMockDom({ tree: [{ id: "inner", backgroundColor: "rgb(255, 255, 255)", color: "rgb(0, 0, 0)" }] }).byId.get("inner");
   const host = byId.get("host");
   const shadow = {

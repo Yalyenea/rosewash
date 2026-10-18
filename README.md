@@ -22,30 +22,29 @@ regions stay protected.
   the system color scheme.
 - Optional English, Chinese, native MathML, and monospace fonts, selected from
   installed system fonts with live previews.
-- Compact popup and settings page that follow the selected theme. The popup
-  keeps daily controls visible and groups default rules, fonts, site layouts,
-  and column widths under **More settings**, with automatic saving that
-  continues after the popup closes.
+- Compact popup with appearance, palettes, Pick, and an Allowed / Blocked
+  site button. Matching X or Zhihu layout controls appear on that site.
+  Settings use Appearance, Fonts, Sites, and Shortcuts tabs with automatic
+  saving; pending writes continue after the popup or settings page closes.
 - Global enable switch, with the shortcut `Alt+Shift+P` to pause or resume.
 - Toolbar icon fades when Rosewash is paused, off for the current site, or
   blocked by the browser.
 - Pick element: click a part of a page that looks wrong to leave it, and
-  everything inside it, untouched on that site. The popup shows how many
-  elements are ignored, and the settings page lists them.
+  everything inside it, untouched on that site. Manage ignored elements in
+  the Sites tab of settings.
 - Optional image dimming for dark palettes at 70, 80, or 90% brightness.
 - Default on/off policy for new sites, plus a one-click switch per site.
-  **Use default** clears a site's override. Explicit choices survive changes
-  to the default; settings lists manage always-on and always-off sites.
+  Explicit choices survive changes to the default. Settings lists manage
+  always-on and always-off sites; remove a hostname to restore its inherited rule.
 - Optional compact layout for X from 720px: collapsed navigation rail,
   adjustable centered timelines, and rail-based search. Thread pages stay
   native single-column.
-- Optional Zhihu clean layout: hide the top bar and side chrome on home,
-  questions, and articles, then pick a reading width. Columns and controls
-  adapt to narrow windows and follow in-page navigation and back/forward actions.
+- Optional Zhihu clean layout: center home, questions, and articles at your
+  chosen reading width. Only articles hide the top bar; other pages keep
+  navigation. Columns adapt to narrow windows and in-page navigation.
 - Default shortcut `Alt+Shift+B` saves an on/off choice for the current site
-  (Option+Shift+B on Mac) and applies it immediately. The button beside the site switch shows the actual
-  binding and opens the browser's shortcut settings. The settings page lists
-  both shortcuts and offers **Change shortcuts**.
+  (Option+Shift+B on Mac) and applies it immediately. The Shortcuts tab lists
+  both bindings and offers **Change shortcuts**.
 - Full-page paper cover for light, dark, and cool-paper sites.
 - Default transparent `html`/`body` canvases (legacy pages such as jmlr.org).
 - Page-level headers and navigation bars blend into the active page base,
@@ -118,11 +117,9 @@ cannot be patched in place.
 
 ## Custom Fonts
 
-Open **More settings** in the popup, or extension settings, and enable
-**Custom fonts**. Installed
-system fonts load automatically. Popup changes save immediately; the full
-settings page uses **Save**. The extension needs the browser's `fontSettings`
-permission to list fonts.
+Open **Settings → Fonts** and enable **Custom fonts**. Installed system
+fonts load automatically and changes save immediately. The extension needs
+the browser's `fontSettings` permission to list fonts.
 
 **Page default** preserves the website’s font for that category. MathML
 fonts apply to native formulas; KaTeX, MathJax, SVG formulas, and code editors
@@ -131,10 +128,10 @@ other monospace text. Fonts must be installed on each device.
 
 ## Site Settings
 
-**Enable on all sites by default** controls sites without an explicit rule.
-It is under **More settings** in the popup, and at the top of extension settings.
-The popup's site switch saves an explicit on/off choice that survives default
-changes. Select **Use default** to remove the current hostname's rule.
+**Enable new sites**, under **Settings → Sites**, controls sites without an
+explicit rule. The popup's site button saves an on/off choice that survives
+default changes. Remove the hostname from Always on or Always off to restore
+its inherited rule.
 Rules also cover subdomains; a more specific hostname rule takes priority,
 and clearing it restores the parent rule if one exists.
 

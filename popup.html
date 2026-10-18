@@ -8,85 +8,39 @@
   </head>
   <body>
     <main class="shell">
-      <div class="popup-content">
       <header class="topline">
-        <div class="brand"><h1>Rosewash</h1><p id="global-status">Page appearance</p></div>
+        <div><h1>Rosewash</h1><p id="host">current site</p></div>
         <label class="switch" aria-label="Enable Rosewash"><input id="enabled" type="checkbox"><span></span></label>
       </header>
 
-      <section class="section site-policy" aria-label="Current site">
-        <div class="setting-row current-site">
-          <div class="site-label">
-            <label id="host" for="site-enabled">Current site</label>
-            <div class="site-state"><small id="site-source" role="status"></small><button id="site-reset" type="button" title="Remove this site's override and follow its parent rule or the default" hidden>Use default</button></div>
-          </div>
-          <div class="site-controls">
-            <button id="site-shortcut" type="button" aria-label="Change keyboard shortcut" aria-live="polite" title="Change shortcut in browser settings">…</button>
-            <label class="switch" aria-label="Enable on current site"><input id="site-enabled" type="checkbox" disabled><span></span></label>
-          </div>
-        </div>
-        <div class="site-tools">
-          <button id="pick-element" type="button" title="Click an element on the page to leave it untouched on this site">Pick element</button>
-          <small id="ignored-count"></small>
-          <button id="clear-ignored" type="button" title="Tint every element on this site again" hidden>Clear</button>
-        </div>
+      <section class="modes" aria-label="Appearance">
+        <button type="button" data-appearance="auto">Auto</button>
+        <button type="button" data-appearance="light">Light</button>
+        <button type="button" data-appearance="dark">Dark</button>
+      </section>
+
+      <section class="presets" aria-label="Palettes">
+        <label class="preset"><span>Light</span><select id="preset-light" aria-label="Light palette"></select></label>
+        <label class="preset"><span>Dark</span><select id="preset-dark" aria-label="Dark palette"></select></label>
+      </section>
+
+      <section class="site" aria-label="Current site">
+        <div class="site-row"><span>Site</span><span class="site-actions"><button id="pick-element" type="button" aria-label="Pick element">Pick</button><button id="site-toggle" type="button" aria-pressed="false">Allowed</button></span></div>
         <p id="site-status" role="status" hidden></p>
+        <label id="x-layout-row" class="site-row layout-row" hidden>
+          <span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M18.9 2H22l-6.8 7.8L23.2 22h-6.3L12 14.6 5.5 22H2.4l7.3-8.5L1 2h6.5l5.2 6.9L18.9 2zm-1.1 18h1.7L6.6 3.9H4.8L17.8 20z"/></svg><strong>Compact layout</strong></span>
+          <span class="switch"><input id="x-compact-layout" type="checkbox" aria-label="Compact X layout"><span></span></span>
+        </label>
+        <label id="zhihu-layout-row" class="site-row layout-row" hidden>
+          <span><strong>知乎</strong></span>
+          <span class="switch"><input id="zhihu-article-layout" type="checkbox" aria-label="知乎布局"><span></span></span>
+        </label>
       </section>
 
-      <section class="section" aria-label="Appearance">
-        <h2>Appearance</h2>
-        <div class="modes" role="group" aria-label="Appearance mode"><button type="button" data-appearance="auto">Auto</button><button type="button" data-appearance="light">Light</button><button type="button" data-appearance="dark">Dark</button></div>
-        <div class="presets">
-          <label class="field"><span>Light</span><span class="select-control palette-control"><span class="palette-swatch" id="swatch-light" aria-hidden="true"></span><select id="preset-light" aria-label="Light palette"></select></span></label>
-          <label class="field"><span>Dark</span><span class="select-control palette-control"><span class="palette-swatch" id="swatch-dark" aria-hidden="true"></span><select id="preset-dark" aria-label="Dark palette"></select></span></label>
-        </div>
-      </section>
-
-      <details class="more-settings">
-        <summary>More settings</summary>
-        <section class="section defaults" aria-label="Site defaults">
-          <label class="setting-row">
-            <span><strong>Enable new sites</strong><small id="default-status">Site exceptions still apply</small></span>
-            <span class="switch"><input id="default-enabled" type="checkbox"><span></span></span>
-          </label>
-        </section>
-
-        <section class="section" aria-label="Fonts">
-          <div class="section-heading"><h2>Fonts</h2><p id="font-list-status" class="helper" role="status"></p><label class="switch" aria-label="Use custom fonts"><input id="custom-fonts-enabled" type="checkbox"><span></span></label></div>
-          <div class="font-grid">
-            <label class="field"><span>English</span><span class="select-control"><select id="font-english"><option value="">Page default</option></select></span></label>
-            <label class="field"><span>Chinese</span><span class="select-control"><select id="font-chinese"><option value="">Page default</option></select></span></label>
-            <label class="field"><span>MathML</span><span class="select-control"><select id="font-math"><option value="">Page default</option></select></span></label>
-            <label class="field"><span>Monospace</span><span class="select-control"><select id="font-monospace"><option value="">Page default</option></select></span></label>
-          </div>
-        </section>
-
-        <section class="section" aria-label="Images">
-          <h2>Images</h2>
-          <div class="layout-row">
-            <label class="setting-row"><span><strong>Dim images</strong><small id="dim-status">Dark palettes</small></span><span class="switch"><input id="dim-images" type="checkbox"><span></span></span></label>
-            <span class="select-control"><select id="image-brightness" aria-label="Image brightness"></select></span>
-          </div>
-        </section>
-
-        <section class="section layouts" aria-label="Site layouts">
-          <h2>Site layouts</h2>
-          <div class="layout-row">
-            <label class="setting-row"><span><strong>X</strong><small>Compact layout</small></span><span class="switch"><input id="x-compact-layout" type="checkbox"><span></span></span></label>
-            <span class="select-control"><select id="x-single-column-width" aria-label="X column width"></select></span>
-          </div>
-          <div class="layout-row">
-            <label class="setting-row"><span><strong>Zhihu</strong><small>Clean layout</small></span><span class="switch"><input id="zhihu-article-layout" type="checkbox"><span></span></span></label>
-            <span class="select-control"><select id="zhihu-article-width" aria-label="Zhihu column width"></select></span>
-          </div>
-        </section>
-      </details>
-      </div>
-
-      <footer><button id="options" type="button">All settings ↗</button><button id="refresh" type="button" title="Reapply settings to open pages">Reapply</button><span id="save-status" role="status"></span></footer>
+      <footer><button id="options" type="button">Settings</button><button id="refresh" type="button" title="Reapply settings to open pages">Refresh</button></footer>
+      <p id="save-status" role="status" aria-live="polite"></p>
     </main>
     <script src="src/content/core.js"></script>
-    <script src="src/settings/fonts.js"></script>
     <script src="src/popup/popup.js"></script>
   </body>
 </html>

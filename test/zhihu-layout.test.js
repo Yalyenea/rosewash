@@ -119,19 +119,21 @@ test("clears pending Zhihu markers when disabled and resumes on the current rout
   runtime.assertKind("home");
 });
 
-test("hides Zhihu chrome outside the reading column", async () => {
+test("keeps Zhihu navigation and its clearance while hiding reading distractions", async () => {
   const css = await readFile(new URL("../src/sites/zhihu.css", import.meta.url), "utf8");
   const rule = css.match(
     /html:is\([\s\S]*?\[data-rosewash-zhihu-article\][\s\S]*?\) :is\(([\s\S]*?)\) \{\s*display:\s*none !important;/
   )?.[1];
 
   assert.ok(rule);
-  assert.match(rule, /\.AppHeader/);
-  assert.match(rule, /\.App > :not\(\.App-main\)/);
-  assert.match(rule, /div:has\(> \.AppHeader\)/);
-  assert.match(rule, /div:has\(\+ \.App-main\)/);
-  assert.match(rule, /\.PageHeader/);
-  assert.match(rule, /\.ColumnPageHeader/);
+  const articleHeaderRule = css.match(/html\[data-rosewash-zhihu-article\] :is\(([^)]*\.AppHeader[^)]*)\)\s*\{([^}]*)\}/);
+  assert.ok(articleHeaderRule);
+  assert.match(articleHeaderRule[1], /\.ColumnPageHeader/);
+  assert.match(articleHeaderRule[2], /display:\s*none !important/);
+  assert.doesNotMatch(rule, /Header/);
+  assert.doesNotMatch(css, /\.App > :not\(\.App-main\)|div:has\(\+ \.App-main\)/);
+  assert.match(css, /html\[data-rosewash-zhihu-article\] :is\(\.App-main, \.Post-content\)\s*\{\s*padding-top:\s*0 !important/);
+  assert.match(css, /\) :is\(\.App-main, \.Post-content\) \{[\s\S]*?--container-width:/);
   assert.match(rule, /\.CornerButtons/);
   assert.match(css, /\.Post-content > :not\(:has\(\.Post-Main\)\)/);
   assert.match(
@@ -200,7 +202,7 @@ test("exposes snapped Zhihu article widths in settings", async () => {
   assert.match(input, /type="range"/);
   assert.match(input, /min="0"/);
   assert.match(input, /max="3"/);
-  assert.match(html, /Zhihu · Clean layout/);
+  assert.match(html, /zhihu\.com/);
   assert.match(options, /core\.ZHIHU_ARTICLE_WIDTHS\[Number\(zhihuWidthInput\.value\)\]/);
   assert.match(content, /`\$\{settings\.zhihuArticleWidth\}px`/);
   assert.match(content, /ZHIHU_WIDTH_PROPERTY/);

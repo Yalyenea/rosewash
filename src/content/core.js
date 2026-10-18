@@ -250,7 +250,7 @@
     moon: "dark"
   });
   // Scan slices: elements read per batch and time spent per frame.
-  const SCAN_BATCH_SIZE = 200;
+  const SCAN_BATCH_SIZE = 1000;
   const SCAN_BUDGET_MS = 8;
   const OBSERVER_OPTIONS = Object.freeze({
     childList: true, subtree: true, characterData: true,
@@ -282,6 +282,7 @@
     ".katex",
     ".MathJax"
   ].join(",");
+  const FONT_SKIP_SELECTOR = "[data-rosewash-ignore], [role='img'], svg, .katex, .MathJax, mjx-container, .CodeMirror, .cm-editor, .monaco-editor, [contenteditable]";
 
   function clamp255(value) {
     return Math.max(0, Math.min(255, Number(value)));
@@ -990,14 +991,15 @@
       return palette;
     }
 
-    root.setAttribute(THEME_ATTRIBUTE, theme);
+    if (root.getAttribute(THEME_ATTRIBUTE) !== theme) root.setAttribute(THEME_ATTRIBUTE, theme);
     // !important so stylesheet fallbacks in theme.css cannot keep Rose Pine.
-    root.style.setProperty("--rosewash-base", palette.base, "important");
-    root.style.setProperty("--rosewash-surface", palette.surface, "important");
-    root.style.setProperty("--rosewash-overlay", palette.overlay, "important");
-    root.style.setProperty("--rosewash-muted", palette.muted, "important");
-    root.style.setProperty("--rosewash-text", palette.text, "important");
-    root.style.setProperty("--rosewash-link", palette.link, "important");
+    for (const token of ["base", "surface", "overlay", "muted", "text", "link"]) {
+      const name = `--rosewash-${token}`;
+      if (root.style.getPropertyValue(name) !== palette[token]
+        || root.style.getPropertyPriority(name) !== "important") {
+        root.style.setProperty(name, palette[token], "important");
+      }
+    }
     return palette;
   }
 
@@ -1635,7 +1637,7 @@
       ]);
     }
 
-    function readTintSnapshot(element) {
+    function readTintSnapshot(element, scanFont) {
       const computedStyle = window.getComputedStyle(element);
       return {
         element,
@@ -1644,7 +1646,7 @@
         backgroundClip: computedStyle.backgroundClip,
         webkitBackgroundClip: computedStyle.webkitBackgroundClip,
         color: computedStyle.color,
-        fontFamily: activeFonts.length ? computedStyle.fontFamily : "",
+        fontFamily: scanFont ? computedStyle.fontFamily : "",
         borderTopColor: computedStyle.borderTopColor,
         borderRightColor: computedStyle.borderRightColor,
         borderBottomColor: computedStyle.borderBottomColor,
@@ -1664,8 +1666,7 @@
       const element = snapshot.element;
       if (activeFonts.length && snapshot.fontFamily) {
         const original = snapshot.fontFamily.replace(/"?Rosewash(?:English|Chinese|Math|Monospace)"?,\s*/g, "");
-        const protectedFont = element.closest("[data-rosewash-ignore], [role='img'], svg, .katex, .MathJax, mjx-container, .CodeMirror, .cm-editor, .monaco-editor, [contenteditable]")
-          || /icon|awesome|material\s*(symbols|icons)|glyph|dingbat/i.test(original);
+        const protectedFont = /icon|awesome|material\s*(symbols|icons)|glyph|dingbat/i.test(original);
         let families = [];
         if (!protectedFont) {
           if (element.closest("math")) {
@@ -1678,7 +1679,12 @@
         }
         const prefix = activeFonts.filter((face) => families.includes(face.family))
           .map((face) => '"' + face.family + '", ').join("");
-        setStyle(element, "font-family", prefix + original);
+        // Ancestors already supply these faces to inheriting descendants.
+        // Rewriting them pins inherited fonts and invalidates styles needlessly.
+        if (prefix && !snapshot.fontFamily.replace(/["'\s]/g, "")
+          .startsWith(prefix.replace(/["'\s]/g, ""))) {
+          setStyle(element, "font-family", prefix + original);
+        }
       }
       const palette = PALETTES[theme];
       if (palette.tint === false || shouldSkipElement(element)) return;
@@ -1768,14 +1774,48 @@
     // descendants. Restoring descendants is deferred to their own slice, so
     // elements keep their previous tint instead of flashing page colors.
     function enqueueSubtree(root, restoreDescendants) {
-      scanQueue.push([root, false]);
+      enqueueElement(root, false);
       enqueueShadowContent(root, restoreDescendants);
       enqueueDescendants(root, restoreDescendants);
     }
 
-    function enqueueDescendants(root, restore) {
-      for (const element of root.querySelectorAll("*")) {
+    function scanOptions(element) {
+      if (isSiteIgnored(element)) return { tint: false, font: false };
+      const skipElement = shouldSkipElement(element);
+      return {
+        tint: PALETTES[activeTheme].tint !== false && !skipElement,
+        font: activeFonts.length > 0 && !element.closest(FONT_SKIP_SELECTOR)
+          && (!skipElement || (element.closest("math")
+            && activeFonts.some((face) => face.family === "RosewashMath")))
+      };
+    }
+
+    function enqueueElement(element, restore) {
+      const scan = scanOptions(element);
+      // Protected formula nodes must not split useful work into hundreds of
+      // tiny read/write batches. Keep old overrides queued until restored.
+      if (scan.tint || scan.font || (restore && element.hasAttribute(TINT_ATTRIBUTE))) {
         scanQueue.push([element, restore]);
+      }
+      return scan;
+    }
+
+    function enqueueDescendants(root, restore) {
+      const skipped = new WeakSet();
+      const mathFont = activeFonts.some((face) => face.family === "RosewashMath");
+      const skipDescendants = (element, scan) => !scan.tint && !scan.font
+        && (!mathFont || element.closest(FONT_SKIP_SELECTOR) || element.closest("math"));
+      if (isElementNode(root) && skipDescendants(root, scanOptions(root))) skipped.add(root);
+      for (const element of root.querySelectorAll("*")) {
+        // A protected formula's children share its decision. Avoid walking
+        // their ancestors again for every nested span and MathML symbol.
+        if (skipped.has(element.parentElement)) {
+          skipped.add(element);
+          if (restore && element.hasAttribute(TINT_ATTRIBUTE)) scanQueue.push([element, true]);
+        } else {
+          const scan = enqueueElement(element, restore);
+          if (skipDescendants(element, scan)) skipped.add(element);
+        }
         enqueueShadowContent(element, restore);
       }
     }
@@ -1804,8 +1844,11 @@
         // Read the whole batch before writing, so styles recalculate once.
         const snapshots = [];
         for (const [element] of elements) {
-          if (isSiteIgnored(element)) continue;
-          if (activeFonts.length || !shouldSkipElement(element)) snapshots.push(readTintSnapshot(element));
+          // Recheck because a page can change classes between scan slices.
+          const scan = scanOptions(element);
+          if (scan.tint || scan.font) {
+            snapshots.push(readTintSnapshot(element, scan.font));
+          }
         }
         for (const snapshot of snapshots) processSnapshot(snapshot, activeTheme);
         if (window.performance.now() - started >= SCAN_BUDGET_MS) break;
