@@ -163,13 +163,13 @@ and observation. Both UIs list the plain option first, followed by Rose Pine
 and the remaining families sorted by label. Legacy `preset` and `mode: auto|dawn|moon`
 storage still normalize cleanly.
 
-The popup exposes a one-click on/off switch for the current hostname, with
-Use default to clear its override. Explicit choices persist when
-`defaultEnabled` changes. Clearing a
-hostname's rule restores its parent rule if present, otherwise the global
+The popup exposes an Allowed / Blocked button for the current hostname.
+Remove a hostname from the settings site lists to clear its override. Explicit
+choices persist when `defaultEnabled` changes. Clearing a hostname's rule
+restores its parent rule if present, otherwise the global
 default. The most specific hostname wins; a blocked rule wins a tie, and the
-global enable switch pauses every site. More settings starts collapsed and
-contains the default rule, font selectors, layout switches, and column widths.
+global enable switch pauses every site. Pick sits beside the site button;
+X and Zhihu layout switches appear only on their matching site.
 Each popup change immediately sends an edit to the worker. Pending local edits
 stay visible until the saves finish, then the popup reloads current storage.
 The settings page sends its edited form and baseline to the same queue.
@@ -177,10 +177,10 @@ The settings page sends its edited form and baseline to the same queue.
 to current storage. Explicit additions clear the opposite rule for that host;
 disabled wins when the edited form explicitly keeps both. Unrelated external
 changes remain intact.
-Expanded settings scroll above a persistent footer. The shortcut button beside
-the site switch shows the actual browser binding and opens extension shortcut settings.
-The settings page provides the same shortcut display and editing entry point;
-both refresh the binding when reopened or focused.
+Settings has Appearance, Fonts, Sites, and Shortcuts tabs. Palette grids stay
+expanded, and changes save automatically. Text and sliders settle for 350ms;
+leaving the field or page flushes pending input. The worker owns each save
+once sent. Shortcuts displays the browser bindings and opens shortcut settings.
 
 The flat settings layout follows the selected palette and system appearance.
 The shared font picker automatically enumerates installed families with
@@ -200,9 +200,9 @@ layout.
 
 The Zhihu clean layout is the same kind of optional overlay. When
 `zhihuArticleLayout` is on, home (`/`, `/follow`, `/hot`), `/question/{id}`,
-and `/p/{id}` pages hide the top bar and other chrome and center a column at
-the selected width. The column shrinks with the viewport, and controls wrap
-on narrow screens. Fixed answer actions follow the column when resized.
+and `/p/{id}` pages center a reading column at the selected width. Only
+articles hide the top bar; all other routes preserve navigation. The column
+shrinks with the viewport, and controls wrap on narrow screens. Fixed answer actions follow the column when resized.
 Other Zhihu routes keep the native layout. The isolated content script listens
 to `navigation.currententrychange` for page-world `pushState`, `replaceState`,
 and back/forward navigation, then updates the page marker.

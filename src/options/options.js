@@ -38,8 +38,6 @@
   const fontPicker = globalThis.RosewashFonts.createPicker({
     enabledInput: customFontsInput, fields: fontFields, status: fontListStatus
   });
-  const saveButton = document.querySelector("#save");
-  const resetButton = document.querySelector("#reset");
   const status = document.querySelector("#status");
   const shortcutBindings = [
     ["toggle-current-site", document.querySelector("#shortcut-site")],
@@ -82,6 +80,20 @@
   let selectedLight = DEFAULT_SETTINGS.presetLight;
   let selectedDark = DEFAULT_SETTINGS.presetDark;
   let formBaseline = DEFAULT_SETTINGS;
+  let loaded = false;
+  let saveTimer = 0;
+  let statusTimer = 0;
+  let saveRevision = 0;
+
+  const panels = Array.from(document.querySelectorAll(".tab-panel"));
+  const tabs = Array.from(document.querySelectorAll("[data-panel]"));
+  for (const tab of tabs) tab.addEventListener("click", () => {
+    for (const panel of panels) panel.hidden = panel.id !== tab.dataset.panel;
+    for (const button of tabs) {
+      if (button === tab) button.setAttribute("aria-current", "page");
+      else button.removeAttribute("aria-current");
+    }
+  });
 
   function normalizeHost(host) {
     return String(host || "").trim().toLowerCase().replace(/^\.+/, "");
@@ -113,6 +125,7 @@
       root.style.setProperty(`--${token}`, palette[token]);
     }
     root.style.setProperty("--accent", palette.link);
+    root.style.setProperty("--love", core.isDarkThemeKey(themeKey) ? "#eb6f92" : "#b4637a");
     root.style.colorScheme = core.isDarkThemeKey(themeKey) ? "dark" : "light";
   }
 
@@ -156,7 +169,7 @@
         : "Takes effect with a dark palette";
   }
 
-  // Removing a rule only edits the form; Save merges it per site like host lists.
+  // Rule removals use the same per-site merge as automatic host-list saves.
   function renderIgnoredElements() {
     const sites = Object.entries(ignoredElements);
     if (!sites.length) {
@@ -185,6 +198,7 @@
           ignoredElements = { ...ignoredElements, [host]: rest };
           if (!rest.length) delete ignoredElements[host];
           renderIgnoredElements();
+          saveSettings();
         });
         row.appendChild(code);
         row.appendChild(remove);
@@ -197,8 +211,9 @@
   }
 
   function setStatus(text) {
+    window.clearTimeout(statusTimer);
     status.textContent = text;
-    window.setTimeout(() => {
+    statusTimer = window.setTimeout(() => {
       status.textContent = "";
     }, 1600);
   }
@@ -252,6 +267,7 @@
 
   function selectLight(presetId) {
     selectedLight = presetId;
+    document.querySelector(".palette-group[data-variant='light'] .selected-name").textContent = core.PRESETS[presetId].label;
     markSelected(lightList, presetId);
     paintSettingsChrome();
     renderImageDimming();
@@ -259,6 +275,7 @@
 
   function selectDark(presetId) {
     selectedDark = presetId;
+    document.querySelector(".palette-group[data-variant='dark'] .selected-name").textContent = core.PRESETS[presetId].label;
     markSelected(darkList, presetId);
     paintSettingsChrome();
     renderImageDimming();
@@ -271,8 +288,10 @@
     defaultInput.checked = normalized.defaultEnabled;
     fontPicker.render(normalized);
     xCompactInput.checked = normalized.xCompactLayout;
+    xSingleWidthInput.disabled = !normalized.xCompactLayout;
     renderXSingleColumnWidth(normalized.xSingleColumnWidth);
     zhihuLayoutInput.checked = normalized.zhihuArticleLayout;
+    zhihuWidthInput.disabled = !normalized.zhihuArticleLayout;
     renderZhihuArticleWidth(normalized.zhihuArticleWidth);
     dimInput.checked = normalized.dimImages;
     renderImageBrightness(normalized.imageBrightness);
@@ -289,6 +308,7 @@
   async function load() {
     const raw = await chrome.storage.sync.get(null);
     render(raw);
+    loaded = true;
     await fontPicker.load();
   }
 
@@ -313,63 +333,83 @@
     });
   }
 
-  saveButton.addEventListener("click", async () => {
+  async function saveSettings() {
+    window.clearTimeout(saveTimer);
+    saveTimer = 0;
+    if (!loaded) return;
     const next = formSettings();
+    if (JSON.stringify(next) === JSON.stringify(formBaseline)) return;
     const baseline = formBaseline;
-    saveButton.disabled = true;
-    resetButton.disabled = true;
+    formBaseline = next;
+    const revision = ++saveRevision;
+    window.clearTimeout(statusTimer);
+    status.textContent = "Saving…";
     try {
+      // The background owns the write immediately, even if this page closes.
+      // Advance the form baseline before yielding so rapid reversals are saved.
       const response = await chrome.runtime.sendMessage({
         type: "rosewash:edit-settings", baseline, settings: next
       });
       if (!response?.ok) throw new Error(response?.error || "Settings were not saved");
-      if (JSON.stringify(formSettings()) === JSON.stringify(next)) render(response.settings);
-      else formBaseline = next;
-      setStatus("Saved");
+      if (revision === saveRevision) setStatus("Saved");
     } catch (error) {
-      setStatus(`Save failed: ${error.message}`);
-    } finally {
-      saveButton.disabled = false;
-      resetButton.disabled = false;
+      if (revision === saveRevision) formBaseline = baseline;
+      window.clearTimeout(statusTimer);
+      status.textContent = `Save failed: ${error.message}`;
     }
-  });
+  }
 
-  resetButton.addEventListener("click", async () => {
-    saveButton.disabled = true;
-    resetButton.disabled = true;
-    try {
-      const response = await chrome.runtime.sendMessage({ type: "rosewash:reset-settings" });
-      if (!response?.ok) throw new Error(response?.error || "Settings were not reset");
-      render(response.settings);
-      setStatus("Reset");
-    } catch (error) {
-      setStatus(`Reset failed: ${error.message}`);
-    } finally {
-      saveButton.disabled = false;
-      resetButton.disabled = false;
-    }
+  function scheduleSave() {
+    window.clearTimeout(saveTimer);
+    saveTimer = window.setTimeout(saveSettings, 350);
+  }
+
+  // Text and sliders settle briefly; blur, tab switches, and page exit flush
+  // pending input so users do not have to wait before leaving the page.
+  for (const input of [hostTextarea, enabledHostsTextarea]) {
+    input.addEventListener("input", scheduleSave);
+    input.addEventListener("change", saveSettings);
+  }
+  for (const input of [xSingleWidthInput, zhihuWidthInput, brightnessInput]) {
+    input.addEventListener("change", saveSettings);
+  }
+  for (const input of [enabledInput, defaultInput, customFontsInput, xCompactInput, zhihuLayoutInput, dimInput, ...fontFields.map(field => field.input)]) {
+    input.addEventListener("change", saveSettings);
+  }
+  function flushSave() {
+    if (saveTimer) saveSettings();
+  }
+  window.addEventListener("pagehide", flushSave);
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) flushSave();
   });
+  for (const tab of tabs) tab.addEventListener("click", flushSave);
+  xCompactInput.addEventListener("change", () => { xSingleWidthInput.disabled = !xCompactInput.checked; });
+  zhihuLayoutInput.addEventListener("change", () => { zhihuWidthInput.disabled = !zhihuLayoutInput.checked; });
 
   xSingleWidthInput.addEventListener("input", () => {
     renderXSingleColumnWidth(selectedXSingleColumnWidth());
+    scheduleSave();
   });
 
   zhihuWidthInput.addEventListener("input", () => {
     renderZhihuArticleWidth(selectedZhihuArticleWidth());
+    scheduleSave();
   });
 
   brightnessInput.addEventListener("input", () => {
     renderImageBrightness(selectedImageBrightness());
+    scheduleSave();
   });
   dimInput.addEventListener("change", renderImageDimming);
 
   for (const input of document.querySelectorAll("input[name='appearance']")) {
-    input.addEventListener("change", () => { paintSettingsChrome(); renderImageDimming(); });
+    input.addEventListener("change", () => { paintSettingsChrome(); renderImageDimming(); return saveSettings(); });
   }
   systemAppearance.addEventListener("change", () => { paintSettingsChrome(); renderImageDimming(); });
 
-  fillPresetList(lightList, "light", selectLight);
-  fillPresetList(darkList, "dark", selectDark);
+  fillPresetList(lightList, "light", (id) => { selectLight(id); return saveSettings(); });
+  fillPresetList(darkList, "dark", (id) => { selectDark(id); return saveSettings(); });
   paintSettingsChrome();
   refreshShortcut();
   load();

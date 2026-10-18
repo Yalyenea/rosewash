@@ -19,7 +19,7 @@ Stage with `just dist` and load the `dist/` folder as an unpacked extension
 ```text
 manifest.json              MV3 entry: permissions, content scripts, SW, commands, icons
 icons/                     icon.svg / icon-off.svg sources and their 16/32/48/128 PNGs
-popup.html + src/popup/    Action popup (site policy, picker, palettes, images, fonts, site layouts)
+popup.html + src/popup/    Action popup (site policy, picker, palettes, matching site layout)
 options.html + src/options/ Settings (palettes, appearance, images, site layouts, site and element rules)
 src/settings/fonts.js     Shared automatic system font picker and previews
 src/background/            Service worker (settings writes and commands)
@@ -57,7 +57,7 @@ and apply the engine. Page responses do not hold up the write queue.
 | Popup | `src/popup/popup.js` | Daily controls + immediate edit requests to background |
 | Options | `src/options/options.js` | Palettes, appearance, site layouts, block list |
 | X layout | `src/sites/x.js`, `x.css` | Compact navigation rail and centered single-column streams |
-| Zhihu layout | `src/sites/zhihu.js`, `zhihu.css` | Centered widescreen column on home, questions, and articles; hides page chrome |
+| Zhihu layout | `src/sites/zhihu.js`, `zhihu.css` | Centered reading columns; article-only header hiding |
 
 ## Settings schema
 
@@ -319,8 +319,10 @@ Pseudo-elements cannot take per-element inline tints.
 ### Scan slices
 
 Scans run through a queue in document order, so ancestors are painted before
-their descendants. Each frame processes batches of 200 elements until 8 ms
-have passed, then continues in the next frame. A batch restores the elements
+their descendants. Each frame processes batches of 1000 elements until 8 ms
+have passed, then continues in the next frame. Protected formula subtrees
+skip style reads; inherited custom fonts and unchanged theme tokens avoid
+redundant writes. A batch restores the elements
 it is about to refresh, reads all of their computed styles, then writes, so
 styles recalculate once per batch. Elements waiting in the queue keep their
 previous tint; refreshes and theme changes do not flash page colors. A
@@ -418,7 +420,7 @@ A rejected operation reports an error without blocking later saves.
 `mergeSettingsEdits(latest, baseline, edited)` applies fields changed from the
 UI baseline. Host lists merge additions and removals with the latest lists.
 `ignoredElements` merges the same way per host, so a picker save made while the
-settings page is open survives that page's next Save.
+settings page is open survives that page's next automatic save.
 An explicit addition removes the same hostname from the opposite list; if the
 edited form includes it in both lists, the disabled rule wins. Other hosts and
 untouched fields retain external changes.
@@ -452,61 +454,40 @@ old snapshot. Notification responses never block the next save.
 
 **Popup**
 
-- Reads the active tab host and offers a one-click site switch. Toggling saves
-  an explicit on/off rule; Use default clears that override. The row shows its
-  effective On / Off state, inherited rules, and global pause state. Storage
-  changes also update the open popup.
-- Uses a 300px popup with a scrolling settings area and a persistent footer.
-- More settings starts collapsed and contains the default on/off switch,
-  custom fonts, site layout switches, and column widths.
-- Shows `Unavailable` and a reason on browser-protected pages, including the
-  Web Store developer dashboard, and disables site toggling and Refresh.
-- Exposes X and Zhihu layout switches and column widths on every page.
-- Offers the custom-font switch and four font selectors, with automatic font
-  enumeration through the shared `src/settings/fonts.js` picker.
-- Two palette selects (`presetLight` / `presetDark`); lists only families
-  that expose that variant.
-- On change: immediately send the baseline and edited settings to the worker;
-  site controls send the hostname and desired policy. Pending local edits stay
-  visible while saves run. After the last response, reload current storage.
-  Reapply asks the worker to notify open tabs.
-- Pick element sends `rosewash:start-picker` to the tab's top frame and closes
-  the popup. It is disabled when Rosewash is paused, the site is off, or the
-  page is protected. The row shows how many elements are ignored on the site,
-  and Clear removes them all.
-- Images, under More settings, holds the dimming switch and a 70 / 80 / 90%
-  brightness select. Its status reads Dark palettes when off, Active when the
-  current palette dims images, or Waits for a dark palette.
-- A button beside the site switch shows the actual binding returned by
-  `chrome.commands.getAll()`, or Set key when unassigned. Clicking it opens
-  `chrome://extensions/shortcuts`. The binding refreshes on opening and focus;
-  its title explains that the shortcut saves an Always on / Always off choice.
+- Uses a 292px classic layout: host, global switch, appearance, light and dark
+  palette selectors, site controls, and Settings / Refresh.
+- Pick sits immediately before Allowed / Blocked. The site button saves an
+  explicit on/off rule. Storage changes update the open popup.
+- X and Zhihu layout switches appear only on their matching hosts. Fonts,
+  image dimming, widths, site lists, and shortcut bindings live in settings.
+- Browser-protected pages show Unavailable with a reason and disable the site
+  button, picker, and Refresh.
+- Every edit sends its baseline and edited settings to the worker immediately.
+  Pending edits remain visible until saves finish, then current storage reloads.
+- Pick starts the top-frame element picker and closes the popup. It is disabled
+  while globally paused, blocked on the site, or on a protected page.
 
 **Options**
 
-- Edit enabled / default site policy / appearance / light and dark palette
-  grids / site layouts / always-on and always-off lists (one host per line).
-  Each grid only lists families with that
-  variant.
-- Compact Appearance, Theme, Fonts, and Sites sections use flat grids and
-  separators. Save / Reset follow the content.
-- Save sends the edited form and its baseline to the worker, preserving changes
-  made elsewhere to untouched fields. Edits typed while saving remain in the
-  form for the next save. Reset requests defaults through the same queue.
-  Both actions disable Save / Reset until completion and display failures.
-- Settings chrome previews the selected appearance and palette immediately,
-  including system appearance changes in Auto mode.
-- The shared font picker calls `chrome.fontSettings.getFontList()` on opening
-  either UI. It shows display names and stores font IDs. Enumeration errors
-  and unavailable preview fonts are reported explicitly.
-- Four independent previews use the same local FontFace definitions as pages.
-- Keyboard shortcuts list both commands with their current binding or Not
-  set; Change shortcuts opens the browser's extension shortcut settings.
-  Opening, focus, and returning to a visible page refresh the bindings.
-- Images: the dimming switch and a brightness slider, disabled while dimming
-  is off. The status line says whether the selected palette dims images.
-- Ignored elements lists picker rules by site. Remove edits the form; Save
-  applies it through the per-site merge.
+- Four tabs: Appearance, Fonts, Sites, and Shortcuts. The tab label identifies
+  its panel; there is no repeated panel heading.
+- Light and dark palettes remain expanded in equal-width button grids.
+  Settings chrome follows the selected palette and system appearance.
+- Changes save automatically through the background merge queue. Text and
+  sliders debounce by 350ms; change, tab switches, page hiding, and page exit
+  flush pending input. Each edit advances its baseline before sending, so
+  rapid reversals remain ordered. Save responses leave current form edits intact.
+- Saving / Saved feedback clears after success; failures remain visible.
+- The shared font picker enumerates system fonts with
+  `chrome.fontSettings.getFontList()`. Four independent previews use the same
+  local FontFace definitions as pages. Enumeration and preview errors are shown.
+- Clean Layout groups X.com and 知乎 zhihu.com cards with a switch and column
+  width slider. Always on / Always off lists and ignored elements follow.
+- Images use one row for the dimming switch, brightness slider, and percentage.
+  The slider is disabled while dimming is off.
+- Shortcuts shows actual bindings or Not set. Change shortcuts opens the
+  browser's shortcut settings; bindings refresh on opening, focus, and return.
+- Removing an ignored-element rule saves immediately through the per-site merge.
 
 ## Element picker
 
@@ -577,9 +558,11 @@ to the native `navigation.currententrychange` event, covering page-world
 `history.pushState` / `replaceState` and browser back/forward navigation.
 The observer only watches the layout attribute on `html`.
 
-- `zhihu.css` hides the top bar, right rail, and other chrome, then centers
-  the remaining column at the selected width. The width shrinks to the
-  available viewport with 24px gutters. Question headers clear native minimum
+- `zhihu.css` hides article top bars and extra side chrome, then centers
+  reading content at the selected width. Home, question, profile, and other
+  non-article pages retain navigation and its native top clearance. Reading
+  width variables are scoped to content so the header keeps its own layout.
+  The width shrinks to the available viewport with 24px gutters. Question headers clear native minimum
   widths; author details shrink beside follow buttons. Topic metadata, home
   composer tools, and content action bars wrap as needed. Fixed answer actions
   and their placeholders use the reading-column width after resizing.

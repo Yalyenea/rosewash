@@ -83,7 +83,7 @@ curated theme presets.
    split to `presetLight` + `presetDark` + `appearance` with legacy `preset` /
    `mode` migration.
 5. ~~Add keyboard shortcuts for global toggle and site toggle.~~ Site toggle
-   shipped (`Alt+Shift+B`). Global enable shortcut still open.
+   shipped (`Alt+Shift+B`); global pause/resume shipped (`Alt+Shift+P`).
 6. Split browser packaging into target-specific manifests and archives:
    Chromium first, Firefox next, Safari after the WebExtension wrapper path is
    understood.

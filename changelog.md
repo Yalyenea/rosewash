@@ -1,7 +1,18 @@
 # Changelog
 
-## Unreleased
+## 0.2.5 - 2026-10-18
 
+- Restore the compact classic popup with Pick beside the site state and
+  layout controls shown only on their matching site.
+- Rebuild settings into Appearance, Fonts, Sites, and Shortcuts tabs. Keep
+  palette choices expanded and aligned; combine image dimming controls into
+  one row and remove repeated headings and explanatory copy.
+- Save settings automatically, including pending text edits when leaving the
+  page. Preserve concurrent edits and rapid switch changes.
+- Keep Zhihu navigation visible on home, question, profile, and other
+  non-article pages. Only articles hide the top bar.
+- Skip protected formula subtrees before reading styles. Reuse inherited
+  custom fonts and avoid repeated writes of unchanged theme tokens.
 - Keep scrolling smooth on pages that insert styles while they load content.
   New styles repaint only the elements their color, border, or font rules
   select, instead of the whole page. On X, scrolling no longer triggers
@@ -18,13 +29,11 @@
 - Pause or resume Rosewash on all sites with `Alt+Shift+P`. The settings page
   lists both shortcuts.
 - Pick an element in the popup to leave it, and everything inside it,
-  untouched on the current site. The popup shows how many elements are
-  ignored and clears them; the settings page lists and removes each rule.
+  untouched on the current site. The settings page lists and removes each rule.
 - Dim images and videos with dark palettes at 70, 80, or 90% brightness. The
-  popup and settings page show whether dimming applies to the current palette.
-- Replace the popup's site-policy dropdown with a one-click switch and a
-  Use default action. Keep the shortcut beside the site switch, show external
-  setting changes immediately, and fit expanded controls in a scrollable popup.
+  settings page combines the dimming switch, brightness slider, and value.
+- Toggle the current site with an Allowed / Blocked button and reflect
+  external settings changes immediately.
 - Save popup, settings-page, and shortcut changes in order through the
   background service. Closing the popup keeps pending saves, and delayed
   page updates use the latest saved settings.
