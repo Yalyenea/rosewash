@@ -1,6 +1,6 @@
 # Rosewash Privacy Policy
 
-Last updated: September 19, 2026
+Last updated: October 18, 2026
 
 Rosewash customizes the appearance of web pages using color palettes, optional local fonts, and optional reading layouts.
 
@@ -10,7 +10,7 @@ Rosewash processes page elements and their styles on your device to change color
 
 ## Saved preferences and browser sync
 
-Rosewash saves your enabled state, appearance mode, palettes, selected font names, layout preferences, and excluded website hostnames using `chrome.storage.sync`. These preferences remain until you change or reset them. If your browser enables extension settings synchronization, its sync provider may receive and synchronize these preferences across your devices. In Google Chrome, this service is provided by Google and is subject to your browser settings and Google's privacy policy: https://policies.google.com/privacy.
+Rosewash saves your enabled state, appearance mode, palettes, selected font names, layout and image-dimming preferences, website rules, and per-site CSS selectors for ignored elements using `chrome.storage.sync`. These preferences remain until you change or remove them. If your browser enables extension settings synchronization, its sync provider may receive and synchronize these preferences across your devices. In Google Chrome, this service is provided by Google and is subject to your browser settings and Google's privacy policy: https://policies.google.com/privacy.
 
 Rosewash does not operate a server that receives these preferences. The developer cannot access your browser sync storage.
 
@@ -24,7 +24,7 @@ Rosewash contains no advertising, analytics, telemetry, or remote executable cod
 
 ## Your controls
 
-You can disable Rosewash globally, exclude individual websites, turn off custom fonts, and edit or reset saved preferences from its settings. Reset restores the default settings and clears the excluded-site list and selected font names. You can manage synchronization and local font permissions in your browser. Uninstalling Rosewash removes the extension from that browser; management of any synchronized copy is controlled by the browser's sync service.
+You can disable Rosewash globally, exclude individual websites, turn off custom fonts or image dimming, and edit saved preferences from its settings. You can remove website rules and ignored-element selectors in the Sites tab, or choose Page default for a font category. Changes save automatically. You can manage synchronization and local font permissions in your browser. Uninstalling Rosewash removes the extension from that browser; management of any synchronized copy is controlled by the browser's sync service.
 
 ## Contact
 
