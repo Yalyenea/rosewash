@@ -115,8 +115,9 @@ new content-script instance can remove stale overrides after extension reload.
 
 ## Background
 
-`src/background/background.js` is the MV3 service worker. It loads
-`src/content/core.js` via `importScripts` for settings and host helpers.
+`src/background/background.js` runs as a Chromium MV3 service worker or a
+Firefox event page. Chromium loads `src/content/core.js` via `importScripts`;
+the Firefox manifest lists core before background in `background.scripts`.
 Popup edits, settings-page saves and resets, and keyboard commands share one
 storage write queue. Each operation reads current storage, applies its edit,
 and persists the result. Accepted operations continue after the popup closes.
@@ -128,7 +129,8 @@ notify all tabs. Notifications contain only their message type, and content
 scripts read current storage before applying. Tab responses do not block
 subsequent writes. Storage change listeners keep other tabs synchronized.
 
-Users can rebind the shortcut under `chrome://extensions/shortcuts`.
+Users can rebind shortcuts under `chrome://extensions/shortcuts`,
+`edge://extensions/shortcuts`, or Firefox's `about:addons` gear menu.
 
 ## UI
 
@@ -183,8 +185,10 @@ leaving the field or page flushes pending input. The worker owns each save
 once sent. Shortcuts displays the browser bindings and opens shortcut settings.
 
 The flat settings layout follows the selected palette and system appearance.
-The shared font picker automatically enumerates installed families with
+The shared font picker enumerates installed families in Chromium with
 `chrome.fontSettings.getFontList()` using the `fontSettings` permission.
+Firefox has no such API, so the same fields accept installed font names and
+the Firefox manifest omits that permission.
 The engine resolves local face names and applies separate local faces
 for English, Chinese, native MathML, and monospace text, restoring original
 fonts when disabled. Renderer-managed formulas and code editors are protected.

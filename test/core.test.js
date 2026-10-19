@@ -49,6 +49,17 @@ test("embedded frames follow the top-level site rule", async () => {
   assert.equal(core.policyHostForLocation({ href: "https://top.example.org/", ancestorOrigins: [] }), "top.example.org");
 });
 
+test("store and account restrictions match the target browser", async () => {
+  const core = await loadCore();
+  assert.equal(core.pageRestrictionForUrl("https://addons.mozilla.org/en-US/firefox/", "firefox"), "restricted");
+  assert.equal(core.pageRestrictionForUrl("https://support.mozilla.org/", "firefox"), "restricted");
+  assert.equal(core.pageRestrictionForUrl("https://addons.mozilla.org/", "chrome"), "");
+  assert.equal(core.pageRestrictionForUrl("https://chromewebstore.google.com/", "firefox"), "");
+  assert.equal(core.pageRestrictionForUrl("https://microsoftedge.microsoft.com/addons/detail/test", "edge"), "webstore");
+  assert.equal(core.pageRestrictionForUrl("https://microsoftedge.microsoft.com/help", "edge"), "");
+  assert.equal(core.pageRestrictionForUrl("https://addons.mozilla.org.example.com/", "firefox"), "");
+});
+
 test("parses rgb, rgba, and hex colors", async () => {
   const core = await loadCore();
   assert.deepEqual(plain(core.parseColor("rgb(255, 250, 243)")), {

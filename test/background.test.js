@@ -13,7 +13,7 @@ function deferred() {
   return { promise, resolve };
 }
 
-function background({ url = "https://x.com/home", messageError = false, beforeSet, notify } = {}) {
+function background({ url = "https://x.com/home", messageError = false, beforeSet, notify, firefox = false } = {}) {
   const writes = [];
   const messages = [];
   const errors = [];
@@ -24,10 +24,14 @@ function background({ url = "https://x.com/home", messageError = false, beforeSe
   const icons = [];
   let tabUpdated;
   let storageChanged;
-  const extensionUrl = "chrome-extension://test/";
+  const extensionUrl = `${firefox ? "moz-extension" : "chrome-extension"}://test/`;
   const context = { URL, console: { error: (...args) => errors.push(args) } };
   context.globalThis = context;
   context.importScripts = () => vm.runInNewContext(coreSource, context);
+  if (firefox) {
+    vm.runInNewContext(coreSource, context);
+    delete context.importScripts;
+  }
   context.chrome = {
     runtime: {
       id: "test",
@@ -92,6 +96,16 @@ test("shortcut persists each rapid toggle and notifies the command's tab without
     { tabId: 7, message: { type: "rosewash:settings-updated" } },
     { tabId: 7, message: { type: "rosewash:settings-updated" } }
   ]);
+});
+
+test("Firefox event pages load without importScripts and accept settings from moz-extension pages", async () => {
+  const runtime = background({ firefox: true });
+  const response = await runtime.send(edit({ appearance: "dark" }));
+  assert.equal(response.ok, true);
+  assert.equal(response.settings.appearance, "dark");
+  runtime.command({ id: 7, url: "https://www.zhihu.com/question/123" });
+  await runtime.done();
+  assert.deepEqual(runtime.writes.at(-1).disabledHosts, ["www.zhihu.com"]);
 });
 
 test("shortcut ignores protected pages", async () => {

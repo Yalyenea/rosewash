@@ -38,8 +38,8 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           "$HOME/.local/bin/just" --version
 
-      - name: Build release zip
-        run: just package
+      - name: Build release zips
+        run: just package-all
 
       - name: Name release asset
         id: asset
@@ -49,12 +49,13 @@ jobs:
             *) echo "Release tags must start with v, got: $TAG_NAME" >&2; exit 1 ;;
           esac
 
-          asset="release/rosewash-${TAG_NAME}.zip"
-          if [[ ! -f "$asset" ]]; then
-            echo "missing $asset" >&2
-            exit 1
-          fi
-          echo "path=$asset" >> "$GITHUB_OUTPUT"
+          for suffix in "" "-edge" "-firefox"; do
+            asset="release/rosewash-${TAG_NAME}${suffix}.zip"
+            if [[ ! -f "$asset" ]]; then
+              echo "missing $asset" >&2
+              exit 1
+            fi
+          done
 
       - name: Write release notes
         id: notes
@@ -70,9 +71,9 @@ jobs:
         run: |
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
             gh release edit "$TAG_NAME" --title "Rosewash ${TAG_NAME}" --notes-file "${{ steps.notes.outputs.path }}"
-            gh release upload "$TAG_NAME" "${{ steps.asset.outputs.path }}" --clobber
+            gh release upload "$TAG_NAME" release/rosewash-"${TAG_NAME}"*.zip --clobber
           else
-            gh release create "$TAG_NAME" "${{ steps.asset.outputs.path }}" \
+            gh release create "$TAG_NAME" release/rosewash-"${TAG_NAME}"*.zip \
               --title "Rosewash ${TAG_NAME}" \
               --notes-file "${{ steps.notes.outputs.path }}" \
               --verify-tag

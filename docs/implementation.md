@@ -6,13 +6,17 @@ For product roadmap, see [PLAN.md](../PLAN.md).
 
 ## What it is
 
-Rosewash is a **zero-build Manifest V3** Chromium extension. It covers page
+Rosewash is a **zero-build Manifest V3** extension for Chromium and desktop
+Firefox 148 or newer. It covers page
 surfaces, text, and neutral borders with Rose Pine Dawn / Moon tokens. There is
 no bundler, no runtime npm dependency, and no TypeScript compile step.
 
 Stage with `just dist` and load the `dist/` folder as an unpacked extension
 (not the repo root). `just package` writes the Chrome Web Store zip to
 `release/rosewash-vX.Y.Z.zip`, with `manifest.json` at the archive root.
+`just dist edge` and `just dist firefox` stage `dist-edge/` and `dist-firefox/`.
+`just package edge` / `firefox` write matching `-edge.zip` / `-firefox.zip`
+archives; `just package-all` creates all three. JavaScript is copied unchanged.
 
 ## Repository layout
 
@@ -21,8 +25,8 @@ manifest.json              MV3 entry: permissions, content scripts, SW, commands
 icons/                     icon.svg / icon-off.svg sources and their 16/32/48/128 PNGs
 popup.html + src/popup/    Action popup (site policy, picker, palettes, matching site layout)
 options.html + src/options/ Settings (palettes, appearance, images, site layouts, site and element rules)
-src/settings/fonts.js     Shared automatic system font picker and previews
-src/background/            Service worker (settings writes and commands)
+src/settings/fonts.js     Automatic font picker (Chromium), font-name inputs (Firefox), previews
+src/background/            Background runtime (settings writes and commands)
 src/content/
   core.js                  Pure engine + host helpers (testable via vm)
   content.js               Chrome wiring for content world
@@ -31,15 +35,19 @@ src/content/
 src/sites/                 Optional site-specific layout runtimes and styles
 test/                      Node tests + HTML fixtures
 scripts/validate.mjs       Manifest / file presence / syntax checks
-justfile                   test · validate · check · dist · package · clean
+scripts/browsers.mjs       Browser manifests and artifact names
+scripts/dist.mjs           Copies runtime files and writes the target manifest / zip
+justfile                   test · validate · check · dist · package · package-all · clean
 scripts/release-notes.mjs  GitHub Release notes from the version section in changelog.md
 dist/                      Generated loadable extension (`just dist`, gitignored)
-release/                   Chrome Web Store zip (`just package`, gitignored)
+dist-edge/, dist-firefox/   Generated browser-specific folders (gitignored)
+release/                   Browser store zips (gitignored)
 ```
 
 ## Runtime topology
 
-Popup and options send edits to the background service worker. Keyboard
+Popup and options send edits to the background runtime: a Chromium service
+worker or Firefox event page. Keyboard
 commands enter the same queue. The worker reads current settings, merges the
 edit, and writes `chrome.storage.sync` before acknowledging the save.
 
@@ -150,7 +158,8 @@ effective state as an explicit choice; the background shortcut uses this helper.
 ## Manifest details
 
 - **MV3**, version must match `package.json` (`scripts/validate.mjs` enforces).
-- Permissions: `storage`, `fontSettings`; host access via `"host_permissions": ["<all_urls>"]`.
+- Chromium permissions: `storage`, `fontSettings`; Firefox omits `fontSettings`.
+  Both use `"host_permissions": ["<all_urls>"]`.
 - Content scripts at `document_start`: `theme.css`, then `core.js`, then
   `content.js` (order matters: engine must exist before bootstrap). They run
   in every frame (`all_frames`, `match_about_blank`); site layouts only apply
@@ -158,13 +167,24 @@ effective state as an explicit choice; the background shortcut uses this helper.
 - `icons` and `action.default_icon` list the PNGs under `icons/`; `just dist`
   copies them, and `scripts/validate.mjs` checks that they exist.
 - Background service worker: `src/background/background.js`.
+- Firefox uses `background.scripts`, loading `core.js` before `background.js`.
+  Its stable add-on ID is `rosewash@rosewash`, minimum version is `148.0`,
+  and required data collection permissions are `["none"]`.
 - Command `toggle-current-site`: suggested key **`Alt+Shift+B`** (Mac:
   Option+Shift+B). Command `toggle-enabled`: suggested key **`Alt+Shift+P`**
   pauses or resumes Rosewash everywhere. Both are user-rebindable at
-  `chrome://extensions/shortcuts`; Chrome may leave a new command unassigned
+  `chrome://extensions/shortcuts` or `edge://extensions/shortcuts`. Firefox's
+  button shows instructions for `about:addons` → gear menu → Manage Extension
+  Shortcuts, since extensions cannot open that privileged page directly.
+  Chrome may leave a new command unassigned
   on update, and the settings page then shows Not set.
 - `src/content/picker.js` loads after `content.js` in every frame but only
   runs in the top frame.
+
+`browserKind()` identifies Firefox by its extension URL scheme, then Edge by
+its user agent. `pageRestrictionForUrl()` reports browser-internal pages and
+the corresponding store restrictions; Firefox also excludes its protected
+Mozilla account, support, and add-on domains.
 
 ## Content pipeline (critical path)
 
@@ -411,7 +431,8 @@ This is the first-frame layer; nested boxes still need the JS engine.
 
 ## Background settings queue
 
-`src/background/background.js` loads the core helpers with `importScripts`.
+`src/background/background.js` loads core with `importScripts` in Chromium;
+Firefox loads it first through `background.scripts`.
 All settings writes run through `settingsQueue`: popup edits, options saves
 and resets, and the site-toggle shortcut. Each operation reads current storage,
 normalizes and merges its edit, persists it, and removes migrated legacy keys.
@@ -478,15 +499,18 @@ old snapshot. Notification responses never block the next save.
   flush pending input. Each edit advances its baseline before sending, so
   rapid reversals remain ordered. Save responses leave current form edits intact.
 - Saving / Saved feedback clears after success; failures remain visible.
-- The shared font picker enumerates system fonts with
-  `chrome.fontSettings.getFontList()`. Four independent previews use the same
-  local FontFace definitions as pages. Enumeration and preview errors are shown.
+- The shared font picker enumerates system fonts in Chromium with
+  `chrome.fontSettings.getFontList()`. In Firefox, its four fields accept
+  installed font names directly; blank fields preserve page fonts. Four
+  independent previews use the same local FontFace definitions as pages.
+  Enumeration and preview errors are shown.
 - Clean Layout groups X.com and 知乎 zhihu.com cards with a switch and column
   width slider. Always on / Always off lists and ignored elements follow.
 - Images use one row for the dimming switch, brightness slider, and percentage.
   The slider is disabled while dimming is off.
-- Shortcuts shows actual bindings or Not set. Change shortcuts opens the
-  browser's shortcut settings; bindings refresh on opening, focus, and return.
+- Shortcuts shows actual bindings or Not set. Change shortcuts opens Chromium
+  shortcut settings or displays Firefox's manual instructions; bindings refresh
+  on opening, focus, and return.
 - Removing an ignored-element rule saves immediately through the per-site merge.
 
 ## Element picker

@@ -2,6 +2,8 @@
 .tmp/
 .playwright-cli/
 dist/
+dist-edge/
+dist-firefox/
 release/
 node_modules/
 coverage/

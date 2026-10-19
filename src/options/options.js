@@ -66,8 +66,15 @@
   }
 
   document.querySelector("#edit-shortcut").addEventListener("click", async () => {
+    // Firefox blocks extensions from opening privileged about: pages.
+    if (core.browserKind() === "firefox") {
+      document.querySelector("#shortcut-help").textContent =
+        "Open about:addons, then the gear menu → Manage Extension Shortcuts.";
+      return;
+    }
     try {
-      await chrome.tabs.create({ url: "chrome://extensions/shortcuts" });
+      const scheme = core.browserKind() === "edge" ? "edge" : "chrome";
+      await chrome.tabs.create({ url: `${scheme}://extensions/shortcuts` });
     } catch (error) {
       setStatus(`Could not open shortcuts: ${error.message}`);
     }
@@ -239,15 +246,20 @@
       button.setAttribute("aria-selected", "false");
 
       const colors = swatchColors(preset[variant]);
-      button.innerHTML = `
-        <span class="swatches" aria-hidden="true">
-          <span style="background:${colors.base}"></span>
-          <span style="background:${colors.surface}"></span>
-          <span style="background:${colors.text}"></span>
-          <span style="background:${colors.link}"></span>
-        </span>
-        <span class="name">${preset.label}</span>
-      `;
+      // Assign text and styles directly so store review needs no HTML sanitization exception.
+      const swatches = document.createElement("span");
+      swatches.className = "swatches";
+      swatches.setAttribute("aria-hidden", "true");
+      for (const color of Object.values(colors)) {
+        const swatch = document.createElement("span");
+        swatch.style.background = color;
+        swatches.appendChild(swatch);
+      }
+      const name = document.createElement("span");
+      name.className = "name";
+      name.textContent = preset.label;
+      button.appendChild(swatches);
+      button.appendChild(name);
 
       button.addEventListener("click", () => {
         onSelect(preset.id);
@@ -370,6 +382,7 @@
     input.addEventListener("input", scheduleSave);
     input.addEventListener("change", saveSettings);
   }
+  for (const { input } of fontFields) input.addEventListener("input", scheduleSave);
   for (const input of [xSingleWidthInput, zhihuWidthInput, brightnessInput]) {
     input.addEventListener("change", saveSettings);
   }

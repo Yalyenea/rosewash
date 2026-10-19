@@ -723,14 +723,30 @@
     return hostFromUrl(origins?.length ? origins[origins.length - 1] : location.href);
   }
 
-  function pageRestrictionForUrl(value) {
+  function browserKind() {
+    if (globalThis.chrome?.runtime?.getURL("").startsWith("moz-extension://")) return "firefox";
+    return /Edg\//.test(globalThis.navigator?.userAgent || "") ? "edge" : "chrome";
+  }
+
+  function pageRestrictionForUrl(value, browser = browserKind()) {
     try {
       const url = new URL(value);
       if (!["http:", "https:", "file:"].includes(url.protocol)) {
         return "unsupported";
       }
-      // Chromium restricts the entire Web Store domains, including devconsole.
+      // Store and account restrictions differ by browser.
       const host = url.hostname.replace(/\.$/, "");
+      if (browser === "firefox") {
+        return isHostDisabled(host, [
+          "accounts-static.cdn.mozilla.net", "accounts.firefox.com",
+          "addons.cdn.mozilla.net", "addons.mozilla.org", "api.accounts.firefox.com",
+          "content.cdn.mozilla.net", "discovery.addons.mozilla.org", "install.mozilla.org",
+          "oauth.accounts.firefox.com", "profile.accounts.firefox.com",
+          "support.mozilla.org", "sync.services.mozilla.com"
+        ]) ? "restricted" : "";
+      }
+      if (browser === "edge" && host === "microsoftedge.microsoft.com"
+        && /^\/addons(?:\/|$)/.test(url.pathname)) return "webstore";
       if (isHostDisabled(host, ["chrome.google.com", "chromewebstore.google.com"])) {
         return "webstore";
       }
@@ -2209,6 +2225,7 @@
     classifyPageTone,
     hostFromUrl,
     policyHostForLocation,
+    browserKind,
     pageRestrictionForUrl,
     isDarkNeutralColor,
     isDarkSurfaceColor,

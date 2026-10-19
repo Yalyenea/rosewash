@@ -2,6 +2,10 @@
 
 ## 0.2.5 - 2026-10-18
 
+- Add separate Edge and Firefox packages. Firefox supports desktop version
+  148 or newer and accepts installed font names in settings; Chrome and Edge
+  keep the automatic font picker.
+- Show browser-specific shortcut instructions and protected-page states.
 - Restore the compact classic popup with Pick beside the site state and
   layout controls shown only on their matching site.
 - Rebuild settings into Appearance, Fonts, Sites, and Shortcuts tabs. Keep
