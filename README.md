@@ -1,9 +1,8 @@
 # Rosewash
 
 Rosewash is a lightweight Manifest V3 browser extension that covers web pages
-with restrained paper palettes. Rose Pine is the default; the popup also offers
-the full set of Codex desktop app theme families (Catppuccin, Gruvbox, Nord,
-Tokyo Night, Solarized, Dracula, GitHub, Linear, Notion, Raycast, Vercel, …).
+with restrained paper palettes. Choose separate light and dark palettes from
+the popup, or follow your system appearance.
 
 It remaps page canvases, painted surfaces, neutral borders, and text into the
 active palette so everyday browsing follows a calm paper tone instead of harsh
@@ -159,6 +158,7 @@ Always off takes priority.
 
 ## Docs
 
+- [docs/chrome-web-store.md](docs/chrome-web-store.md) — English store listing copy
 - [AGENTS.md](AGENTS.md) — entry point for coding agents
 - [docs/implementation.md](docs/implementation.md) — current implementation details
 - [docs/architecture.md](docs/architecture.md) — conceptual layers
