@@ -20,8 +20,8 @@ regions stay protected.
   custom fonts and site layouts still follow their own settings.
 - Appearance: Auto / Light / Dark. Auto uses the light or dark palette from
   the system color scheme.
-- Optional English, Chinese, native MathML, and monospace fonts, selected from
-  installed system fonts with live previews.
+- Optional English, Chinese, native MathML, and monospace fonts with live
+  previews. Chrome and Edge list installed fonts; Firefox accepts font names.
 - Compact popup with appearance, palettes, Pick, and an Allowed / Blocked
   site button. Matching X or Zhihu layout controls appear on that site.
   Settings use Appearance, Fonts, Sites, and Shortcuts tabs with automatic
@@ -77,10 +77,15 @@ regions stay protected.
 Install [Rosewash from the Chrome Web Store](https://chromewebstore.google.com/detail/rosewash/jklllohlbljogmomdfhggfojpgellcmh).
 Works in Chrome, Edge, Brave, Helium, and other Chromium browsers.
 
+The Firefox package supports desktop Firefox 148 or newer, including compatible
+Firefox-based browsers such as Zen. The Firefox and Edge store submissions are
+awaiting review.
+
 For manual installation, use a [GitHub Release](https://github.com/Yalyenea/rosewash/releases):
 
 1. Open the [latest release](https://github.com/Yalyenea/rosewash/releases/latest).
-2. Download `rosewash-vX.Y.Z.zip` (for example `rosewash-v0.2.0.zip`).
+2. Download `rosewash-vX.Y.Z.zip` for Chrome or
+   `rosewash-vX.Y.Z-edge.zip` for Edge.
 3. Extract the zip to a stable folder you will keep (do not delete it later;
    Chromium loads the extension from that path).
 4. Open the extensions page:
@@ -97,6 +102,11 @@ tabs once so pages pick up the new content script.
 Chrome may show a developer-mode warning on each browser restart. That is
 expected for sideloaded extensions and is safe to dismiss.
 
+For temporary Firefox testing, extract `rosewash-vX.Y.Z-firefox.zip`, open
+`about:debugging#/runtime/this-firefox`, choose **Load Temporary Add-on**, and
+select the extracted `manifest.json`. Temporary add-ons are removed when the
+browser restarts. Regular installation requires a Mozilla-signed package.
+
 ## Install From Source
 
 For local development:
@@ -109,6 +119,9 @@ For local development:
 
 Re-run `just dist` after source changes, then reload the extension.
 
+Use `just dist edge` to stage `dist-edge/`, or `just dist firefox` to stage
+`dist-firefox/`. Load the matching folder in that browser.
+
 After reloading the unpacked extension, reload any already-open test tabs once.
 Chrome leaves old content scripts in existing page contexts after extension
 reloads; Rosewash guards new scripts against that state and clears stale
@@ -117,9 +130,10 @@ cannot be patched in place.
 
 ## Custom Fonts
 
-Open **Settings → Fonts** and enable **Custom fonts**. Installed system
-fonts load automatically and changes save immediately. The extension needs
-the browser's `fontSettings` permission to list fonts.
+Open **Settings → Fonts** and enable **Custom fonts**. Chrome and Edge load
+installed fonts automatically using the browser's `fontSettings` permission.
+In Firefox, enter an installed font name or leave the field blank to use the
+page font. Changes save automatically.
 
 **Page default** preserves the website’s font for that category. MathML
 fonts apply to native formulas; KaTeX, MathJax, SVG formulas, and code editors
@@ -158,6 +172,9 @@ just validate
 just check
 just dist
 just package
+just package edge
+just package firefox
+just package-all
 just clean
 ```
 
@@ -165,10 +182,12 @@ just clean
 refreshes `dist/`, and writes `release/rosewash-vX.Y.Z.zip` for the Chrome
 Web Store. `manifest.json` is at the root of that zip. `just clean` removes
 `.tmp` and local browser-debug leftovers.
+The Edge and Firefox commands write their matching `dist-*` folders and
+`-edge.zip` / `-firefox.zip` archives. `just package-all` packages all three.
 
 ## Publishing Releases
 
-GitHub Actions publishes a release zip whenever a version tag is pushed.
+GitHub Actions publishes browser-specific release zips whenever a version tag is pushed.
 The release notes are the matching section from `changelog.md`; keep that
 section short and user-facing.
 
@@ -181,9 +200,9 @@ git tag v0.2.0
 git push origin v0.2.0
 ```
 
-The workflow runs `just package`, then uploads `rosewash-v0.2.0.zip` and the
-changelog notes to the matching GitHub Release. It can also be run manually
-against an existing tag from the Actions tab.
+The workflow runs `just package-all`, then uploads the Chrome, Edge, and Firefox
+zips and changelog notes to the matching GitHub Release. It can also be run
+manually against an existing tag from the Actions tab.
 
 ## Palette
 

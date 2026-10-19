@@ -3,14 +3,33 @@
 
   function createPicker({ enabledInput, fields, status }) {
     const core = globalThis.RosewashCore;
+    const canListFonts = Boolean(chrome.fontSettings);
     let fonts = null;
     let previewFaces = [];
+
+    // Firefox has no fontSettings API; accept installed font names directly.
+    if (!canListFonts) {
+      for (const field of fields) {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.id = field.input.id;
+        input.setAttribute("aria-label", field.input.getAttribute("aria-label"));
+        input.placeholder = "Page default";
+        input.autocomplete = "off";
+        field.input.replaceWith(input);
+        field.input = input;
+      }
+    }
 
     function values() {
       return Object.fromEntries(fields.map(({ key, input }) => [key, input.value]));
     }
 
     function fill(input, value) {
+      if (!canListFonts) {
+        input.value = value;
+        return;
+      }
       input.replaceChildren(new Option("Page default", ""));
       for (const font of fonts || []) input.add(new Option(font.displayName, font.fontId));
       if (value && !Array.from(input.options).some((option) => option.value === value)) {
@@ -48,12 +67,16 @@
     function render(settings) {
       enabledInput.checked = settings.customFontsEnabled;
       for (const { key, input } of fields) {
-        if (input.value !== settings[key] || !input.options.length) fill(input, settings[key]);
+        if (!canListFonts || input.value !== settings[key] || !input.options.length) fill(input, settings[key]);
       }
       preview();
     }
 
     async function load() {
+      if (!canListFonts) {
+        status.textContent = "Enter an installed font name. Leave blank to use the page font.";
+        return;
+      }
       status.textContent = "Loading system fonts…";
       try {
         const list = await chrome.fontSettings.getFontList();

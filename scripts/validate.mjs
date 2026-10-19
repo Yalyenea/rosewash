@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
+import { browsers, manifestForBrowser } from "./browsers.mjs";
 
 const root = new URL("..", import.meta.url).pathname;
 const manifestPath = join(root, "manifest.json");
@@ -14,6 +15,7 @@ const requiredFiles = [
   "popup.html",
   "options.html",
   ...(manifest.background?.service_worker ? [manifest.background.service_worker] : []),
+  ...browsers.flatMap((browser) => manifestForBrowser(manifest, browser).background.scripts || []),
   ...Object.values(manifest.icons || {}),
   ...Object.values(manifest.action?.default_icon || {}),
   ...(manifest.content_scripts || []).flatMap((entry) => [
@@ -56,6 +58,8 @@ const scriptFiles = [
   "src/settings/fonts.js",
   ...(manifest.content_scripts || []).flatMap((entry) => entry.js || []),
   "scripts/validate.mjs",
+  "scripts/browsers.mjs",
+  "scripts/dist.mjs",
   "scripts/release-notes.mjs"
 ].filter((file, index, files) => files.indexOf(file) === index);
 
@@ -83,3 +87,15 @@ for (const file of scriptFiles) {
 }
 
 console.log("manifest ok");
+for (const browser of browsers) {
+  const target = manifestForBrowser(manifest, browser);
+  if (browser === "firefox") {
+    if (target.background.service_worker || target.permissions.includes("fontSettings")) {
+      throw new Error("Firefox must use background scripts without fontSettings");
+    }
+    if (!target.browser_specific_settings?.gecko?.id) throw new Error("Firefox requires a stable extension ID");
+  } else if (!target.background.service_worker) {
+    throw new Error(`${browser} requires a background service worker`);
+  }
+  console.log(`${browser} manifest ok`);
+}

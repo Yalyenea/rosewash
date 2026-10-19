@@ -1,6 +1,7 @@
 "use strict";
 
-importScripts("../content/core.js");
+// Firefox loads core through background.scripts; Chromium loads it in the worker.
+if (typeof importScripts === "function") importScripts("../content/core.js");
 
 const core = globalThis.RosewashCore;
 const TOGGLE_SITE_COMMAND = "toggle-current-site";

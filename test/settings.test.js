@@ -12,7 +12,7 @@ function deferred() {
   return { promise, resolve };
 }
 
-async function settingsUI(page, initial = {}) {
+async function settingsUI(page, initial = {}, browser = "chrome") {
   const elements = new Map();
   const radios = [];
   class Element {
@@ -36,6 +36,8 @@ async function settingsUI(page, initial = {}) {
     addEventListener(name, listener) { (this.listeners[name] ||= []).push(listener); }
     emit(name) { return Promise.all((this.listeners[name] || []).map((listener) => listener())); }
     setAttribute(name, value) { this.attributes[name] = value; }
+    getAttribute(name) { return this.attributes[name]; }
+    replaceWith(next) { elements.set(`#${this.id}`, next); }
     removeAttribute(name) { delete this.attributes[name]; }
     replaceChildren(...children) { this.options = children; this.children = children; }
     add(option) { this.options.push(option); }
@@ -43,7 +45,11 @@ async function settingsUI(page, initial = {}) {
     querySelectorAll() { return this.children; }
   }
   const element = (id) => {
-    if (!elements.has(id)) elements.set(id, new Element());
+    if (!elements.has(id)) {
+      const next = new Element();
+      next.id = id.replace(/^#/, "");
+      elements.set(id, next);
+    }
     return elements.get(id);
   };
   const appearanceButtons = ["auto", "light", "dark"].map((appearance) => {
@@ -58,6 +64,7 @@ async function settingsUI(page, initial = {}) {
   const messages = [];
   const writes = [];
   const requests = [];
+  const openedTabs = [];
   const windowListeners = new Map();
   let messageListener;
   let closed = false;
@@ -104,6 +111,7 @@ async function settingsUI(page, initial = {}) {
     }
   };
   const tabs = {
+    async create(details) { openedTabs.push(details); },
     async query(query) {
       if (!query.active && nextBroadcast) {
         const hold = nextBroadcast;
@@ -116,7 +124,7 @@ async function settingsUI(page, initial = {}) {
   };
   const runtime = {
     id: "test-extension",
-    getURL: (path) => `chrome-extension://test-extension/${path}`,
+    getURL: (path) => `${browser === "firefox" ? "moz-extension" : "chrome-extension"}://test-extension/${path}`,
     onMessage: { addListener: (listener) => { messageListener = listener; } },
     onStartup: { addListener() {} },
     onInstalled: { addListener() {} }
@@ -133,7 +141,7 @@ async function settingsUI(page, initial = {}) {
   backgroundContext.importScripts = () => vm.runInContext(source("src/content/core.js"), backgroundContext);
   vm.runInContext(source("src/background/background.js"), backgroundContext);
   const context = vm.createContext({
-    URL, console, document,
+    URL, console, document, navigator: { userAgent: browser === "edge" ? "Edg/150.0" : "Firefox/150.0" },
     Option: class { constructor(label, value) { this.text = label; this.value = value; } },
     window: {
       matchMedia: () => ({ matches: false, addEventListener() {} }),
@@ -145,8 +153,9 @@ async function settingsUI(page, initial = {}) {
     },
     chrome: {
       storage: { sync: storage, onChanged: { addListener: (listener) => changed.push(listener) } },
-      commands: { getAll: async () => [] }, fontSettings: { getFontList: async () => [] },
-      runtime: { sendMessage(message) {
+      commands: { getAll: async () => [] },
+      ...(browser === "firefox" ? {} : { fontSettings: { getFontList: async () => [] } }),
+      runtime: { getURL: runtime.getURL, sendMessage(message) {
         requests.push(plain(message));
         return new Promise((resolve) => messageListener(plain(message), {
           id: runtime.id, url: runtime.getURL(`${page}.html`)
@@ -160,7 +169,7 @@ async function settingsUI(page, initial = {}) {
   }
   await settle();
   return {
-    element, messages, writes, storage, requests,
+    element, messages, writes, storage, requests, openedTabs,
     change: (query = "#enabled") => element(query).emit("change"),
     emitWindow: (name) => (windowListeners.get(name) || []).forEach((listener) => listener()),
     raw: () => plain(raw),
@@ -380,4 +389,30 @@ test("options saves image dimming with its brightness", async () => {
   await options.element("#dim-images").emit("change");
   assert.equal(options.raw().dimImages, true);
   assert.equal(options.raw().imageBrightness, 90);
+});
+
+test("Firefox manual font names save through the shared queue and remain editable after reload", async () => {
+  const ui = await settingsUI("options", { customFontsEnabled: true, fontEnglish: "Georgia" }, "firefox");
+  assert.equal(ui.element("#font-english").type, "text");
+  assert.equal(ui.element("#font-english").value, "Georgia");
+  assert.equal(ui.element("#font-english").disabled, false);
+  assert.match(ui.element("#font-list-status").textContent, /installed font name/);
+  ui.element("#font-english").value = "Times New Roman";
+  await ui.change("#font-english");
+  assert.equal(ui.raw().fontEnglish, "Times New Roman");
+  const reopened = await settingsUI("options", ui.raw(), "firefox");
+  assert.equal(reopened.element("#font-english").value, "Times New Roman");
+  reopened.element("#custom-fonts-enabled").checked = false;
+  await reopened.change("#custom-fonts-enabled");
+  assert.equal(reopened.element("#font-english").disabled, true);
+});
+
+test("shortcut controls open Edge settings and explain Firefox's privileged-page restriction", async () => {
+  const edge = await settingsUI("options", {}, "edge");
+  await edge.element("#edit-shortcut").emit("click");
+  assert.equal(edge.openedTabs[0].url, "edge://extensions/shortcuts");
+  const firefox = await settingsUI("options", {}, "firefox");
+  await firefox.element("#edit-shortcut").emit("click");
+  assert.equal(firefox.openedTabs.length, 0);
+  assert.match(firefox.element("#shortcut-help").textContent, /about:addons/);
 });

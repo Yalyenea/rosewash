@@ -9,26 +9,18 @@ validate:
 
 check: test validate
 
-# Stage a Chrome-loadable folder (manifest + html + src only)
-dist:
-    mkdir -p dist
-    find dist -mindepth 1 -delete
-    cp manifest.json popup.html options.html dist/
-    cp -R src dist/src
-    mkdir -p dist/icons
-    cp icons/*.png dist/icons/
-    find dist -name .DS_Store -delete
-    @echo "staged dist/ — Load unpacked this folder"
+# Stage an extension: just dist [chrome|edge|firefox]
+dist browser="chrome":
+    node scripts/dist.mjs "{{browser}}"
 
-# Check, stage dist/, and zip it for the Chrome Web Store
-package: check dist
-    #!/usr/bin/env bash
-    set -euo pipefail
-    version="$(node -p "require('./package.json').version")"
-    mkdir -p release
-    rm -f "release/rosewash-v${version}.zip"
-    cd dist && zip -r "../release/rosewash-v${version}.zip" . -x "*.DS_Store"
-    echo "release/rosewash-v${version}.zip"
+# Check and package for one store: just package [chrome|edge|firefox]
+package browser="chrome": check
+    node scripts/dist.mjs "{{browser}}" --package
+
+package-all: check
+    node scripts/dist.mjs chrome --package
+    node scripts/dist.mjs edge --package
+    node scripts/dist.mjs firefox --package
 
 # Remove local debug artifacts (Chrome profiles, screenshots, logs)
 clean:
