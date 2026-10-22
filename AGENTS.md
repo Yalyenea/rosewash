@@ -23,6 +23,7 @@ Guidance for coding agents working in the Rosewash repository.
 
 - Prefer small, explicit changes. Do not add fallback or compatibility layers
   unless required.
+- Avoid unnecessary secondary labels and descriptions. Let the layout do the explaining.
 - Do not develop on `main`; use a feature/fix branch.
 - Do not commit or push unless the user asks.
 - After behavior changes: update `changelog.md` and any docs that describe the
