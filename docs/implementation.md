@@ -8,7 +8,8 @@ For product roadmap, see [PLAN.md](../PLAN.md).
 
 Rosewash is a **zero-build Manifest V3** extension for Chromium and desktop
 Firefox 148 or newer. It covers page
-surfaces, text, and neutral borders with Rose Pine Dawn / Moon tokens. There is
+surfaces, text, and neutral borders with the selected palette, defaulting to
+Rose Pine Dawn / Moon. There is
 no bundler, no runtime npm dependency, and no TypeScript compile step.
 
 Stage with `just dist` and load the `dist/` folder as an unpacked extension
@@ -16,7 +17,8 @@ Stage with `just dist` and load the `dist/` folder as an unpacked extension
 `release/rosewash-vX.Y.Z.zip`, with `manifest.json` at the archive root.
 `just dist edge` and `just dist firefox` stage `dist-edge/` and `dist-firefox/`.
 `just package edge` / `firefox` write matching `-edge.zip` / `-firefox.zip`
-archives; `just package-all` creates all three. JavaScript is copied unchanged.
+archives; `just package-all` creates all three extension archives plus a
+`-chromium-themes.zip` companion archive. JavaScript is copied unchanged.
 
 ## Repository layout
 
@@ -35,13 +37,15 @@ src/content/
 src/sites/                 Optional site-specific layout runtimes and styles
 test/                      Node tests + HTML fixtures
 scripts/validate.mjs       Manifest / file presence / syntax checks
-scripts/browsers.mjs       Browser manifests and artifact names
+scripts/browsers.mjs       Browser manifests, static theme manifests, and artifact names
 scripts/dist.mjs           Copies runtime files and writes the target manifest / zip
-justfile                   test · validate · check · dist · package · package-all · clean
+scripts/themes.mjs         Generates Chromium frame themes from the palette registry
+justfile                   test · validate · check · dist · themes · package · package-all · clean
 scripts/release-notes.mjs  GitHub Release notes from the version section in changelog.md
 dist/                      Generated loadable extension (`just dist`, gitignored)
 dist-edge/, dist-firefox/   Generated browser-specific folders (gitignored)
-release/                   Browser store zips (gitignored)
+dist-themes/               Generated Chromium frame theme folders (gitignored)
+release/                   Extension and companion theme zips (gitignored)
 ```
 
 ## Runtime topology
@@ -67,6 +71,32 @@ and apply the engine. Page responses do not hold up the write queue.
 | X layout | `src/sites/x.js`, `x.css` | Compact navigation rail and centered single-column streams |
 | Zhihu layout | `src/sites/zhihu.js`, `zhihu.css` | Centered reading columns; article-only header hiding |
 
+## Browser frame themes
+
+Firefox's generated manifest adds the `theme` permission. The background
+runtime resolves the active palette from the existing appearance settings,
+then applies its colors to the browser frame, toolbar, tabs, sidebar, and new
+tab page. The frame and toolbar share the page's base color. Pausing Rosewash
+or choosing a plain palette calls `theme.reset()`; per-site rules do not
+change the browser-wide theme.
+
+Theme updates run on browser startup, extension installation, and synced
+settings changes. Firefox top-level content scripts relay system appearance
+changes to wake the background event page. `content_color_scheme: "system"`
+keeps website color-scheme preferences independent of the browser frame.
+
+Chrome and Edge use separate static theme packages. Run `just themes` to
+generate one folder per tinted preset and available light/dark variant under
+`dist-themes/rosewash-<preset>-<variant>/`. Each folder contains its own theme
+manifest. Plain palettes and missing variants are skipped; rerunning the
+command replaces the generated folders.
+
+`node scripts/themes.mjs --package` also creates
+`release/rosewash-v<version>-chromium-themes.zip`. `just package-all` includes
+this step, and the release workflow uploads the archive beside the three
+extension archives. Chromium frame themes are selected separately from the
+extension and do not follow its palette, Auto mode, or pause switch.
+
 ## Settings schema
 
 Stored in **`chrome.storage.sync`**.
@@ -84,6 +114,7 @@ Stored in **`chrome.storage.sync`**.
   "presetDark": "rose-pine",
   "appearance": "auto",
   "xCompactLayout": false,
+  "xAutoExpandReplies": false,
   "xSingleColumnWidth": 600,
   "zhihuArticleLayout": false,
   "zhihuArticleWidth": 960,
@@ -105,6 +136,7 @@ Stored in **`chrome.storage.sync`**.
 | `presetDark` | preset id with a dark variant | Palette used when appearance resolves to dark |
 | `appearance` | `auto` \| `light` \| `dark` | `auto` follows `prefers-color-scheme` |
 | `xCompactLayout` | boolean | Enables Rosewash's compact single-column layout on X |
+| `xAutoExpandReplies` | boolean | Automatically expands truncated reply text on X post pages, independently of compact layout |
 | `xSingleColumnWidth` | 520 / 600 / 680 / 760 | Centered X timeline width |
 | `zhihuArticleLayout` | boolean | Enables the centered Zhihu reading layout on home, questions, and articles |
 | `zhihuArticleWidth` | 720 / 840 / 960 / 1080 | Centered Zhihu column width |
@@ -556,7 +588,15 @@ when Rosewash is enabled, X is not blocked, and `xCompactLayout` is true.
   cards with their avatar links in a `WeakMap`. Delegated pointer events
   retain the native hover state while the pointer is inside the portaled
   card, releasing X's avatar-only hover poll first. Leaving the card releases
-  that state; disabling the layout removes the listeners and releases it too.
+  that state; disabling the layout stops hover handling and releases it too.
+- The independent `xAutoExpandReplies` switch in Settings → Sites → X.com
+  defaults to off. The content runtime sets `data-rosewash-x-expand-replies`
+  while Rosewash and the site are enabled. At any viewport width, `x.js`
+  clicks `tweet-text-show-more-link` controls in posts after the current detail
+  post, skipping ancestors, the current post, and quoted content. Added replies
+  and native navigation events trigger batched checks. A `WeakMap` prevents
+  repeat clicks while allowing virtualized buttons to serve different posts.
+  Home timelines and controls that load additional replies remain untouched.
 - `x.css` collapses the navigation rail, keeps X's Explore/search entry in that
   rail, hides the redundant right search column, and stretches virtualized post
   cells to the selected single-column width from `min-width: 720px`. The width

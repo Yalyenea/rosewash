@@ -17,10 +17,15 @@ dist browser="chrome":
 package browser="chrome": check
     node scripts/dist.mjs "{{browser}}" --package
 
+# Stage Chromium frame themes for every tinted palette
+themes:
+    node scripts/themes.mjs
+
 package-all: check
     node scripts/dist.mjs chrome --package
     node scripts/dist.mjs edge --package
     node scripts/dist.mjs firefox --package
+    node scripts/themes.mjs --package
 
 # Remove local debug artifacts (Chrome profiles, screenshots, logs)
 clean:

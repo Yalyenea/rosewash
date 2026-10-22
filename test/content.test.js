@@ -39,11 +39,17 @@ test("startup waits for site policy and storage changes update site layouts", as
   let storageChanged;
   let messageReceived;
   let pendingRead;
-  let raw = { defaultEnabled: false, xCompactLayout: true };
+  const sent = [];
+  let raw = { defaultEnabled: false, xCompactLayout: true, xAutoExpandReplies: true };
   const initialRead = new Promise((resolve) => { releaseStorage = resolve; });
   let loaded = false;
   context.chrome = {
-    runtime: { id: "test", onMessage: { addListener: (fn) => { messageReceived = fn; } } },
+    runtime: {
+      id: "test",
+      getURL: (path) => `chrome-extension://test/${path}`,
+      sendMessage: async (message) => { sent.push(message); },
+      onMessage: { addListener: (fn) => { messageReceived = fn; } }
+    },
     storage: {
       sync: { get: () => pendingRead || (loaded ? Promise.resolve(raw) : initialRead) },
       onChanged: { addListener: (fn) => { storageChanged = fn; } }
@@ -59,15 +65,26 @@ test("startup waits for site policy and storage changes update site layouts", as
   assert.equal(applied.length, 1);
   assert.equal(applied[0].defaultEnabled, false);
   assert.equal(attributes.has("data-rosewash-x-compact"), false);
+  assert.equal(attributes.has("data-rosewash-x-expand-replies"), false);
   raw = { ...raw, enabledHosts: ["x.com"], xSingleColumnWidth: 680 };
   storageChanged({ enabledHosts: { newValue: ["x.com"] } }, "sync");
   await new Promise(setImmediate);
   assert.equal(attributes.has("data-rosewash-x-compact"), true);
+  assert.equal(attributes.has("data-rosewash-x-expand-replies"), true);
   assert.equal(properties.get("--rosewash-x-single"), "680px");
+  raw = { ...raw, xAutoExpandReplies: false };
+  storageChanged({ xAutoExpandReplies: { newValue: false } }, "sync");
+  await new Promise(setImmediate);
+  assert.equal(attributes.has("data-rosewash-x-expand-replies"), false);
+  raw = { ...raw, xAutoExpandReplies: true };
+  storageChanged({ xAutoExpandReplies: { newValue: true } }, "sync");
+  await new Promise(setImmediate);
+  assert.equal(attributes.has("data-rosewash-x-expand-replies"), true);
   raw = { ...raw, disabledHosts: ["x.com"] };
   storageChanged({ disabledHosts: { newValue: ["x.com"] } }, "sync");
   await new Promise(setImmediate);
   assert.equal(attributes.has("data-rosewash-x-compact"), false);
+  assert.equal(attributes.has("data-rosewash-x-expand-replies"), false);
   assert.equal(properties.has("--rosewash-x-single"), false);
 
   // A notification reads current storage, even if a delayed sender includes an old snapshot.
@@ -103,4 +120,54 @@ test("startup waits for site policy and storage changes update site layouts", as
   releaseOldRead(latest);
   await new Promise(setImmediate);
   assert.equal(attributes.has("data-rosewash-x-compact"), false);
+  assert.equal(sent.length, 0);
+});
+
+test("Firefox top frames wake the background when the system scheme changes", async () => {
+  const context = { URL, console };
+  context.globalThis = context;
+  vm.runInNewContext(await readFile(new URL("../src/content/core.js", import.meta.url), "utf8"), context);
+  const core = context.RosewashCore;
+  const sent = [];
+  const schemeListeners = [];
+  context.document = {
+    documentElement: {
+      hasAttribute: () => false,
+      toggleAttribute() {},
+      removeAttribute() {},
+      style: { setProperty() {}, removeProperty() {} }
+    },
+    addEventListener() {},
+    dispatchEvent() {}
+  };
+  context.window = {
+    location: { hostname: "example.com" },
+    matchMedia: () => ({
+      matches: false,
+      addEventListener: (name, fn) => { if (name === "change") schemeListeners.push(fn); },
+      removeEventListener() {}
+    }),
+    addEventListener() {}
+  };
+  context.window.top = context.window;
+  context.CustomEvent = class {};
+  context.RosewashCore = { ...core, createEngine: () => ({
+    apply() {}, refresh() {}, stats: () => ({}), disconnect() {}
+  }) };
+  context.chrome = {
+    runtime: {
+      id: "test",
+      getURL: (path) => `moz-extension://test/${path}`,
+      sendMessage: async (message) => { sent.push(structuredClone(message)); },
+      onMessage: { addListener() {} }
+    },
+    storage: {
+      sync: { get: async () => ({}) },
+      onChanged: { addListener() {} }
+    }
+  };
+  vm.runInNewContext(await readFile(new URL("../src/content/content.js", import.meta.url), "utf8"), context);
+  for (const listener of schemeListeners) listener();
+  await new Promise(setImmediate);
+  assert.deepEqual(sent, [{ type: "rosewash:color-scheme-changed" }]);
 });

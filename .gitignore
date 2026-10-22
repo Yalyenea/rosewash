@@ -4,6 +4,7 @@
 dist/
 dist-edge/
 dist-firefox/
+dist-themes/
 release/
 node_modules/
 coverage/

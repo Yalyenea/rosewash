@@ -181,6 +181,21 @@ async function settingsUI(page, initial = {}, browser = "chrome") {
   };
 }
 
+test("options saves the independent reply expansion switch", async () => {
+  const ui = await settingsUI("options", { xCompactLayout: false });
+  const toggle = ui.element("#x-auto-expand-replies");
+  assert.equal(toggle.checked, false);
+  toggle.checked = true;
+  await ui.change("#x-auto-expand-replies");
+  await ui.done();
+  assert.equal(ui.raw().xAutoExpandReplies, true);
+  assert.equal(ui.raw().xCompactLayout, false);
+  toggle.checked = false;
+  await ui.change("#x-auto-expand-replies");
+  await ui.done();
+  assert.equal(ui.raw().xAutoExpandReplies, false);
+});
+
 test("popup persists subsequent edits without waiting for an earlier broadcast", async () => {
   const ui = await settingsUI("popup", { appearance: "auto" });
   const held = ui.holdBroadcast();

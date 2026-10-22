@@ -60,6 +60,7 @@ const scriptFiles = [
   "scripts/validate.mjs",
   "scripts/browsers.mjs",
   "scripts/dist.mjs",
+  "scripts/themes.mjs",
   "scripts/release-notes.mjs"
 ].filter((file, index, files) => files.indexOf(file) === index);
 
@@ -90,8 +91,9 @@ console.log("manifest ok");
 for (const browser of browsers) {
   const target = manifestForBrowser(manifest, browser);
   if (browser === "firefox") {
-    if (target.background.service_worker || target.permissions.includes("fontSettings")) {
-      throw new Error("Firefox must use background scripts without fontSettings");
+    if (target.background.service_worker || target.permissions.includes("fontSettings")
+      || !target.permissions.includes("theme")) {
+      throw new Error("Firefox must use background scripts with theme and without fontSettings");
     }
     if (!target.browser_specific_settings?.gecko?.id) throw new Error("Firefox requires a stable extension ID");
   } else if (!target.background.service_worker) {

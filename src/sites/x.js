@@ -2,10 +2,15 @@
   "use strict";
 
   const ROOT_ATTRIBUTE = "data-rosewash-x-compact";
+  const EXPAND_REPLIES_ATTRIBUTE = "data-rosewash-x-expand-replies";
   const ROOT_CHANGE_EVENT = "rosewash:x-compact-change";
   const RAIL_CONTROL_ATTRIBUTE = "data-rosewash-x-rail-control";
   const PROFILE_AVATAR_SELECTOR = "[data-testid^='UserAvatar-Container-']";
   const PROFILE_CARD_SELECTOR = "[data-testid='HoverCard']";
+  const POST_SELECTOR = "[data-testid='primaryColumn'] article[data-testid='tweet']";
+  const SHOW_MORE_SELECTOR = "[data-testid='tweet-text-show-more-link']";
+  const POST_LINK_SELECTOR = "a[href*='/status/']:has(time)";
+  const REPLY_UPDATE_SELECTOR = `article[data-testid='tweet'], ${SHOW_MORE_SELECTOR}, ${POST_LINK_SELECTOR}`;
   const RAIL_SELECTOR = [
     "[data-testid='SideNav_NewTweet_Button']",
     "[data-testid='SideNav_AccountSwitcher_Button']"
@@ -18,6 +23,7 @@
   let profileAnchor = null;
   let hoveredProfileCard = null;
   const profileCardAnchors = new WeakMap();
+  const expandedButtons = new WeakMap();
   const documentObserver = new MutationObserver(handleMutations);
   const rootObserver = new MutationObserver(handleRootChange);
 
@@ -47,6 +53,37 @@
     }
   }
 
+  function expandReplyText() {
+    const currentId = window.location.pathname.match(/^\/[^/]+\/status\/(\d+)\/?$/)?.[1];
+    if (!currentId) {
+      return;
+    }
+    let belowCurrentPost = false;
+    for (const post of document.querySelectorAll(POST_SELECTOR)) {
+      const permalink = Array.from(post.querySelectorAll(POST_LINK_SELECTOR))
+        .find(link => !link.parentElement.closest("[role='link']"));
+      const postId = permalink?.getAttribute("href").match(/\/status\/(\d+)(?:\/|$)/)?.[1];
+      if (postId === currentId) {
+        belowCurrentPost = true;
+        continue;
+      }
+      // Wait for the current post to mount: ancestors and stale route content
+      // must never be mistaken for replies during X's in-page navigation.
+      if (!belowCurrentPost || !postId) {
+        continue;
+      }
+      for (const button of post.querySelectorAll(SHOW_MORE_SELECTOR)) {
+        if (button.closest("[role='link']") || expandedButtons.get(button) === postId) {
+          continue;
+        }
+        // Record before clicking; X can leave the button mounted while loading.
+        // Virtualized cells may later reuse the same button for a different post.
+        expandedButtons.set(button, postId);
+        button.click();
+      }
+    }
+  }
+
   function emitProfileHover(type) {
     if (profileAnchor?.isConnected) {
       profileAnchor.dispatchEvent(new MouseEvent(type, {
@@ -66,6 +103,9 @@
   }
 
   function handleProfilePointerOver(event) {
+    if (!isEnabled()) {
+      return;
+    }
     const target = event.target;
     if (target?.nodeType !== Node.ELEMENT_NODE) {
       return;
@@ -119,6 +159,10 @@
       if (Array.from(mutation.addedNodes).some(nodeContainsRail)) {
         schedule();
       }
+      if (Array.from(mutation.addedNodes).some(node => node.nodeType === Node.ELEMENT_NODE
+        && (node.matches(REPLY_UPDATE_SELECTOR) || node.querySelector(REPLY_UPDATE_SELECTOR)))) {
+        schedule();
+      }
     }
   }
 
@@ -148,12 +192,18 @@
 
   function sync() {
     timer = 0;
-    if (!isEnabled()) {
-      stopObserver();
+    const compact = isEnabled();
+    const expandReplies = document.documentElement.hasAttribute(EXPAND_REPLIES_ATTRIBUTE);
+    if (!compact) {
       clearRailControls();
+      clearProfileHover();
+    }
+    if (!compact && !expandReplies) {
+      stopObserver();
       return;
     }
-    prepareRailControls();
+    if (compact) prepareRailControls();
+    if (expandReplies) expandReplyText();
     startObserver();
   }
 
@@ -173,10 +223,11 @@
   }
 
   document.addEventListener(ROOT_CHANGE_EVENT, handleRootChange);
+  window.navigation.addEventListener("currententrychange", schedule);
   compactQuery.addEventListener("change", schedule);
   rootObserver.observe(document.documentElement, {
     attributes: true,
-    attributeFilter: [ROOT_ATTRIBUTE]
+    attributeFilter: [ROOT_ATTRIBUTE, EXPAND_REPLIES_ATTRIBUTE]
   });
   sync();
 })();

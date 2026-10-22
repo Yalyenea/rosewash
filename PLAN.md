@@ -69,12 +69,12 @@ curated theme presets.
 
 ## Next Milestones
 
-1. Ship companion Chromium theme packages (`themes/rosewash-dawn`,
-   `themes/rosewash-moon`) whose frame/toolbar colors use the same **base**
-   tokens as the content engine (`#faf4ed` / `#232136`), so Helium/Chrome UI
-   matches Rosewash page canvas. Official Rosé Pine themes map toolbar to
-   overlay and look one step darker than the page; document install steps for
-   Helium and note that the built-in color picker cannot take exact hex.
+1. Implemented, awaiting release: companion Chromium theme packages.
+   `scripts/themes.mjs`
+   generates a static Chromium theme per tinted preset/variant under
+   `dist-themes/`, with frame/toolbar colors taken from the preset **base**
+   tokens. `just themes` stages; `just package-all` and the release workflow
+   archive `rosewash-v<version>-chromium-themes.zip`.
 2. Add a strength slider that blends original white with the selected preset's
    paper tones.
 3. ~~Add a theme preset selector.~~ Shipped: 28 Codex-aligned presets (Rose Pine
@@ -84,14 +84,22 @@ curated theme presets.
    `mode` migration.
 5. ~~Add keyboard shortcuts for global toggle and site toggle.~~ Site toggle
    shipped (`Alt+Shift+B`); global pause/resume shipped (`Alt+Shift+P`).
-6. Split browser packaging into target-specific manifests and archives:
-   Chromium first, Firefox next, Safari after the WebExtension wrapper path is
-   understood.
-7. Add Firefox packaging and validation:
-   `browser_specific_settings.gecko.id`, Firefox manifest checks, and a real
-   temporary-load smoke test.
+6. ~~Split browser packaging into target-specific manifests and archives.~~
+   Shipped: `scripts/dist.mjs` and `scripts/browsers.mjs` target
+   `chrome`, `edge`, `firefox` with per-browser manifests and archives;
+   `just dist <browser>`, `just package <browser>`, `just package-all`.
+7. ~~Add Firefox packaging and validation.~~ Shipped: `manifestForBrowser`
+   sets `browser_specific_settings.gecko.id`, `strict_min_version: "148.0"`,
+   `data_collection_permissions`, switches the background to an event page,
+   and drops `fontSettings`. The release workflow
+   archives `rosewash-v<version>-firefox.zip`.
 8. Add Safari evaluation and packaging:
    Safari Web Extension conversion notes, Xcode wrapper output under `.tmp/`,
    and manual permission/storage/content-script smoke checks.
 9. Add optional site presets for complex pages such as GitHub, arXiv, Notion,
    Overleaf, and Google Docs.
+10. Implemented, awaiting release: Firefox browser-frame colors follow the
+    active palette through the `theme` permission. Pausing or choosing a plain
+    palette resets the browser theme.
+11. Implemented, awaiting release: independent X reply-text expansion under
+    Settings → Sites → X.com, including newly loaded replies and in-page navigation.

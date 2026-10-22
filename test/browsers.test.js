@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { archiveName, distDirectory, manifestForBrowser } from "../scripts/browsers.mjs";
+import {
+  archiveName, chromiumThemeManifest, distDirectory, loadCore, manifestForBrowser, themeDirectory
+} from "../scripts/browsers.mjs";
 
 const manifest = JSON.parse(await readFile(new URL("../manifest.json", import.meta.url), "utf8"));
 
@@ -14,7 +16,7 @@ test("browser manifests retain shared content while using the correct background
     if (browser === "firefox") {
       assert.equal(target.background.service_worker, undefined);
       assert.deepEqual(target.background.scripts, ["src/content/core.js", "src/background/background.js"]);
-      assert.deepEqual(target.permissions, ["storage"]);
+      assert.deepEqual(target.permissions, ["storage", "theme"]);
       assert.equal(target.browser_specific_settings.gecko.strict_min_version, "148.0");
       assert.ok(target.browser_specific_settings.gecko.id);
     } else assert.deepEqual(target, manifest);
@@ -29,4 +31,15 @@ test("browser packages have isolated directories and cannot overwrite each other
     ["rosewash-v1.2.3.zip", "rosewash-v1.2.3-edge.zip", "rosewash-v1.2.3-firefox.zip"]);
   assert.throws(() => manifestForBrowser(manifest, "../firefox"), /Unknown browser/);
   assert.throws(() => distDirectory("../firefox"), /Unknown browser/);
+});
+
+test("chromium theme packages flatten every surface onto the palette base", async () => {
+  const core = await loadCore();
+  const theme = chromiumThemeManifest(core.PRESETS["rose-pine"], "light", "1.2.3");
+  assert.equal(theme.name, "Rosewash Rose Pine Light");
+  assert.equal(theme.version, "1.2.3");
+  assert.deepEqual(theme.theme.colors.frame, [250, 244, 237]);
+  assert.deepEqual(theme.theme.colors.toolbar, [250, 244, 237]);
+  assert.deepEqual(theme.theme.colors.tab_text, [87, 82, 121]);
+  assert.equal(themeDirectory("rose-pine", "dark"), "rosewash-rose-pine-dark");
 });

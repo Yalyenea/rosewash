@@ -3,14 +3,19 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import vm from "node:vm";
 
-async function profileHoverRuntime({ wide = true } = {}) {
+async function profileHoverRuntime({ wide = true, path = "/", posts = [], enabled = true, autoExpand = false } = {}) {
   const listeners = new Map();
   const observers = [];
-  const attributes = new Set(["data-rosewash-x-compact"]);
+  const attributes = new Set(enabled ? ["data-rosewash-x-compact"] : []);
+  if (autoExpand) attributes.add("data-rosewash-x-expand-replies");
   const media = { matches: wide, addEventListener() {} };
+  const navigation = new EventTarget();
+  const location = { pathname: path };
+  const timers = new Map();
+  let timerId = 0;
   const document = {
     documentElement: { hasAttribute: (name) => attributes.has(name) },
-    querySelectorAll: () => [],
+    querySelectorAll: selector => selector.includes("article[data-testid='tweet']") ? posts : [],
     addEventListener: (type, callback) => listeners.set(type, callback),
     removeEventListener: (type, callback) => {
       if (listeners.get(type) === callback) listeners.delete(type);
@@ -27,12 +32,27 @@ async function profileHoverRuntime({ wide = true } = {}) {
       observe() {}
       disconnect() {}
     },
-    window: { matchMedia: () => media, setTimeout, clearTimeout }
+    window: {
+      location, navigation, matchMedia: () => media,
+      setTimeout(callback) { timers.set(++timerId, callback); return timerId; },
+      clearTimeout(id) { timers.delete(id); }
+    }
   };
   vm.runInNewContext(await readFile(new URL("../src/sites/x.js", import.meta.url), "utf8"), context);
   return {
     listeners,
     mountCard: (card) => observers[0]([{ addedNodes: [card] }]),
+    flush() {
+      for (const [id, callback] of timers) {
+        timers.delete(id);
+        callback();
+      }
+    },
+    navigate(path) {
+      location.pathname = path;
+      navigation.dispatchEvent(new Event("currententrychange"));
+      this.flush();
+    },
     pointer: (type, target, relatedTarget = null) => listeners.get(type)?.({ target, relatedTarget }),
     disable() {
       attributes.clear();
@@ -40,6 +60,86 @@ async function profileHoverRuntime({ wide = true } = {}) {
     }
   };
 }
+
+function truncatedPost(id) {
+  const button = { clicks: 0, closest: () => null, click() { this.clicks++; } };
+  const permalink = {
+    closest: () => permalink,
+    parentElement: { closest: () => null },
+    getAttribute: () => `/reader/status/${id}`
+  };
+  return {
+    nodeType: 1, id, button,
+    matches: () => true,
+    querySelector: () => null,
+    querySelectorAll: selector => selector.startsWith("a[") ? [permalink] : [button]
+  };
+}
+
+test("expands reply text after the current post, skipping ancestors and quoted text", async () => {
+  const ancestor = truncatedPost("10");
+  const main = truncatedPost("20");
+  const reply = truncatedPost("30");
+  const quote = { clicks: 0, closest: () => ({}), click() { this.clicks++; } };
+  const query = reply.querySelectorAll;
+  reply.querySelectorAll = selector => selector.startsWith("a[") ? query(selector) : [reply.button, quote];
+  const posts = [ancestor, main, reply];
+  const runtime = await profileHoverRuntime({ path: "/reader/status/20", posts, autoExpand: true });
+  assert.deepEqual(posts.map(post => post.button.clicks), [0, 0, 1]);
+  assert.equal(quote.clicks, 0);
+
+  // Added replies expand without re-clicking buttons that are still loading.
+  const added = truncatedPost("40");
+  posts.push(added);
+  runtime.mountCard(added);
+  runtime.flush();
+  assert.deepEqual(posts.map(post => post.button.clicks), [0, 0, 1, 1]);
+  runtime.disable();
+  const paused = truncatedPost("50");
+  posts.push(paused);
+  runtime.navigate("/reader/status/20");
+  assert.equal(paused.button.clicks, 0);
+});
+
+test("waits for the current detail post and follows in-page navigation", async () => {
+  const reply = truncatedPost("30");
+  const posts = [reply];
+  const runtime = await profileHoverRuntime({ path: "/home", posts, autoExpand: true });
+  assert.equal(reply.button.clicks, 0);
+  runtime.navigate("/reader/status/20");
+  assert.equal(reply.button.clicks, 0);
+  posts.unshift(truncatedPost("20"));
+  runtime.mountCard(posts[0]);
+  runtime.flush();
+  assert.equal(reply.button.clicks, 1);
+
+  const recycled = truncatedPost("40");
+  recycled.button = reply.button;
+  const query = recycled.querySelectorAll;
+  recycled.querySelectorAll = selector => selector.startsWith("a[") ? query(selector) : [reply.button];
+  posts.push(recycled);
+  runtime.mountCard(recycled);
+  runtime.flush();
+  assert.equal(reply.button.clicks, 2);
+
+  const homePost = truncatedPost("50");
+  posts.push(homePost);
+  runtime.navigate("/home");
+  assert.equal(homePost.button.clicks, 0);
+  runtime.navigate("/reader/status/20/photo/1");
+  assert.equal(homePost.button.clicks, 0);
+});
+
+test("expands replies independently of compact layout and viewport width", async () => {
+  for (const options of [{ enabled: false }, { wide: false }]) {
+    const reply = truncatedPost("30");
+    await profileHoverRuntime({ ...options, autoExpand: true, path: "/reader/status/20", posts: [truncatedPost("20"), reply] });
+    assert.equal(reply.button.clicks, 1);
+  }
+  const reply = truncatedPost("30");
+  await profileHoverRuntime({ path: "/reader/status/20", posts: [truncatedPost("20"), reply] });
+  assert.equal(reply.button.clicks, 0);
+});
 
 function hoverElement(selectors = [], parent = null) {
   return {

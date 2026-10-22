@@ -85,6 +85,74 @@ function refreshIcons(tabs) {
     .catch((error) => console.error("Could not update Rosewash icons:", error));
 }
 
+// Firefox-only dynamic frame theme; chrome.theme is absent on Chromium.
+// In-memory key: an event page wake re-applies the theme once, which is fine.
+let browserThemeKey;
+
+// Fully flat: every surface uses the page canvas; only text colors differ.
+function firefoxTheme(palette, variant) {
+  return {
+    colors: {
+      frame: palette.base,
+      frame_inactive: palette.base,
+      tab_selected: palette.base,
+      toolbar: palette.base,
+      toolbar_top_separator: palette.base,
+      toolbar_bottom_separator: palette.base,
+      sidebar: palette.base,
+      ntp_background: palette.base,
+      tab_text: palette.text,
+      toolbar_text: palette.text,
+      icons: palette.text,
+      toolbar_field_text: palette.text,
+      toolbar_field_text_focus: palette.text,
+      popup_text: palette.text,
+      popup_highlight_text: palette.text,
+      sidebar_text: palette.text,
+      ntp_text: palette.text,
+      tab_background_text: palette.muted,
+      toolbar_field: palette.overlay,
+      popup_border: palette.overlay,
+      popup_highlight: palette.overlay,
+      sidebar_border: palette.overlay,
+      toolbar_field_focus: palette.surface,
+      popup: palette.surface
+    },
+    // "system" keeps page prefers-color-scheme independent of the frame theme.
+    properties: { color_scheme: variant, content_color_scheme: "system" }
+  };
+}
+
+// Per-site policies never reset the browser-wide frame; only pause and the
+// plain untinted presets do.
+async function syncBrowserTheme() {
+  if (!chrome.theme) return;
+  const settings = core.plainSettings(await chrome.storage.sync.get(null));
+  let key = "";
+  let palette;
+  if (settings.enabled) {
+    const resolved = core.resolveSettingsThemeKey(
+      settings, matchMedia("(prefers-color-scheme: dark)").matches
+    );
+    const candidate = core.PALETTES[resolved];
+    if (candidate && candidate.tint !== false) {
+      key = resolved;
+      palette = candidate;
+    }
+  }
+  if (key === browserThemeKey) return;
+  browserThemeKey = key;
+  if (palette) {
+    await chrome.theme.update(firefoxTheme(palette, key.endsWith("-dark") ? "dark" : "light"));
+  } else {
+    await chrome.theme.reset();
+  }
+}
+
+function refreshBrowserTheme() {
+  syncBrowserTheme().catch((error) => console.error("Could not update the browser theme:", error));
+}
+
 chrome.commands.onCommand.addListener((command, tab) => {
   if (command === TOGGLE_SITE_COMMAND) enqueueSettings(() => toggleCurrentSite(tab));
   if (command === TOGGLE_ENABLED_COMMAND) enqueueSettings(toggleEnabled);
@@ -94,10 +162,18 @@ chrome.tabs.onUpdated.addListener((_tabId, changeInfo, tab) => {
   if (changeInfo.url || changeInfo.status === "loading") refreshIcons([tab]);
 });
 chrome.storage.onChanged.addListener((_changes, areaName) => {
-  if (areaName === "sync") refreshIcons();
+  if (areaName !== "sync") return;
+  refreshIcons();
+  refreshBrowserTheme();
 });
-chrome.runtime.onStartup.addListener(() => refreshIcons());
-chrome.runtime.onInstalled.addListener(() => refreshIcons());
+chrome.runtime.onStartup.addListener(() => {
+  refreshIcons();
+  refreshBrowserTheme();
+});
+chrome.runtime.onInstalled.addListener(() => {
+  refreshIcons();
+  refreshBrowserTheme();
+});
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // The element picker runs in the page's top frame; the site comes from the tab, not the page.
@@ -108,6 +184,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       (error) => sendResponse({ ok: false, error: error.message })
     );
     return true;
+  }
+  // Content scripts relay prefers-color-scheme changes an event page misses.
+  if (message?.type === "rosewash:color-scheme-changed") {
+    if (sender.id === chrome.runtime.id) refreshBrowserTheme();
+    return false;
   }
   if (![
     "rosewash:edit-settings", "rosewash:set-host-policy",

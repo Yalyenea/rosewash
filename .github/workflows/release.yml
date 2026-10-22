@@ -49,7 +49,7 @@ jobs:
             *) echo "Release tags must start with v, got: $TAG_NAME" >&2; exit 1 ;;
           esac
 
-          for suffix in "" "-edge" "-firefox"; do
+          for suffix in "" "-edge" "-firefox" "-chromium-themes"; do
             asset="release/rosewash-${TAG_NAME}${suffix}.zip"
             if [[ ! -f "$asset" ]]; then
               echo "missing $asset" >&2

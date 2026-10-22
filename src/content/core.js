@@ -233,6 +233,7 @@
     presetDark: "rose-pine",
     appearance: "auto",
     xCompactLayout: false,
+    xAutoExpandReplies: false,
     xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
     zhihuArticleWidth: 960,
@@ -882,6 +883,7 @@
       presetDark: presetIdForVariant(source.presetDark, source.preset, "dark"),
       appearance,
       xCompactLayout: source.xCompactLayout === true,
+      xAutoExpandReplies: source.xAutoExpandReplies === true,
       xSingleColumnWidth: X_SINGLE_COLUMN_WIDTHS.includes(source.xSingleColumnWidth)
         ? source.xSingleColumnWidth
         : DEFAULT_SETTINGS.xSingleColumnWidth,
@@ -1046,6 +1048,7 @@
       presetDark: normalized.presetDark,
       appearance: normalized.appearance,
       xCompactLayout: normalized.xCompactLayout,
+      xAutoExpandReplies: normalized.xAutoExpandReplies,
       xSingleColumnWidth: normalized.xSingleColumnWidth,
       zhihuArticleLayout: normalized.zhihuArticleLayout,
       zhihuArticleWidth: normalized.zhihuArticleWidth,
