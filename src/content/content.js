@@ -6,6 +6,7 @@
   const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
   const X_COMPACT_ATTRIBUTE = "data-rosewash-x-compact";
   const X_COMPACT_EVENT = "rosewash:x-compact-change";
+  const X_EXPAND_REPLIES_ATTRIBUTE = "data-rosewash-x-expand-replies";
   const X_SINGLE_WIDTH_PROPERTY = "--rosewash-x-single";
   const ZHIHU_LAYOUT_ATTRIBUTE = "data-rosewash-zhihu-layout";
   const ZHIHU_LAYOUT_EVENT = "rosewash:zhihu-layout-change";
@@ -28,15 +29,28 @@
     }
   }
 
+  // Firefox event pages sleep, so the page relays scheme changes to wake them.
+  function notifyColorSchemeChange() {
+    try {
+      chrome.runtime.sendMessage({ type: "rosewash:color-scheme-changed" })
+        .catch(() => undefined); // A reloading extension has no listener.
+    } catch {
+      // The extension context is already gone.
+    }
+  }
+
   function dispose() {
     disposed = true;
     darkQuery.removeEventListener("change", applyCachedSettings);
+    darkQuery.removeEventListener("change", notifyColorSchemeChange);
     document.removeEventListener("DOMContentLoaded", handlePageLoaded);
     window.removeEventListener("load", handlePageLoaded);
     window.removeEventListener("pageshow", applyCachedSettings);
     document.removeEventListener("visibilitychange", handleVisibilityChange);
-    if (document.documentElement?.hasAttribute(X_COMPACT_ATTRIBUTE)) {
+    if (document.documentElement?.hasAttribute(X_COMPACT_ATTRIBUTE)
+      || document.documentElement?.hasAttribute(X_EXPAND_REPLIES_ATTRIBUTE)) {
       document.documentElement.removeAttribute(X_COMPACT_ATTRIBUTE);
+      document.documentElement.removeAttribute(X_EXPAND_REPLIES_ATTRIBUTE);
       document.documentElement.style.removeProperty(X_SINGLE_WIDTH_PROPERTY);
       document.dispatchEvent(new CustomEvent(X_COMPACT_EVENT));
     }
@@ -75,6 +89,11 @@
     }
     if (document.documentElement.hasAttribute(X_COMPACT_ATTRIBUTE) !== xActive) {
       document.documentElement.toggleAttribute(X_COMPACT_ATTRIBUTE, xActive);
+      document.dispatchEvent(new CustomEvent(X_COMPACT_EVENT));
+    }
+    const expandReplies = allowed && host === "x.com" && settings.xAutoExpandReplies;
+    if (document.documentElement.hasAttribute(X_EXPAND_REPLIES_ATTRIBUTE) !== expandReplies) {
+      document.documentElement.toggleAttribute(X_EXPAND_REPLIES_ATTRIBUTE, expandReplies);
       document.dispatchEvent(new CustomEvent(X_COMPACT_EVENT));
     }
 
@@ -146,6 +165,7 @@
       "appearance",
       "mode",
       "xCompactLayout",
+      "xAutoExpandReplies",
       "xSingleColumnWidth",
       "zhihuArticleLayout",
       "zhihuArticleWidth",
@@ -196,6 +216,9 @@
     window.addEventListener("load", handlePageLoaded);
     window.addEventListener("pageshow", applyCachedSettings);
     document.addEventListener("visibilitychange", handleVisibilityChange);
+    if (core.browserKind() === "firefox" && window.top === window) {
+      darkQuery.addEventListener("change", notifyColorSchemeChange);
+    }
 
     try {
       chrome.storage.onChanged.addListener(handleStorageChanged);

@@ -394,6 +394,10 @@ code.font-preview {
   margin-bottom:16px;
   min-height:22px;
 }
+.reply-text-toggle {
+  margin:16px 0 0;
+  font-size:12px;
+}
 .rules-columns label>span {
   display:block;
   font-size:12px;

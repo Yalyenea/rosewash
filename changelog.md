@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Add an independent Auto-expand reply text switch under Settings → Sites →
+  X.com. Expand truncated replies on post pages, including replies loaded later.
+  Leave the main post, quoted posts, and home timeline unchanged.
+- Match Firefox's browser frame and toolbar to the active page palette.
+  Follow system appearance in Auto mode and reset the browser theme when
+  Rosewash is paused or a plain palette is selected.
+- Add separate Chrome and Edge frame themes for each tinted palette variant.
+  Generate them with `just themes`; `just package-all` includes a companion
+  theme archive for GitHub Releases.
+
 ## 0.2.5 - 2026-10-18
 
 - Add separate Edge and Firefox packages. Firefox supports desktop version

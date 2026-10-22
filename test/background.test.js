@@ -13,7 +13,8 @@ function deferred() {
   return { promise, resolve };
 }
 
-function background({ url = "https://x.com/home", messageError = false, beforeSet, notify, firefox = false } = {}) {
+function background({ url = "https://x.com/home", messageError = false, beforeSet, notify,
+  firefox = false, theme = firefox, prefersDark = false } = {}) {
   const writes = [];
   const messages = [];
   const errors = [];
@@ -26,6 +27,9 @@ function background({ url = "https://x.com/home", messageError = false, beforeSe
   let storageChanged;
   const extensionUrl = `${firefox ? "moz-extension" : "chrome-extension"}://test/`;
   const context = { URL, console: { error: (...args) => errors.push(args) } };
+  const themeCalls = [];
+  let dark = prefersDark;
+  if (theme) context.matchMedia = () => ({ matches: dark });
   context.globalThis = context;
   context.importScripts = () => vm.runInNewContext(coreSource, context);
   if (firefox) {
@@ -62,10 +66,17 @@ function background({ url = "https://x.com/home", messageError = false, beforeSe
       remove: async (keys) => { for (const key of keys) delete stored[key]; }
     } }
   };
+  if (theme) {
+    context.chrome.theme = {
+      update: async (value) => { themeCalls.push({ update: structuredClone(value) }); },
+      reset: async () => { themeCalls.push({ reset: true }); }
+    };
+  }
   vm.runInNewContext(backgroundSource, context);
   const sender = { id: "test", url: extensionUrl + "popup.html" };
   return {
-    writes, messages, errors, icons,
+    writes, messages, errors, icons, themeCalls,
+    setPrefersDark: (value) => { dark = value; },
     command: (tab, name = "toggle-current-site") => commandListener(name, tab),
     tabUpdated: (tab, changeInfo) => tabUpdated(tab.id, changeInfo, tab),
     storageChanged: () => storageChanged({}, "sync"),
@@ -213,6 +224,40 @@ test("picker saves take the site from the sender's top-frame tab", async () => {
     assert.equal(await runtime.receiveFrom({ type: "rosewash:ignore-element", selector: "p" }, sender), null);
   }
   assert.equal(runtime.writes.length, 1);
+});
+
+test("Firefox keeps the browser frame on the resolved palette", async () => {
+  const runtime = background({ firefox: true, prefersDark: true });
+  runtime.store({ appearance: "dark" });
+  runtime.storageChanged();
+  await flush();
+  const darkTheme = runtime.themeCalls.at(-1).update;
+  assert.equal(darkTheme.colors.frame, "#232136");
+  assert.equal(darkTheme.colors.toolbar, "#232136");
+  assert.deepEqual(darkTheme.properties, { color_scheme: "dark", content_color_scheme: "system" });
+  runtime.store({ enabled: false });
+  runtime.storageChanged();
+  await flush();
+  assert.deepEqual(runtime.themeCalls.at(-1), { reset: true });
+  runtime.store({ presetLight: "light", appearance: "light" });
+  runtime.storageChanged();
+  await flush();
+  assert.equal(runtime.themeCalls.length, 2);
+  assert.equal(await runtime.receiveFrom(
+    { type: "rosewash:color-scheme-changed" }, { id: "other", url: "https://example.com/" }
+  ), null);
+  await flush();
+  assert.equal(runtime.themeCalls.length, 2);
+  runtime.store({ presetLight: "rose-pine", appearance: "auto" });
+  runtime.setPrefersDark(false);
+  assert.equal(await runtime.receiveFrom(
+    { type: "rosewash:color-scheme-changed" }, { id: "test", url: "https://example.com/" }
+  ), null);
+  await flush();
+  const lightTheme = runtime.themeCalls.at(-1).update;
+  assert.equal(lightTheme.colors.frame, "#faf4ed");
+  assert.equal(lightTheme.properties.color_scheme, "light");
+  assert.equal(runtime.themeCalls.length, 3);
 });
 
 test("toolbar icon is gray when the tab's site is off, paused, or protected", async () => {

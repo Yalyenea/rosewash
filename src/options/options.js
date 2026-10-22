@@ -26,6 +26,7 @@
   const fontListStatus = document.querySelector("#font-list-status");
   const systemAppearance = window.matchMedia("(prefers-color-scheme: dark)");
   const xCompactInput = document.querySelector("#x-compact-layout");
+  const xAutoExpandInput = document.querySelector("#x-auto-expand-replies");
   const xSingleWidthInput = document.querySelector("#x-single-column-width");
   const xSingleWidthValue = document.querySelector("#x-single-column-width-value");
   const zhihuLayoutInput = document.querySelector("#zhihu-article-layout");
@@ -300,6 +301,7 @@
     defaultInput.checked = normalized.defaultEnabled;
     fontPicker.render(normalized);
     xCompactInput.checked = normalized.xCompactLayout;
+    xAutoExpandInput.checked = normalized.xAutoExpandReplies;
     xSingleWidthInput.disabled = !normalized.xCompactLayout;
     renderXSingleColumnWidth(normalized.xSingleColumnWidth);
     zhihuLayoutInput.checked = normalized.zhihuArticleLayout;
@@ -334,6 +336,7 @@
       presetDark: selectedDark,
       appearance: selectedAppearance(),
       xCompactLayout: xCompactInput.checked,
+      xAutoExpandReplies: xAutoExpandInput.checked,
       xSingleColumnWidth: selectedXSingleColumnWidth(),
       zhihuArticleLayout: zhihuLayoutInput.checked,
       zhihuArticleWidth: selectedZhihuArticleWidth(),
@@ -386,7 +389,7 @@
   for (const input of [xSingleWidthInput, zhihuWidthInput, brightnessInput]) {
     input.addEventListener("change", saveSettings);
   }
-  for (const input of [enabledInput, defaultInput, customFontsInput, xCompactInput, zhihuLayoutInput, dimInput, ...fontFields.map(field => field.input)]) {
+  for (const input of [enabledInput, defaultInput, customFontsInput, xCompactInput, xAutoExpandInput, zhihuLayoutInput, dimInput, ...fontFields.map(field => field.input)]) {
     input.addEventListener("change", saveSettings);
   }
   function flushSave() {
