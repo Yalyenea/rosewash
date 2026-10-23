@@ -42,6 +42,8 @@ scripts/dist.mjs           Copies runtime files and writes the target manifest /
 scripts/themes.mjs         Generates Chromium frame themes from the palette registry
 justfile                   test · validate · check · dist · themes · package · package-all · clean
 scripts/release-notes.mjs  GitHub Release notes from the version section in changelog.md
+website/                   Bilingual static website: content, palette demo, images, and fonts
+wrangler.website.jsonc     Cloudflare static assets and custom domain configuration
 dist/                      Generated loadable extension (`just dist`, gitignored)
 dist-edge/, dist-firefox/   Generated browser-specific folders (gitignored)
 dist-themes/               Generated Chromium frame theme folders (gitignored)
