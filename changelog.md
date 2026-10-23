@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Add a Chinese and English website at rosewash.yfff.me with palette and font
+  previews, screenshots, and browser store links. Deploy website changes on
+  `main` automatically through Cloudflare Workers Builds.
 - Add an independent Auto-expand reply text switch under Settings → Sites →
   X.com. Expand truncated replies on post pages, including replies loaded later.
   Leave the main post, quoted posts, and home timeline unchanged.

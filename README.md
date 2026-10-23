@@ -2,6 +2,8 @@
 
 <p align="center">Your colors, fonts, and reading layouts across the web.</p>
 
+<p align="center"><a href="https://rosewash.yfff.me/">Website · 官网</a></p>
+
 <p align="center">
   <img src="docs/assets/screenshots/popup-light.png" alt="Rosewash popup in light mode" width="292">
   <img src="docs/assets/screenshots/popup-dark.png" alt="Rosewash popup in dark mode" width="292">
@@ -75,6 +77,11 @@ just package-all    # Package extensions and Chromium frame themes
 ```
 
 Load the staged folder as an unpacked extension; Firefox uses **Load Temporary Add-on** with its staged `manifest.json`. After changes, stage again, reload the extension, and refresh your tabs.
+
+The bilingual website lives in `website/`. Cloudflare Workers Builds deploys
+changes to `website/**` or `wrangler.website.jsonc` on `main` to
+[rosewash.yfff.me](https://rosewash.yfff.me/). It has no build step; deployment uses
+`npx wrangler@4.152.0 deploy --config wrangler.website.jsonc`.
 
 [Releases](https://github.com/Yalyenea/rosewash/releases)
 · [Implementation](docs/implementation.md)

@@ -1,0 +1,15 @@
+{
+  "name": "rosewash",
+  "account_id": "7e2b42d1cd23a8fa44b55fbd593f45c1",
+  "compatibility_date": "2026-10-22",
+  "workers_dev": false,
+  "assets": {
+    "directory": "./website"
+  },
+  "routes": [
+    {
+      "pattern": "rosewash.yfff.me",
+      "custom_domain": true
+    }
+  ]
+}

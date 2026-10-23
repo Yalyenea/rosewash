@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="zh-CN" data-palette="rose-pine" data-mode="light" data-font="serif">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="自定义网页配色、字体和阅读布局。Rosewash 是一款免费、开源的浏览器扩展。">
+    <meta name="theme-color" content="#faf4ed">
+    <title>Rosewash · 让网页更顺眼</title>
+    <link rel="canonical" href="https://rosewash.yfff.me/">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Rosewash">
+    <meta property="og:description" content="Your colors, fonts, and reading layouts across the web.">
+    <meta property="og:url" content="https://rosewash.yfff.me/">
+    <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="./styles.css">
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main" data-i18n="skip">跳到正文</a>
+    <div class="page">
+      <header class="header">
+        <a class="brand" href="#" aria-label="Rosewash">
+          <img src="./assets/icon.svg" width="28" height="28" alt="">
+          <span>Rosewash</span>
+        </a>
+        <nav class="header-actions" aria-label="导航" data-i18n-aria="navigation">
+          <button class="language-button" id="language-button" type="button" lang="en" aria-label="Switch to English">EN</button>
+          <a class="button github-link" href="https://github.com/Yalyenea/rosewash" target="_blank" rel="noopener noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+        </nav>
+      </header>
+
+      <main id="main">
+        <section class="hero" aria-labelledby="headline">
+          <div class="intro">
+            <h1 id="headline" data-i18n="headline">让网页更顺眼。</h1>
+            <p class="description" data-i18n="description">自定义网页配色、字体和阅读布局。</p>
+            <div class="install-links desktop-install">
+              <a class="button primary" href="https://chromewebstore.google.com/detail/rosewash/jklllohlbljogmomdfhggfojpgellcmh" target="_blank" rel="noopener noreferrer"><span data-i18n="installChrome">安装到 Chrome</span> <span aria-hidden="true">↗</span></a>
+              <a class="button" href="https://microsoftedge.microsoft.com/addons/detail/gjbmoakfjmbcnahoigepocgbngiekhjj" target="_blank" rel="noopener noreferrer">Edge <span aria-hidden="true">↗</span></a>
+              <a class="button" href="https://addons.mozilla.org/en-US/firefox/addon/rosewash/" target="_blank" rel="noopener noreferrer">Firefox <span aria-hidden="true">↗</span></a>
+            </div>
+            <a class="button primary mobile-install" href="#download"><span data-i18n="desktopDownload">桌面版下载</span> <span aria-hidden="true">↓</span></a>
+            <p class="smallprint" data-i18n="free">免费 · 开源</p>
+          </div>
+
+          <div class="demo" aria-label="主题演示" data-i18n-aria="themeDemo">
+            <div class="preview-card">
+              <div class="preview-header">
+                <span class="preview-label" data-i18n="preview">预览</span>
+                <div class="segmented" role="group" aria-label="效果对比" data-i18n-aria="comparison">
+                  <button class="button" type="button" data-preview="original" aria-pressed="false" data-i18n="original">原始</button>
+                  <button class="button" type="button" data-preview="applied" aria-pressed="true" data-i18n="applied">应用</button>
+                </div>
+              </div>
+              <article class="specimen" id="specimen" data-preview="applied" aria-label="阅读示例" data-i18n-aria="readingSample">
+                <h2 lang="en">Typography</h2>
+                <p class="sample-english" lang="en"><span>The shape of a letter.</span> <span>The space between lines.</span></p>
+                <p class="sample-body" data-i18n="sampleBody">字体、行距与行长，影响着一段文字的阅读体验。</p>
+                <div class="glyphs" aria-hidden="true">
+                  <span class="sample-link">Aa Bb Cc</span>
+                  <span lang="zh-CN">中文排版</span>
+                  <span>012345</span>
+                </div>
+              </article>
+              <div class="preview-toolbar">
+                <label class="font-picker">
+                  <span class="sr-only" data-i18n="font">示例字体</span>
+                  <select id="font-select">
+                    <option value="serif" data-i18n="serif">衬线</option>
+                    <option value="sans" data-i18n="sans">无衬线</option>
+                  </select>
+                  <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="m2 3.5 3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+                </label>
+                <div class="segmented appearance" role="group" aria-label="外观" data-i18n-aria="appearance">
+                  <button class="button" type="button" data-mode="light" aria-pressed="true" data-i18n="light">浅色</button>
+                  <button class="button" type="button" data-mode="dark" aria-pressed="false" data-i18n="dark">深色</button>
+                </div>
+              </div>
+            </div>
+            <div class="palette-picker" role="group" aria-label="配色" data-i18n-aria="palette">
+              <button class="button palette" type="button" data-palette="rose-pine" aria-pressed="true">Rose Pine <span class="check" aria-hidden="true">✓</span></button>
+              <button class="button palette" type="button" data-palette="catppuccin" aria-pressed="false">Catppuccin <span class="check" aria-hidden="true">✓</span></button>
+              <button class="button palette" type="button" data-palette="gruvbox" aria-pressed="false">Gruvbox <span class="check" aria-hidden="true">✓</span></button>
+            </div>
+            <p class="preference-error" id="preference-error" role="status" hidden data-i18n="preferenceError">当前选择已生效，但浏览器无法保存偏好。</p>
+          </div>
+        </section>
+
+        <section class="examples" aria-labelledby="examples-title">
+          <h2 id="examples-title" data-i18n="examples">实际效果</h2>
+          <div class="gallery" id="gallery" tabindex="0" aria-label="网页效果图" data-i18n-aria="gallery">
+            <figure>
+              <button class="screenshot-button" type="button" data-image="arxiv" aria-label="放大 arXiv 截图" data-i18n-aria="zoomArxiv">
+                <img src="./assets/arxiv.png" width="1800" height="1200" alt="arXiv 使用 Rose Pine 浅色配色的效果" data-i18n-alt="arxivAlt">
+              </button>
+              <figcaption>arXiv · Rose Pine</figcaption>
+            </figure>
+            <figure>
+              <button class="screenshot-button" type="button" data-image="python" aria-label="放大 Python 文档截图" data-i18n-aria="zoomPython">
+                <img src="./assets/python.png" width="1800" height="1200" alt="Python 文档使用 Tokyo Night 深色配色的效果" data-i18n-alt="pythonAlt" loading="lazy">
+              </button>
+              <figcaption>Python Docs · Tokyo Night</figcaption>
+            </figure>
+          </div>
+          <div class="gallery-controls">
+            <button class="button" id="previous-image" type="button" aria-label="上一张截图" data-i18n-aria="previousImage">←</button>
+            <span id="gallery-count" aria-live="polite">1 / 2</span>
+            <button class="button" id="next-image" type="button" aria-label="下一张截图" data-i18n-aria="nextImage">→</button>
+          </div>
+        </section>
+
+        <section class="downloads" id="download" aria-labelledby="download-title">
+          <h2 id="download-title" data-i18n="desktopDownload">桌面版下载</h2>
+          <div class="install-links">
+            <a class="button" href="https://chromewebstore.google.com/detail/rosewash/jklllohlbljogmomdfhggfojpgellcmh" target="_blank" rel="noopener noreferrer">Chrome <span aria-hidden="true">↗</span></a>
+            <a class="button" href="https://microsoftedge.microsoft.com/addons/detail/gjbmoakfjmbcnahoigepocgbngiekhjj" target="_blank" rel="noopener noreferrer">Edge <span aria-hidden="true">↗</span></a>
+            <a class="button" href="https://addons.mozilla.org/en-US/firefox/addon/rosewash/" target="_blank" rel="noopener noreferrer">Firefox <span aria-hidden="true">↗</span></a>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <a class="wordmark" href="#">Rosewash</a>
+        <nav aria-label="帮助" data-i18n-aria="help">
+          <button class="button" type="button" data-dialog="privacy-dialog" data-i18n="privacy">隐私</button>
+          <button class="button" type="button" data-dialog="faq-dialog" data-i18n="faq">常见问题</button>
+          <a class="button" href="https://github.com/Yalyenea/rosewash/issues" target="_blank" rel="noopener noreferrer"><span data-i18n="feedback">反馈</span> <span aria-hidden="true">↗</span></a>
+        </nav>
+      </footer>
+    </div>
+
+    <dialog class="info-dialog" id="privacy-dialog" aria-labelledby="privacy-title">
+      <div class="dialog-heading"><h2 id="privacy-title" data-i18n="privacy">隐私</h2><button class="button close-dialog" type="button" aria-label="关闭" data-i18n-aria="close">×</button></div>
+      <p data-i18n="privacyPages">Rosewash 在设备上处理网页，不记录浏览历史，不向开发者发送网页内容或浏览活动。</p>
+      <p data-i18n="privacySync">扩展设置可通过浏览器账户同步。开发者无法读取这些设置。</p>
+      <p data-i18n="privacyWebsite">官网只在当前浏览器保存语言与演示偏好，不使用广告或访问统计。</p>
+      <a class="text-link" href="https://github.com/Yalyenea/rosewash/blob/main/PRIVACY.md" target="_blank" rel="noopener noreferrer"><span data-i18n="fullPrivacy">完整隐私说明</span> <span aria-hidden="true">↗</span></a>
+    </dialog>
+
+    <dialog class="info-dialog" id="faq-dialog" aria-labelledby="faq-title">
+      <div class="dialog-heading"><h2 id="faq-title" data-i18n="faq">常见问题</h2><button class="button close-dialog" type="button" aria-label="关闭" data-i18n-aria="close">×</button></div>
+      <details open><summary data-i18n="faqBrowsers">支持哪些浏览器？</summary><p data-i18n="faqBrowsersAnswer">支持桌面版 Chrome、Edge、Firefox，以及 Helium、Brave 等兼容浏览器。Firefox 需要 148 或更新版本。</p></details>
+      <details><summary data-i18n="faqPermissions">为什么需要访问网页？</summary><p data-i18n="faqPermissionsAnswer">修改配色和字体需要读取网页元素及其样式。这些处理在你的设备上完成。</p></details>
+      <details><summary data-i18n="faqSites">可以只在部分网站启用吗？</summary><p data-i18n="faqSitesAnswer">可以。在扩展弹窗中开关当前网站，也可以选取需要保留原样的元素。</p></details>
+      <details><summary data-i18n="faqUnavailable">为什么有些页面没有变化？</summary><p data-i18n="faqUnavailableAnswer">浏览器设置页和扩展商店等受保护页面不允许扩展修改。其他网站出现问题时，可以先关闭该网站的效果，再通过反馈链接报告。</p></details>
+    </dialog>
+
+    <dialog class="image-dialog" id="image-dialog" aria-labelledby="image-title">
+      <div class="dialog-heading"><h2 id="image-title"></h2><button class="button close-dialog" type="button" aria-label="关闭" data-i18n-aria="close">×</button></div>
+      <img id="large-image" width="1800" height="1200" alt="">
+    </dialog>
+  </body>
+</html>
