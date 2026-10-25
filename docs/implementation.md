@@ -438,13 +438,26 @@ attach a shadow root after their host was scanned, are not covered.
 `core.js` registers local `FontFace` objects in `document.fonts`. English and
 Chinese faces have separate Unicode ranges; MathML and monospace faces cover
 all characters but are applied only to their respective content.
-Local sources include the selected name, its regular full face name, and its
-regular PostScript form because the browser font list returns family names.
+`createFontFaces` constructs the same definitions for page rendering and settings
+previews. Static families register Regular (400), Bold (700), Italic (400), and
+Bold Italic (700). Local sources use common full and PostScript face names;
+variant sources contain only that variant's names. Selected names ending in
+Regular also resolve sibling styles from their shared base name.
+
+Families explicitly ending in the word Variable register normal and italic
+faces with a `1 1000` weight range. The browser limits this range to the font's
+actual supported weights. This naming rule covers families such as Inter Variable;
+it does not inspect font metadata or detect every variable family.
+
+`registerFontFaces` adds and loads the faces, removing any that fail to load.
+An unavailable variant then leaves the family's other faces eligible for normal
+browser matching and synthesis. The engine deduplicates family aliases before
+prepending them to a page's font stack.
+
 Only the font family is replaced; page sizes, weights, italics, and line spacing
-retain their CSS values. The registered faces currently use normal weight and
-style descriptors, so bold and italic variants can be synthesized by the browser.
-Matching actual family variants and separate heading/body choices are planned
-in `PLAN.md`.
+retain their CSS values. Separate heading/body choices and additional static
+weights remain planned in `PLAN.md`. `test/fixtures/font-styles-page.html` provides
+regular, bold, italic, bold italic, heading, mixed-text, and code samples.
 
 Font routing uses the same batched computed-style snapshots as tinting.
 Native `math` descendants use the math face; `pre`, `code`, `kbd`, `samp`,

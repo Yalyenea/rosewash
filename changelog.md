@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Match custom fonts to their real bold, italic, and bold italic faces while
+  preserving page sizes, heading hierarchy, weights, and line spacing. Support
+  weight ranges for families explicitly named Variable. Remove unavailable
+  local faces so the browser can match the family's remaining styles.
 - Separate theme and font overrides. Turning the theme off preserves the
   selected palettes and keeps custom fonts active.
 - Add font search in Chrome and Edge with a scrollable menu capped at 280px,
