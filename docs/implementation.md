@@ -107,6 +107,7 @@ Stored in **`chrome.storage.sync`**.
 {
   "enabled": true,
   "defaultEnabled": true,
+  "colorOverridesEnabled": true,
   "customFontsEnabled": false,
   "fontEnglish": "",
   "fontChinese": "",
@@ -132,6 +133,7 @@ Stored in **`chrome.storage.sync`**.
 | --- | --- | --- |
 | `enabled` | boolean | Global off clears all tints and font overrides |
 | `defaultEnabled` | boolean | Default state for sites without a matching rule; true for existing installs |
+| `colorOverridesEnabled` | boolean | Enables theme overrides; true for existing installs. Turning it off keeps palettes saved and custom fonts active. |
 | `customFontsEnabled` | boolean | Enables custom page fonts; off by default |
 | `fontEnglish`, `fontChinese`, `fontMath`, `fontMonospace` | string | Local font family or face names; empty preserves page typography |
 | `presetLight` | preset id with a light variant | Palette used when appearance resolves to light |
@@ -418,6 +420,8 @@ attach a shadow root after their host was scanned, are not covered.
   theme tokens, and skip page-tone sampling and color overrides. With no
   custom fonts selected, skip DOM scanning and disconnect the observer.
   Custom fonts and site layouts remain independent of palette tinting.
+- Theme overrides off → resolve to the corresponding plain palette without
+  changing `presetLight` or `presetDark`. Image dimming also stops.
 - Theme/mode change → full rescan that restores each element in its own
   slice. Switching to a state with nothing to scan restores everything at once.
 - Same resolved theme (tab focus, `pageshow`) refreshes root CSS
@@ -436,6 +440,11 @@ Chinese faces have separate Unicode ranges; MathML and monospace faces cover
 all characters but are applied only to their respective content.
 Local sources include the selected name, its regular full face name, and its
 regular PostScript form because the browser font list returns family names.
+Only the font family is replaced; page sizes, weights, italics, and line spacing
+retain their CSS values. The registered faces currently use normal weight and
+style descriptors, so bold and italic variants can be synthesized by the browser.
+Matching actual family variants and separate heading/body choices are planned
+in `PLAN.md`.
 
 Font routing uses the same batched computed-style snapshots as tinting.
 Native `math` descendants use the math face; `pre`, `code`, `kbd`, `samp`,
@@ -510,11 +519,12 @@ old snapshot. Notification responses never block the next save.
 **Popup**
 
 - Uses a 292px classic layout: host, global switch, appearance, light and dark
-  palette selectors, site controls, and Settings / Refresh.
+  palette selectors, Fonts switch, site controls, and Settings / Refresh.
 - Pick sits immediately before Allowed / Blocked. The site button saves an
   explicit on/off rule. Storage changes update the open popup.
-- X and Zhihu layout switches appear only on their matching hosts. Fonts,
-  image dimming, widths, site lists, and shortcut bindings live in settings.
+- X and Zhihu layout switches appear only on their matching hosts. Font
+  choices, image dimming, widths, site lists, and shortcut bindings live in
+  settings. The popup Fonts switch shares `customFontsEnabled` with settings.
 - Browser-protected pages show Unavailable with a reason and disable the site
   button, picker, and Refresh.
 - Every edit sends its baseline and edited settings to the worker immediately.
@@ -524,17 +534,22 @@ old snapshot. Notification responses never block the next save.
 
 **Options**
 
-- Four tabs: Appearance, Fonts, Sites, and Shortcuts. The tab label identifies
+- Four tabs: Theme, Fonts, Sites, and Shortcuts. The tab label identifies
   its panel; there is no repeated panel heading.
 - Light and dark palettes remain expanded in equal-width button grids.
   Settings chrome follows the selected palette and system appearance.
+- Override theme and Override fonts are independent switches. Theme overrides
+  use `colorOverridesEnabled`, which defaults to true for existing installs.
 - Changes save automatically through the background merge queue. Text and
   sliders debounce by 350ms; change, tab switches, page hiding, and page exit
   flush pending input. Each edit advances its baseline before sending, so
   rapid reversals remain ordered. Save responses leave current form edits intact.
 - Saving / Saved feedback clears after success; failures remain visible.
 - The shared font picker enumerates system fonts in Chromium with
-  `chrome.fontSettings.getFontList()`. In Firefox, its four fields accept
+  `chrome.fontSettings.getFontList()`. Its searchable list is capped at 280px,
+  scrolls, and opens above the field when space below is limited. Arrow keys
+  navigate, Enter commits, and Escape closes; searching never saves a font.
+  In Firefox, its four fields accept
   installed font names directly; blank fields preserve page fonts. Four
   independent previews use the same local FontFace definitions as pages.
   Enumeration and preview errors are shown.

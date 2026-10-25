@@ -23,16 +23,23 @@
         </label>
       </header>
       <nav class="tabs" aria-label="Settings sections">
-        <button type="button" data-panel="appearance" aria-current="page">Appearance</button>
+        <button type="button" data-panel="appearance" aria-current="page">Theme</button>
         <button type="button" data-panel="fonts">Fonts</button>
         <button type="button" data-panel="sites">Sites</button>
         <button type="button" data-panel="shortcuts">Shortcuts</button>
       </nav>
       <div class="tab-content">
-        <section id="appearance" class="tab-panel" aria-label="Appearance">
+        <section id="appearance" class="tab-panel" aria-label="Theme">
+          <label class="setting-row">
+            <h3>Override theme</h3>
+            <span class="toggle">
+              <input id="color-overrides-enabled" type="checkbox" aria-label="Override theme">
+              <span class="toggle-track"></span>
+            </span>
+          </label>
           <div class="setting-row mode-row">
             <div>
-              <h3>Color mode</h3>
+              <h3>Theme mode</h3>
             </div>
             <div class="modes" aria-label="Appearance">
               <label>
@@ -93,71 +100,45 @@
         <section id="fonts" class="tab-panel" aria-label="Fonts" hidden>
           <label class="setting-row">
             <span>
-              <h3>Custom fonts</h3>
+              <h3>Override fonts</h3>
             </span>
             <span class="toggle">
-              <input id="custom-fonts-enabled" type="checkbox" aria-label="Custom fonts">
+              <input id="custom-fonts-enabled" type="checkbox" aria-label="Override fonts">
               <span class="toggle-track">
               </span>
             </span>
           </label>
           <div class="font-columns">
-                      <label class="font-field" for="font-english">
-                        <span class="setting-label">English</span>
-                        <select id="font-english" aria-label="English">
-            <option value="">Page default</option>
-          </select>
-                      <small id="font-status-english" aria-live="polite">
-        </small>
-                    <span id="font-preview-english" class="font-preview" lang="en">Aa Bb Cc · 0123456789</span>
-                  </label>
-                  <label class="font-field" for="font-chinese">
-                    <span class="setting-label">Chinese</span>
-                    <select id="font-chinese" aria-label="Chinese">
-        <option value="">Page default</option>
-      </select>
-                  <small id="font-status-chinese" aria-live="polite">
-    </small>
-                <span id="font-preview-chinese" class="font-preview" lang="zh-CN">中文字体 · 你好世界</span>
-              </label>
-              <label class="font-field" for="font-math">
-                <span class="setting-label">MathML</span>
-                <select id="font-math" aria-label="MathML">
-    <option value="">Page default</option>
-  </select>
-              <small id="font-status-math" aria-live="polite">
-</small>
-            <math id="font-preview-math" class="font-preview">
-<msup>
-  <mi>x</mi>
-  <mn>2</mn>
-</msup>
-<mo>+</mo>
-<msup>
-  <mi>y</mi>
-  <mn>2</mn>
-</msup>
-<mo>=</mo>
-<msup>
-  <mi>z</mi>
-  <mn>2</mn>
-</msup>
-</math>
-          </label>
-          <label class="font-field" for="font-monospace">
-            <span class="setting-label">Monospace</span>
-            <select id="font-monospace" aria-label="Monospace">
-<option value="">Page default</option>
-</select>
-            <small id="font-status-monospace" aria-live="polite">
-</small>
-            <code id="font-preview-monospace" class="font-preview">const n = 42;</code>
-          </label>
-</div>
-<p id="font-list-status" class="font-help" role="status">
-</p>
-</section>
-<section id="sites" class="tab-panel" aria-label="Sites" hidden>
+            <div class="font-field">
+              <label class="setting-label" for="font-english">English</label>
+              <select id="font-english" aria-label="English"><option value="">Page default</option></select>
+              <small id="font-status-english" aria-live="polite"></small>
+              <span id="font-preview-english" class="font-preview" lang="en">Aa Bb Cc · 0123456789</span>
+            </div>
+            <div class="font-field">
+              <label class="setting-label" for="font-chinese">Chinese</label>
+              <select id="font-chinese" aria-label="Chinese"><option value="">Page default</option></select>
+              <small id="font-status-chinese" aria-live="polite"></small>
+              <span id="font-preview-chinese" class="font-preview" lang="zh-CN">中文字体 · 你好世界</span>
+            </div>
+            <div class="font-field">
+              <label class="setting-label" for="font-math">MathML</label>
+              <select id="font-math" aria-label="MathML"><option value="">Page default</option></select>
+              <small id="font-status-math" aria-live="polite"></small>
+              <math id="font-preview-math" class="font-preview">
+                <msup><mi>x</mi><mn>2</mn></msup><mo>+</mo><msup><mi>y</mi><mn>2</mn></msup><mo>=</mo><msup><mi>z</mi><mn>2</mn></msup>
+              </math>
+            </div>
+            <div class="font-field">
+              <label class="setting-label" for="font-monospace">Monospace</label>
+              <select id="font-monospace" aria-label="Monospace"><option value="">Page default</option></select>
+              <small id="font-status-monospace" aria-live="polite"></small>
+              <code id="font-preview-monospace" class="font-preview">const n = 42;</code>
+            </div>
+          </div>
+          <p id="font-list-status" class="font-help" role="status"></p>
+        </section>
+        <section id="sites" class="tab-panel" aria-label="Sites" hidden>
   <label class="setting-row default-row">
     <span>
       <h3>Enable new sites</h3>

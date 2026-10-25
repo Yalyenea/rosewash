@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Separate theme and font overrides. Turning the theme off preserves the
+  selected palettes and keeps custom fonts active.
+- Add font search in Chrome and Edge with a scrollable menu capped at 280px,
+  keyboard selection, and explicit selection before saving. Keep MathML
+  previews on one line.
+- Add a Fonts switch to the popup, synchronized with the settings page.
 - Add a Chinese and English website at rosewash.yfff.me with palette and font
   previews, screenshots, and browser store links. Deploy website changes on
   `main` automatically through Cloudflare Workers Builds.

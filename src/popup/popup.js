@@ -12,6 +12,7 @@
   const systemAppearance = window.matchMedia("(prefers-color-scheme: dark)");
   const xLayoutInput = document.querySelector("#x-compact-layout");
   const zhihuLayoutInput = document.querySelector("#zhihu-article-layout");
+  const customFontsInput = document.querySelector("#custom-fonts-enabled");
   const pickButton = document.querySelector("#pick-element");
   let settings = core.plainSettings(core.DEFAULT_SETTINGS);
   let activeTab = null;
@@ -43,6 +44,7 @@
     darkSelect.value = settings.presetDark;
     xLayoutInput.checked = settings.xCompactLayout;
     zhihuLayoutInput.checked = settings.zhihuArticleLayout;
+    customFontsInput.checked = settings.customFontsEnabled;
     document.querySelector("#x-layout-row").hidden = activeHost !== "x.com";
     document.querySelector("#zhihu-layout-row").hidden = !["zhihu.com", "www.zhihu.com", "zhuanlan.zhihu.com"].includes(activeHost);
     for (const button of appearanceButtons) {
@@ -105,7 +107,7 @@
 
   for (const [input, key] of [
     [enabledInput, "enabled"], [xLayoutInput, "xCompactLayout"],
-    [zhihuLayoutInput, "zhihuArticleLayout"]
+    [zhihuLayoutInput, "zhihuArticleLayout"], [customFontsInput, "customFontsEnabled"]
   ]) input.addEventListener("change", () => updateSettings({ ...settings, [key]: input.checked }));
   for (const [input, key] of [[lightSelect, "presetLight"], [darkSelect, "presetDark"]]) {
     input.addEventListener("change", () => updateSettings({ ...settings, [key]: input.value }));

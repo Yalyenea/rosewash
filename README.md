@@ -55,8 +55,8 @@
 
 ## Features
 
-- **Colors:** separate light and dark palettes, system appearance, and optional image dimming.
-- **Fonts:** your choice of English, Chinese, math, and monospace fonts.
+- **Theme:** separate light and dark palettes, system appearance, and optional image dimming. Toggle theme overrides independently of fonts.
+- **Fonts:** searchable English, Chinese, math, and monospace font choices in Chrome and Edge; installed font names in Firefox. Toggle fonts from the popup.
 - **Control:** enable by site, leave selected elements untouched, or pause everywhere.
 - **Reading:** adjustable layouts for X and Zhihu, plus automatic expansion of X reply text.
 

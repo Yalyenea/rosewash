@@ -11,6 +11,7 @@
 
   const enabledInput = document.querySelector("#enabled");
   const defaultInput = document.querySelector("#default-enabled");
+  const colorsInput = document.querySelector("#color-overrides-enabled");
   const customFontsInput = document.querySelector("#custom-fonts-enabled");
   const fontFields = [
     ["english", "fontEnglish", "RosewashEnglish"],
@@ -169,6 +170,7 @@
   function renderImageDimming() {
     brightnessInput.disabled = !dimInput.checked;
     const form = {
+      colorOverridesEnabled: colorsInput.checked,
       dimImages: dimInput.checked, appearance: selectedAppearance(), presetLight: selectedLight, presetDark: selectedDark
     };
     document.querySelector("#dim-status").textContent = !dimInput.checked
@@ -299,6 +301,7 @@
     formBaseline = normalized;
     enabledInput.checked = normalized.enabled;
     defaultInput.checked = normalized.defaultEnabled;
+    colorsInput.checked = normalized.colorOverridesEnabled;
     fontPicker.render(normalized);
     xCompactInput.checked = normalized.xCompactLayout;
     xAutoExpandInput.checked = normalized.xAutoExpandReplies;
@@ -330,6 +333,7 @@
     return core.plainSettings({
       enabled: enabledInput.checked,
       defaultEnabled: defaultInput.checked,
+      colorOverridesEnabled: colorsInput.checked,
       customFontsEnabled: customFontsInput.checked,
       ...fontPicker.values(),
       presetLight: selectedLight,
@@ -389,7 +393,7 @@
   for (const input of [xSingleWidthInput, zhihuWidthInput, brightnessInput]) {
     input.addEventListener("change", saveSettings);
   }
-  for (const input of [enabledInput, defaultInput, customFontsInput, xCompactInput, xAutoExpandInput, zhihuLayoutInput, dimInput, ...fontFields.map(field => field.input)]) {
+  for (const input of [enabledInput, defaultInput, colorsInput, customFontsInput, xCompactInput, xAutoExpandInput, zhihuLayoutInput, dimInput, ...fontFields.map(field => field.input)]) {
     input.addEventListener("change", saveSettings);
   }
   function flushSave() {
@@ -418,6 +422,7 @@
     scheduleSave();
   });
   dimInput.addEventListener("change", renderImageDimming);
+  colorsInput.addEventListener("change", renderImageDimming);
 
   for (const input of document.querySelectorAll("input[name='appearance']")) {
     input.addEventListener("change", () => { paintSettingsChrome(); renderImageDimming(); return saveSettings(); });
