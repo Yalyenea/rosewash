@@ -560,7 +560,7 @@ test("plain themes keep custom fonts independent from page tinting", async () =>
   engine.apply({ ...settings, presetLight: "rose-pine", appearance: "light" });
   for (const appearance of ["light", "dark"]) {
     engine.apply({ ...settings, appearance });
-    assert.equal(document.fonts.size, 1);
+    assert.equal(document.fonts.size, 4);
     assert.equal(text.style.getPropertyValue("font-family"), '"RosewashEnglish", Georgia');
     assert.equal(document.documentElement.hasAttribute("data-rosewash-theme"), false);
     assert.equal(text.style.getPropertyValue("color"), "");
@@ -943,7 +943,10 @@ function createMockDom(nodes) {
         this.family = family;
         this.source = source;
         this.unicodeRange = descriptors.unicodeRange;
+        this.weight = descriptors.weight;
+        this.style = descriptors.style;
       }
+      async load() { return this; }
     },
     getComputedStyle(element) {
       if (nodes.trackInlineBackground) {
@@ -1049,11 +1052,11 @@ test("custom fonts update on the same theme and restore original inline typograp
   const settings = { customFontsEnabled: true, fontEnglish: "Arial", fontChinese: "PingFang SC" };
 
   engine.apply(settings);
-  assert.equal(document.fonts.size, 2);
+  assert.equal(document.fonts.size, 8);
   assert.equal(text.style.getPropertyValue("font-family"), '"RosewashEnglish", "RosewashChinese", Georgia');
   const firstFaces = [...document.fonts];
   engine.apply({ ...settings, fontEnglish: "Verdana" });
-  assert.equal(document.fonts.size, 2);
+  assert.equal(document.fonts.size, 8);
   assert.equal([...document.fonts][0].source, 'local("Verdana"), local("Verdana Regular"), local("Verdana-Regular")');
   assert.ok(firstFaces.every((face) => !document.fonts.has(face)));
 
@@ -1079,7 +1082,7 @@ test("blank font languages preserve the page stack and register only the selecte
   const { document, window, byId } = createMockDom({ tree: [{ id: "text", tag: "p", fontFamily: '"Page Font", serif' }] });
   const engine = core.createEngine({ document, window });
   engine.apply({ customFontsEnabled: true, fontChinese: "Songti SC" });
-  assert.equal(document.fonts.size, 1);
+  assert.equal(document.fonts.size, 4);
   const face = [...document.fonts][0];
   assert.equal(face.family, "RosewashChinese");
   assert.ok(face.unicodeRange.includes("U+4E00-9FFF"));
@@ -1087,12 +1090,94 @@ test("blank font languages preserve the page stack and register only the selecte
   assert.equal(byId.get("text").style.getPropertyValue("font-family"), '"RosewashChinese", "Page Font", serif');
 
   engine.apply({ customFontsEnabled: true, fontEnglish: "Georgia" });
-  assert.equal(document.fonts.size, 1);
+  assert.equal(document.fonts.size, 4);
   assert.equal([...document.fonts][0].family, "RosewashEnglish");
   assert.ok([...document.fonts][0].unicodeRange.includes("U+0000-024F"));
   engine.apply({ customFontsEnabled: true });
   assert.equal(document.fonts.size, 0);
   assert.equal(byId.get("text").style.getPropertyValue("font-family"), "");
+});
+
+test("font families register real bold and italic sources with the same language coverage", async () => {
+  const core = await loadCore();
+  const { window } = createMockDom({});
+  const faces = core.createFontFaces({ customFontsEnabled: true, fontEnglish: "Inter", fontChinese: "Songti SC" }, window);
+  const english = faces.filter((face) => face.family === "RosewashEnglish");
+  assert.deepEqual(plain(english.map(({ weight, style }) => ({ weight, style }))), [
+    { weight: "400", style: "normal" }, { weight: "700", style: "normal" },
+    { weight: "400", style: "italic" }, { weight: "700", style: "italic" }
+  ]);
+  assert.equal(english[1].source, 'local("Inter Bold"), local("Inter-Bold"), local("InterBold")');
+  assert.equal(english[2].source, 'local("Inter Italic"), local("Inter-Italic"), local("InterItalic")');
+  assert.equal(english[3].source, 'local("Inter Bold Italic"), local("Inter-BoldItalic"), local("InterBoldItalic")');
+  for (const face of english.slice(1)) {
+    assert.equal(face.unicodeRange, english[0].unicodeRange);
+    assert.ok(!face.source.includes('local("Inter")'));
+    assert.ok(!face.source.includes("Regular"));
+  }
+  const chinese = faces.filter((face) => face.family === "RosewashChinese");
+  assert.ok(chinese.every((face) => face.unicodeRange.includes("U+4E00-9FFF")));
+  assert.ok(chinese.every((face) => !face.unicodeRange.includes("U+0000-024F")));
+  const mono = core.createFontFaces({ customFontsEnabled: true, fontMonospace: "MapleMono-NF-Regular" }, window);
+  assert.equal(mono[3].source, 'local("MapleMono-NF Bold Italic"), local("MapleMono-NF-BoldItalic"), local("MapleMono-NFBoldItalic")');
+});
+
+test("explicit variable font families expose the weight range for normal and italic text", async () => {
+  const core = await loadCore();
+  const { window } = createMockDom({});
+  const faces = core.createFontFaces({ customFontsEnabled: true, fontEnglish: "Inter Variable" }, window);
+  assert.deepEqual(plain(faces.map(({ weight, style }) => ({ weight, style }))), [
+    { weight: "1 1000", style: "normal" }, { weight: "1 1000", style: "italic" }
+  ]);
+  assert.ok(faces[1].source.includes('local("InterVariableItalic")'));
+  assert.ok(!faces[1].source.includes('local("Inter Variable")'));
+});
+
+test("unavailable variants leave available family faces eligible for browser matching", async () => {
+  const core = await loadCore();
+  const { document, window } = createMockDom({});
+  window.FontFace = class extends window.FontFace {
+    async load() {
+      if (this.weight === "700" || this.style === "italic") throw new Error("Missing local face");
+      return this;
+    }
+  };
+  const faces = core.createFontFaces({ customFontsEnabled: true, fontEnglish: "Regular Only" }, window);
+  core.registerFontFaces(faces, document);
+  await new Promise(setImmediate);
+  assert.deepEqual([...document.fonts], [faces[0]]);
+});
+
+test("font style registration preserves heading hierarchy and existing typography properties", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [
+    { id: "title", tag: "h1", fontFamily: "Georgia" },
+    { id: "subtitle", tag: "h2", fontFamily: "Georgia" },
+    { id: "prose", tag: "p", fontFamily: "Georgia", children: [{ id: "emphasis", tag: "em", fontFamily: "Georgia" }] }
+  ] });
+  const typography = {
+    title: { "font-size": "36px", "font-weight": "700", "line-height": "42px" },
+    subtitle: { "font-size": "24px", "font-weight": "600" },
+    prose: { "font-size": "18px", "font-weight": "400", "line-height": "29px" },
+    emphasis: { "font-style": "italic", "font-weight": "700", "letter-spacing": "0.2px" }
+  };
+  for (const [id, properties] of Object.entries(typography)) {
+    for (const [name, value] of Object.entries(properties)) byId.get(id).style.setProperty(name, value, "important");
+  }
+  const engine = core.createEngine({ document, window });
+  engine.apply({ customFontsEnabled: true, fontEnglish: "Inter" });
+  for (const [id, properties] of Object.entries(typography)) {
+    const element = byId.get(id);
+    assert.equal(element.style.getPropertyValue("font-family"), '"RosewashEnglish", Georgia');
+    for (const [name, value] of Object.entries(properties)) {
+      assert.equal(element.style.getPropertyValue(name), value, `${id}: ${name}`);
+      assert.equal(element.style.getPropertyPriority(name), "important");
+    }
+  }
+  assert.equal(byId.get("title").tagName, "H1");
+  assert.equal(byId.get("subtitle").tagName, "H2");
+  engine.clear();
+  assert.equal(document.fonts.size, 0);
 });
 
 test("custom fonts leave code, editors, and icon typography intact", async () => {
@@ -1145,7 +1230,7 @@ test("math and monospace fonts target their own content without replacing prose"
   const engine = core.createEngine({ document, window });
   const settings = { customFontsEnabled: true, fontMath: "STIX Two Math", fontMonospace: "Menlo" };
   engine.apply(settings);
-  assert.equal(document.fonts.size, 2);
+  assert.equal(document.fonts.size, 8);
   assert.equal(byId.get("prose").style.getPropertyValue("font-family"), "");
   assert.equal(byId.get("named-mono").style.getPropertyValue("font-family"), "");
   for (const id of ["math", "math-child"]) {

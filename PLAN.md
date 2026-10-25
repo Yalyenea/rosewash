@@ -103,11 +103,12 @@ curated theme presets.
     palette resets the browser theme.
 11. Implemented, awaiting release: independent X reply-text expansion under
     Settings → Sites → X.com, including newly loaded replies and in-page navigation.
-12. Preserve page typography when changing font families. Keep the page's
-    heading hierarchy, font sizes, weights, italics, and line spacing by default.
-    Match the selected family's actual light, regular, bold, and italic faces,
-    including variable font weight ranges. Current local faces resolve mainly
-    to Regular, so bold and italic text can use browser synthesis.
-    Add optional, separate body and heading font choices, such as Inter for
-    body text and Inter Display for headings. Preview and verify body text,
-    headings, bold, and italics together when switching families.
+12. Implemented, awaiting release: follow page typography when changing font
+    families. Match common local Regular, Bold, Italic, and Bold Italic faces;
+    families explicitly named Variable use normal and italic faces with a weight
+    range. Keep original heading hierarchy, sizes, weights, italics, and line
+    spacing. A fixture previews and verifies these styles together.
+13. Extend font choices with separate body and heading families, such as Inter
+    for body text and Inter Display for headings. Add further static weights
+    such as Light and Semibold, and identify variable families whose names do
+    not explicitly end in Variable.

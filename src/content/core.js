@@ -841,18 +841,50 @@
     ].filter(([, name]) => name);
   }
 
-  function cssFontSource(name) {
+  const FONT_FACE_STYLES = Object.freeze([
+    { weight: "400", style: "normal", label: "Regular" },
+    { weight: "700", style: "normal", label: "Bold" },
+    { weight: "400", style: "italic", label: "Italic" },
+    { weight: "700", style: "italic", label: "Bold Italic" }
+  ]);
+
+  function cssFontSource(name, variant) {
     // fontSettings lists families; local() requires a full face or PostScript name.
-    const names = [name, `${name} Regular`, `${name.replace(/\s/g, "")}-Regular`];
+    const base = name.replace(/(?:\s|-)Regular$/i, "");
+    const names = variant.label === "Regular"
+      ? [name, `${name} Regular`, `${name.replace(/\s/g, "")}-Regular`]
+      : [`${base} ${variant.label}`, `${base.replace(/\s/g, "")}-${variant.label.replace(/\s/g, "")}`,
+        `${base.replace(/\s/g, "")}${variant.label.replace(/\s/g, "")}`];
     return Array.from(new Set(names)).map((value) =>
       'local("' + value.replace(/["\\]/g, (character) => "\\" + character) + '")'
     ).join(", ");
   }
 
+  function fontFacesForDefinitions(definitions, window) {
+    return definitions.flatMap(([family, name, unicodeRange]) => {
+      // Explicitly named Variable families expose weights through one file per
+      // style, rather than separate Bold and Bold Italic local faces.
+      const variants = /\bVariable$/i.test(name)
+        ? FONT_FACE_STYLES.filter((variant) => variant.weight === "400")
+          .map((variant) => ({ ...variant, weight: "1 1000" }))
+        : FONT_FACE_STYLES;
+      return variants.map((variant) => new window.FontFace(family, cssFontSource(name, variant), {
+        unicodeRange, weight: variant.weight, style: variant.style
+      }));
+    });
+  }
+
   function createFontFaces(settings, window) {
-    return fontDefinitions(normalizeSettings(settings)).map(([family, name, unicodeRange]) =>
-      new window.FontFace(family, cssFontSource(name), { unicodeRange })
-    );
+    return fontFacesForDefinitions(fontDefinitions(normalizeSettings(settings)), window);
+  }
+
+  function registerFontFaces(faces, document) {
+    for (const face of faces) {
+      document.fonts.add(face);
+      // A failed local face would send that style to the page's fallback font.
+      // Removing it lets the browser match the family's available faces normally.
+      face.load().catch(() => document.fonts.delete(face));
+    }
   }
 
   function normalizeSettings(settings) {
@@ -1701,8 +1733,8 @@
             families = ["RosewashEnglish", "RosewashChinese"];
           }
         }
-        const prefix = activeFonts.filter((face) => families.includes(face.family))
-          .map((face) => '"' + face.family + '", ').join("");
+        const prefix = Array.from(new Set(activeFonts.filter((face) => families.includes(face.family))
+          .map((face) => face.family))).map((family) => '"' + family + '", ').join("");
         // Ancestors already supply these faces to inheriting descendants.
         // Rewriting them pins inherited fonts and invalidates styles needlessly.
         if (prefix && !snapshot.fontFamily.replace(/["'\s]/g, "")
@@ -2101,11 +2133,8 @@
 
     function replaceFonts(definitions) {
       for (const face of activeFonts) document.fonts.delete(face);
-      activeFonts = definitions.map(([family, name, unicodeRange]) => {
-        const face = new window.FontFace(family, cssFontSource(name), { unicodeRange });
-        document.fonts.add(face);
-        return face;
-      });
+      activeFonts = fontFacesForDefinitions(definitions, window);
+      registerFontFaces(activeFonts, document);
       fontKey = JSON.stringify(definitions);
     }
 
@@ -2230,6 +2259,7 @@
     addIgnoredSelector,
     clearIgnoredSelectors,
     createFontFaces,
+    registerFontFaces,
     classifyPageTone,
     hostFromUrl,
     policyHostForLocation,

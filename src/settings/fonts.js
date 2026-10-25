@@ -200,13 +200,13 @@
         ...values()
       }, window);
       const currentFaces = previewFaces;
+      core.registerFontFaces(previewFaces, document);
       for (const field of fields) {
         if (!field.preview) continue;
         field.preview.style.fontFamily = "";
         const face = previewFaces.find((item) => item.family === field.family);
         field.status.textContent = face ? "Loading…" : "";
         if (!face) continue;
-        document.fonts.add(face);
         face.load().then(() => {
           if (previewFaces !== currentFaces) return;
           field.preview.style.fontFamily = field.family;

@@ -212,6 +212,11 @@ the Firefox manifest omits that permission.
 The engine resolves local face names and applies separate local faces
 for English, Chinese, native MathML, and monospace text, restoring original
 fonts when disabled. Renderer-managed formulas and code editors are protected.
+Page rendering and previews share local font face definitions for Regular,
+Bold, Italic, and Bold Italic. Explicitly named Variable families use normal and
+italic faces with weight ranges. Failed faces are removed so available styles
+remain eligible for browser matching. Font overrides preserve page sizes,
+weights, italics, line spacing, and heading structure.
 
 ## Site Layouts
 
