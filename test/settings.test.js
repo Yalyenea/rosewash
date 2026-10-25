@@ -12,7 +12,7 @@ function deferred() {
   return { promise, resolve };
 }
 
-async function settingsUI(page, initial = {}, browser = "chrome") {
+async function settingsUI(page, initial = {}, browser = "chrome", fontList = []) {
   const elements = new Map();
   const radios = [];
   class Element {
@@ -26,7 +26,7 @@ async function settingsUI(page, initial = {}, browser = "chrome") {
       this.attributes = {};
       this.listeners = {};
       this.style = { setProperty() {} };
-      this.classList = { toggle() {} };
+      this.classList = { toggle() {}, remove() {} };
     }
     get checked() { return this._checked; }
     set checked(value) {
@@ -34,15 +34,20 @@ async function settingsUI(page, initial = {}, browser = "chrome") {
       this._checked = value;
     }
     addEventListener(name, listener) { (this.listeners[name] ||= []).push(listener); }
-    emit(name) { return Promise.all((this.listeners[name] || []).map((listener) => listener())); }
+    emit(name, event = {}) { return Promise.all((this.listeners[name] || []).map((listener) => listener(event))); }
     setAttribute(name, value) { this.attributes[name] = value; }
     getAttribute(name) { return this.attributes[name]; }
-    replaceWith(next) { elements.set(`#${this.id}`, next); }
+    replaceWith(next) { if (next.id) elements.set(`#${this.id}`, next); }
     removeAttribute(name) { delete this.attributes[name]; }
     replaceChildren(...children) { this.options = children; this.children = children; }
     add(option) { this.options.push(option); }
-    appendChild(child) { this.children.push(child); }
+    appendChild(child) { child.parentElement = this; this.children.push(child); }
     querySelectorAll() { return this.children; }
+    focus() {}
+    scrollIntoView() {}
+    contains(child) { return this === child || this.children.some((item) => item.contains?.(child)); }
+    getBoundingClientRect() { return { top: 240, bottom: 274 }; }
+    dispatchEvent(event) { this.emit(event.type, event); }
   }
   const element = (id) => {
     if (!elements.has(id)) {
@@ -141,9 +146,10 @@ async function settingsUI(page, initial = {}, browser = "chrome") {
   backgroundContext.importScripts = () => vm.runInContext(source("src/content/core.js"), backgroundContext);
   vm.runInContext(source("src/background/background.js"), backgroundContext);
   const context = vm.createContext({
-    URL, console, document, navigator: { userAgent: browser === "edge" ? "Edg/150.0" : "Firefox/150.0" },
+    URL, console, document, Event, navigator: { userAgent: browser === "edge" ? "Edg/150.0" : "Firefox/150.0" },
     Option: class { constructor(label, value) { this.text = label; this.value = value; } },
     window: {
+      innerHeight: 800,
       matchMedia: () => ({ matches: false, addEventListener() {} }),
       addEventListener(name, listener) {
         if (!windowListeners.has(name)) windowListeners.set(name, []);
@@ -154,7 +160,7 @@ async function settingsUI(page, initial = {}, browser = "chrome") {
     chrome: {
       storage: { sync: storage, onChanged: { addListener: (listener) => changed.push(listener) } },
       commands: { getAll: async () => [] },
-      ...(browser === "firefox" ? {} : { fontSettings: { getFontList: async () => [] } }),
+      ...(browser === "firefox" ? {} : { fontSettings: { getFontList: async () => fontList } }),
       runtime: { getURL: runtime.getURL, sendMessage(message) {
         requests.push(plain(message));
         return new Promise((resolve) => messageListener(plain(message), {
@@ -214,6 +220,18 @@ test("popup persists subsequent edits without waiting for an earlier broadcast",
   assert.equal(ui.raw().appearance, "light");
   assert.equal(ui.raw().enabled, false);
   assert.ok(ui.messages.every((message) => message.type === "rosewash:settings-updated" && !message.settings));
+});
+
+test("popup reads and saves the shared font override switch", async () => {
+  const ui = await settingsUI("popup", { customFontsEnabled: false, fontEnglish: "Georgia" });
+  const toggle = ui.element("#custom-fonts-enabled");
+  assert.equal(toggle.checked, false);
+  toggle.checked = true;
+  await ui.change("#custom-fonts-enabled");
+  assert.equal(ui.raw().customFontsEnabled, true);
+  assert.equal(ui.raw().fontEnglish, "Georgia");
+  const reopened = await settingsUI("popup", ui.raw());
+  assert.equal(reopened.element("#custom-fonts-enabled").checked, true);
 });
 
 test("popup sends all edits to the background before closing during a pending save", async () => {
@@ -404,6 +422,55 @@ test("options saves image dimming with its brightness", async () => {
   await options.element("#dim-images").emit("change");
   assert.equal(options.raw().dimImages, true);
   assert.equal(options.raw().imageBrightness, 90);
+});
+
+test("options saves color and font overrides independently without losing palettes", async () => {
+  const ui = await settingsUI("options", { customFontsEnabled: true, fontEnglish: "Georgia", presetDark: "tokyo-night" });
+  assert.equal(ui.element("#color-overrides-enabled").checked, true);
+  ui.element("#color-overrides-enabled").checked = false;
+  await ui.change("#color-overrides-enabled");
+  assert.equal(ui.raw().colorOverridesEnabled, false);
+  assert.equal(ui.raw().customFontsEnabled, true);
+  assert.equal(ui.raw().fontEnglish, "Georgia");
+  assert.equal(ui.raw().presetDark, "tokyo-night");
+  const reopened = await settingsUI("options", ui.raw());
+  assert.equal(reopened.element("#color-overrides-enabled").checked, false);
+});
+
+test("font search filters names without saving and commits only the chosen result", async () => {
+  const ui = await settingsUI("options", { customFontsEnabled: true, fontEnglish: "Unavailable font" }, "chrome", [
+    { fontId: "Georgia", displayName: "Georgia" },
+    { fontId: "Arial", displayName: "Arial" },
+    { fontId: "PingFangSC-Regular", displayName: "苹方 简体" }
+  ]);
+  const input = ui.element("#font-english");
+  const [, trigger, panel] = input.parentElement.children;
+  const [search, list, empty] = panel.children;
+  assert.match(trigger.textContent, /Unavailable font/);
+  await trigger.emit("click");
+  search.value = "pInGfAnG";
+  await search.emit("input");
+  assert.deepEqual(list.children.map((option) => option.textContent), ["苹方 简体"]);
+  assert.equal(input.value, "Unavailable font");
+  assert.equal(ui.requests.length, 0);
+  search.value = "no-such-font";
+  await search.emit("input");
+  assert.equal(empty.hidden, false);
+  await search.emit("keydown", { key: "Enter", preventDefault() {} });
+  assert.equal(ui.requests.length, 0);
+  search.value = "georgia";
+  await search.emit("input");
+  await search.emit("keydown", { key: "Enter", preventDefault() {} });
+  await ui.done();
+  assert.equal(ui.raw().fontEnglish, "Georgia");
+  assert.equal(trigger.textContent, "Georgia");
+  assert.equal(panel.hidden, true);
+  await trigger.emit("click");
+  await search.emit("keydown", { key: "Escape", preventDefault() {} });
+  assert.equal(panel.hidden, true);
+  ui.element("#custom-fonts-enabled").checked = false;
+  await ui.change("#custom-fonts-enabled");
+  assert.equal(trigger.disabled, true);
 });
 
 test("Firefox manual font names save through the shared queue and remain editable after reload", async () => {

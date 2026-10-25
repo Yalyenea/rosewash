@@ -224,6 +224,7 @@
   const DEFAULT_SETTINGS = Object.freeze({
     enabled: true,
     defaultEnabled: true,
+    colorOverridesEnabled: true,
     customFontsEnabled: false,
     fontEnglish: "",
     fontChinese: "",
@@ -874,6 +875,7 @@
     return {
       enabled: source.enabled !== false,
       defaultEnabled: source.defaultEnabled !== false,
+      colorOverridesEnabled: source.colorOverridesEnabled !== false,
       customFontsEnabled: source.customFontsEnabled === true,
       fontEnglish: normalizeFontName(source.fontEnglish),
       fontChinese: normalizeFontName(source.fontChinese),
@@ -981,6 +983,8 @@
   function resolveSettingsThemeKey(settings, prefersDark) {
     const normalized = normalizeSettings(settings);
     const desired = resolveAppearance(normalized.appearance, prefersDark);
+    // Reuse the plain palette path so fonts keep working without page colors.
+    if (!normalized.colorOverridesEnabled) return desired === "dark" ? "dark-dark" : "light-light";
     const presetId = desired === "dark" ? normalized.presetDark : normalized.presetLight;
     return `${presetId}-${desired}`;
   }
@@ -1039,6 +1043,7 @@
     return {
       enabled: normalized.enabled,
       defaultEnabled: normalized.defaultEnabled,
+      colorOverridesEnabled: normalized.colorOverridesEnabled,
       customFontsEnabled: normalized.customFontsEnabled,
       fontEnglish: normalized.fontEnglish,
       fontChinese: normalized.fontChinese,

@@ -577,6 +577,26 @@ test("plain themes keep custom fonts independent from page tinting", async () =>
   assert.equal(engine.stats().tinted, 0);
 });
 
+test("color override switch restores page colors while fonts stay active", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [{ id: "text", tag: "p", fontFamily: "Georgia" }] });
+  const engine = core.createEngine({ document, window });
+  const settings = { appearance: "light", customFontsEnabled: true, fontEnglish: "Arial", dimImages: true };
+  const text = byId.get("text");
+  engine.apply(settings);
+  assert.ok(text.style.getPropertyValue("color"));
+  engine.apply({ ...settings, colorOverridesEnabled: false });
+  assert.equal(text.style.getPropertyValue("color"), "");
+  assert.equal(document.documentElement.hasAttribute("data-rosewash-theme"), false);
+  assert.equal(text.style.getPropertyValue("font-family"), '"RosewashEnglish", Georgia');
+  assert.equal(core.imageDimmingActive({ ...settings, appearance: "dark", colorOverridesEnabled: false }, true), false);
+  engine.apply(settings);
+  assert.ok(text.style.getPropertyValue("color"));
+  engine.apply({ ...settings, customFontsEnabled: false });
+  assert.equal(text.style.getPropertyValue("font-family"), "");
+  assert.ok(text.style.getPropertyValue("color"));
+});
+
 test("lists presets that expose the requested variant", async () => {
   const core = await loadCore();
   const lightIds = core.listPresets("light").map((preset) => preset.id);
@@ -612,6 +632,7 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
     enabled: true,
     defaultEnabled: true,
     enabledHosts: [],
+    colorOverridesEnabled: true,
     dimImages: false,
     imageBrightness: 80,
     ignoredElements: {},
@@ -2162,6 +2183,7 @@ test("normalizes settings and blocked hosts", async () => {
   })), {
     enabled: true,
     defaultEnabled: true,
+    colorOverridesEnabled: true,
     enabledHosts: [],
     dimImages: false,
     imageBrightness: 80,
@@ -2190,6 +2212,7 @@ test("normalizes settings and blocked hosts", async () => {
   })), {
     enabled: true,
     defaultEnabled: true,
+    colorOverridesEnabled: true,
     enabledHosts: [],
     dimImages: false,
     imageBrightness: 80,
@@ -2218,6 +2241,7 @@ test("normalizes settings and blocked hosts", async () => {
   })), {
     enabled: true,
     defaultEnabled: true,
+    colorOverridesEnabled: true,
     enabledHosts: [],
     dimImages: false,
     imageBrightness: 80,

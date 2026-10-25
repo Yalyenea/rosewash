@@ -154,6 +154,7 @@
     const watched = [
       "enabled",
       "defaultEnabled",
+      "colorOverridesEnabled",
       "customFontsEnabled",
       "fontEnglish",
       "fontChinese",

@@ -155,6 +155,7 @@ plain HTML/CSS/JS and share the same storage schema:
 {
   "enabled": true,
   "defaultEnabled": true,
+  "colorOverridesEnabled": true,
   "customFontsEnabled": false,
   "fontEnglish": "",
   "fontChinese": "",
@@ -177,6 +178,8 @@ keep their own settings. Without custom fonts, these presets skip DOM scanning
 and observation. Both UIs list the plain option first, followed by Rose Pine
 and the remaining families sorted by label. Legacy `preset` and `mode: auto|dawn|moon`
 storage still normalize cleanly.
+The independent theme switch uses the plain palette path while retaining both
+selected palettes. Fonts remain active, and image dimming stops.
 
 The popup exposes an Allowed / Blocked button for the current hostname.
 Remove a hostname from the settings site lists to clear its override. Explicit
@@ -185,6 +188,7 @@ restores its parent rule if present, otherwise the global
 default. The most specific hostname wins; a blocked rule wins a tie, and the
 global enable switch pauses every site. Pick sits beside the site button;
 X and Zhihu layout switches appear only on their matching site.
+The popup's Fonts switch shares `customFontsEnabled` with the settings page.
 Each popup change immediately sends an edit to the worker. Pending local edits
 stay visible until the saves finish, then the popup reloads current storage.
 The settings page sends its edited form and baseline to the same queue.
@@ -192,7 +196,7 @@ The settings page sends its edited form and baseline to the same queue.
 to current storage. Explicit additions clear the opposite rule for that host;
 disabled wins when the edited form explicitly keeps both. Unrelated external
 changes remain intact.
-Settings has Appearance, Fonts, Sites, and Shortcuts tabs. Palette grids stay
+Settings has Theme, Fonts, Sites, and Shortcuts tabs. Palette grids stay
 expanded, and changes save automatically. Text and sliders settle for 350ms;
 leaving the field or page flushes pending input. The worker owns each save
 once sent. Shortcuts displays the browser bindings and opens shortcut settings.
@@ -200,6 +204,9 @@ once sent. Shortcuts displays the browser bindings and opens shortcut settings.
 The flat settings layout follows the selected palette and system appearance.
 The shared font picker enumerates installed families in Chromium with
 `chrome.fontSettings.getFontList()` using the `fontSettings` permission.
+Its searchable menu stays within 280px, scrolls through results, and supports
+arrow keys, Enter, and Escape. Search text only filters; selecting a result
+saves the font.
 Firefox has no such API, so the same fields accept installed font names and
 the Firefox manifest omits that permission.
 The engine resolves local face names and applies separate local faces
