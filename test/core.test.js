@@ -845,9 +845,44 @@ function createMockDom(nodes) {
           walk(node);
           return collected;
         }
+        if (selector === "canvas") {
+          const collected = [];
+          const walk = (current) => {
+            for (const child of current.children) {
+              if (child.tagName === "CANVAS") collected.push(child);
+              walk(child);
+            }
+          };
+          walk(node);
+          return collected;
+        }
         return [];
       }
     };
+
+    if (spec.rect) {
+      node.getBoundingClientRect = () => spec.rect;
+    }
+    if (spec.canvas) {
+      node.width = spec.canvas.width || 300;
+      node.height = spec.canvas.height || 150;
+      node.getContext = (kind) => {
+        if (kind !== "2d" || spec.canvas.context !== "2d") return null;
+        return {
+          getImageData(x, y, width, height) {
+            const data = new Uint8ClampedArray(width * height * 4);
+            const [red, green, blue, alpha] = spec.canvas.fill;
+            for (let index = 0; index < data.length; index += 4) {
+              data[index] = red;
+              data[index + 1] = green;
+              data[index + 2] = blue;
+              data[index + 3] = alpha;
+            }
+            return { data };
+          }
+        };
+      };
+    }
 
     if (spec.id) {
       byId.set(spec.id, node);
@@ -930,6 +965,9 @@ function createMockDom(nodes) {
       if (selector === "main, article, section, header, footer, nav, aside") {
         return all.filter((node) => ["MAIN", "ARTICLE", "SECTION", "HEADER", "FOOTER", "NAV", "ASIDE"].includes(node.tagName));
       }
+      if (selector === "canvas") {
+        return all.filter((node) => node.tagName === "CANVAS" && node !== html);
+      }
       if (selector.startsWith("[") && selector.includes("data-rosewash")) {
         return all.filter((node) => node.matches(selector));
       }
@@ -938,6 +976,8 @@ function createMockDom(nodes) {
   };
 
   const window = {
+    innerWidth: nodes.innerWidth || 1440,
+    innerHeight: nodes.innerHeight || 900,
     FontFace: class {
       constructor(family, source, descriptors) {
         this.family = family;
@@ -2458,4 +2498,43 @@ test("default-off sites clear tints and fonts unless explicitly enabled", async 
   assert.equal(document.body.style.getPropertyValue("font-family"), "");
   assert.equal(engine.apply({ ...settings, defaultEnabled: false, enabledHosts: ["example.com"] }).enabled, true);
   assert.equal(engine.apply({ ...settings, enabled: false, enabledHosts: ["example.com"] }).enabled, false);
+});
+
+test("viewport-covering canvas backdrops invert against the palette tone", async () => {
+  const core = await loadCore();
+  const full = { left: 0, top: 0, right: 1440, bottom: 900, width: 1440, height: 900 };
+  const small = { left: 40, top: 40, right: 240, bottom: 140, width: 200, height: 100 };
+  const { document, window, byId } = createMockDom({
+    innerWidth: 1440,
+    innerHeight: 900,
+    tree: [
+      { id: "dark-backdrop", tag: "canvas", rect: full,
+        canvas: { context: "2d", width: 1440, height: 900, fill: [10, 12, 14, 255] } },
+      { id: "light-backdrop", tag: "canvas", rect: full,
+        canvas: { context: "2d", width: 1440, height: 900, fill: [250, 248, 240, 255] } },
+      { id: "chip", tag: "canvas", rect: small,
+        canvas: { context: "2d", width: 200, height: 100, fill: [10, 12, 14, 255] } },
+      { id: "blank", tag: "canvas", rect: full,
+        canvas: { context: "2d", width: 1440, height: 900, fill: [0, 0, 0, 0] } }
+    ]
+  });
+  const engine = core.createEngine({ document, window });
+  const settings = { preset: "rose-pine", appearance: "light" };
+  const invert = "invert(1) hue-rotate(180deg)";
+  engine.apply(settings);
+
+  const darkBackdrop = byId.get("dark-backdrop");
+  const lightBackdrop = byId.get("light-backdrop");
+  assert.equal(darkBackdrop.style.getPropertyValue("filter"), invert);
+  assert.equal(lightBackdrop.style.getPropertyValue("filter"), "");
+  assert.equal(byId.get("chip").style.getPropertyValue("filter"), "");
+  assert.equal(byId.get("blank").style.getPropertyValue("filter"), "");
+
+  // Switching palettes restores the dark backdrop and flips the light one.
+  engine.apply({ ...settings, appearance: "dark" });
+  assert.equal(darkBackdrop.style.getPropertyValue("filter"), "");
+  assert.equal(lightBackdrop.style.getPropertyValue("filter"), invert);
+
+  engine.clear();
+  assert.equal(lightBackdrop.style.getPropertyValue("filter"), "");
 });

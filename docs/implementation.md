@@ -384,6 +384,20 @@ styles recalculate once per batch. Elements waiting in the queue keep their
 previous tint; refreshes and theme changes do not flash page colors. A
 document refresh, theme change, or clear resets the queue.
 
+### Backdrop canvases
+
+Canvas pixels cannot take CSS surface colors. A `canvas` covering at least
+half the viewport is treated as a painted backdrop: the engine reads five
+48×48 patches through its 2D context, averages the luminance of opaque
+pixels, and sets `filter: invert(1) hue-rotate(180deg)` when the tone fights
+the resolved palette (dark canvas under a light palette, or the reverse).
+Samples between the two thresholds keep the current state so animated
+canvases do not flicker. Mostly transparent canvases, WebGL and tainted
+contexts, small canvases, and picker-ignored subtrees stay untouched. The
+filter uses the same inline-style records as tints, so palette changes and
+`clear()` restore it. Sampling runs after each scan flush and on apply,
+which also catches canvases that paint after `document_start`.
+
 ### Shadow DOM
 
 Open shadow roots are queued right after their host, remembered, and observed

@@ -1,7 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.2.6 - 2026-10-27
 
+- Invert viewport-covering canvas backdrops whose painted tone fights the
+  resolved palette, so sites that draw their own background (such as psi.inc)
+  follow Rose Pine. Only readable 2D canvases are sampled; WebGL, tainted,
+  small, and mostly transparent canvases keep their look.
 - Match custom fonts to their real bold, italic, and bold italic faces while
   preserving page sizes, heading hierarchy, weights, and line spacing. Support
   weight ranges for families explicitly named Variable. Remove unavailable

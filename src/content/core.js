@@ -286,6 +286,19 @@
   ].join(",");
   const FONT_SKIP_SELECTOR = "[data-rosewash-ignore], [role='img'], svg, .katex, .MathJax, mjx-container, .CodeMirror, .cm-editor, .monaco-editor, [contenteditable]";
 
+  // A canvas covering the viewport paints its own backdrop. CSS cannot reach
+  // its pixels, so cover samples its tone and inverts it when it fights the
+  // resolved palette.
+  const BACKDROP_COVER_RATIO = 0.5;
+  const BACKDROP_SAMPLE_POINTS = Object.freeze([
+    [0.25, 0.25], [0.5, 0.5], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]
+  ]);
+  const BACKDROP_SAMPLE_PATCH = 48;
+  const BACKDROP_OPAQUE_RATIO = 0.6;
+  const BACKDROP_DARK_LUMINANCE = 96;
+  const BACKDROP_LIGHT_LUMINANCE = 160;
+  const BACKDROP_INVERT_FILTER = "invert(1) hue-rotate(180deg)";
+
   function clamp255(value) {
     return Math.max(0, Math.min(255, Number(value)));
   }
@@ -1820,6 +1833,78 @@
       });
     }
 
+    function coversViewport(element) {
+      const rect = element.getBoundingClientRect?.();
+      if (!rect) return false;
+      const width = window.innerWidth || 0;
+      const height = window.innerHeight || 0;
+      if (!width || !height) return false;
+      const x = Math.max(0, Math.min(rect.right, width) - Math.max(rect.left, 0));
+      const y = Math.max(0, Math.min(rect.bottom, height) - Math.max(rect.top, 0));
+      return x * y >= width * height * BACKDROP_COVER_RATIO;
+    }
+
+    // Only readable 2D contexts can be sampled; WebGL reads back empty outside
+    // its own frame, and tainted canvases throw, so those keep their look.
+    function canvasBackdropTone(canvas) {
+      const context = canvas.getContext?.("2d");
+      if (!context || typeof context.getImageData !== "function") return null;
+      const width = canvas.width;
+      const height = canvas.height;
+      if (!width || !height) return null;
+      let painted = 0;
+      let total = 0;
+      let sum = 0;
+      try {
+        for (const [fx, fy] of BACKDROP_SAMPLE_POINTS) {
+          const patchWidth = Math.min(BACKDROP_SAMPLE_PATCH, width);
+          const patchHeight = Math.min(BACKDROP_SAMPLE_PATCH, height);
+          const x = Math.round(fx * (width - patchWidth));
+          const y = Math.round(fy * (height - patchHeight));
+          const { data } = context.getImageData(x, y, patchWidth, patchHeight);
+          for (let index = 0; index + 3 < data.length; index += 4) {
+            total += 1;
+            if (data[index + 3] <= 32) continue;
+            painted += 1;
+            sum += luminance({ red: data[index], green: data[index + 1], blue: data[index + 2] });
+          }
+        }
+      } catch {
+        return null;
+      }
+      if (!total || painted / total < BACKDROP_OPAQUE_RATIO) return null;
+      return sum / painted;
+    }
+
+    // Samples landing between the thresholds keep the current state, so an
+    // animated backdrop does not flicker between frames.
+    function updateBackdropCanvases() {
+      const palette = PALETTES[activeTheme];
+      if (!palette || palette.tint === false) return;
+      const darkPalette = isDarkThemeKey(activeTheme);
+      const canvases = [
+        ...document.querySelectorAll("canvas"),
+        ...[...connectedShadowRoots()].flatMap((root) => [...root.querySelectorAll("canvas")])
+      ];
+      for (const canvas of canvases) {
+        if (isSiteIgnored(canvas) || canvas.closest("[data-rosewash-ignore]") || !coversViewport(canvas)) continue;
+        const record = originalStyles.get(canvas)?.filter;
+        const inverted = Boolean(record) && matchesOverride(canvas, "filter", record);
+        const tone = canvasBackdropTone(canvas);
+        if (tone === null) continue;
+        if (!inverted && (darkPalette ? tone >= BACKDROP_LIGHT_LUMINANCE : tone <= BACKDROP_DARK_LUMINANCE)) {
+          const existing = window.getComputedStyle(canvas).filter;
+          const value = existing && existing !== "none"
+            ? `${existing} ${BACKDROP_INVERT_FILTER}`
+            : BACKDROP_INVERT_FILTER;
+          setStyle(canvas, "filter", value);
+        } else if (inverted && (darkPalette ? tone <= BACKDROP_DARK_LUMINANCE : tone >= BACKDROP_LIGHT_LUMINANCE)) {
+          restoreElement(canvas);
+        }
+      }
+      flushStyleRecords();
+    }
+
     function forgetElement(element) {
       if (element.hasAttribute(TINT_ATTRIBUTE)) restoreElement(element);
       surfaceRecords.delete(element);
@@ -1952,6 +2037,7 @@
         }
       }
       drainScanQueue();
+      updateBackdropCanvases();
     }
 
     // Coalesce SPA mutations to the next frame — not 250ms — so new white
@@ -2219,6 +2305,7 @@
       } else {
         disconnectObserver();
       }
+      updateBackdropCanvases();
       return {
         enabled: true,
         theme,
