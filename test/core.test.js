@@ -866,22 +866,7 @@ function createMockDom(nodes) {
     if (spec.canvas) {
       node.width = spec.canvas.width || 300;
       node.height = spec.canvas.height || 150;
-      node.getContext = (kind) => {
-        if (kind !== "2d" || spec.canvas.context !== "2d") return null;
-        return {
-          getImageData(x, y, width, height) {
-            const data = new Uint8ClampedArray(width * height * 4);
-            const [red, green, blue, alpha] = spec.canvas.fill;
-            for (let index = 0; index < data.length; index += 4) {
-              data[index] = red;
-              data[index + 1] = green;
-              data[index + 2] = blue;
-              data[index + 3] = alpha;
-            }
-            return { data };
-          }
-        };
-      };
+      node._fill = spec.canvas.fill || [0, 0, 0, 0];
     }
 
     if (spec.id) {
@@ -934,6 +919,28 @@ function createMockDom(nodes) {
     documentElement: html,
     body,
     location: { href: nodes.href || "https://example.com/" },
+    // Scratch canvas for backdrop sampling; drawImage copies the source fill.
+    createElement(tag) {
+      if (tag !== "canvas") return {};
+      const scratch = { width: 0, height: 0, _fill: [0, 0, 0, 0] };
+      scratch.getContext = (kind) => kind === "2d" ? {
+        drawImage(source) {
+          scratch._fill = source._fill || [0, 0, 0, 0];
+        },
+        getImageData(x, y, width, height) {
+          const data = new Uint8ClampedArray(width * height * 4);
+          const [red, green, blue, alpha] = scratch._fill;
+          for (let index = 0; index < data.length; index += 4) {
+            data[index] = red;
+            data[index + 1] = green;
+            data[index + 2] = blue;
+            data[index + 3] = alpha;
+          }
+          return { data };
+        }
+      } : null;
+      return scratch;
+    },
     querySelector(selector) {
       return findBySelector(selector);
     },
@@ -2509,13 +2516,13 @@ test("viewport-covering canvas backdrops invert against the palette tone", async
     innerHeight: 900,
     tree: [
       { id: "dark-backdrop", tag: "canvas", rect: full,
-        canvas: { context: "2d", width: 1440, height: 900, fill: [10, 12, 14, 255] } },
+        canvas: { width: 1440, height: 900, fill: [10, 12, 14, 255] } },
       { id: "light-backdrop", tag: "canvas", rect: full,
-        canvas: { context: "2d", width: 1440, height: 900, fill: [250, 248, 240, 255] } },
+        canvas: { width: 1440, height: 900, fill: [250, 248, 240, 255] } },
       { id: "chip", tag: "canvas", rect: small,
-        canvas: { context: "2d", width: 200, height: 100, fill: [10, 12, 14, 255] } },
+        canvas: { width: 200, height: 100, fill: [10, 12, 14, 255] } },
       { id: "blank", tag: "canvas", rect: full,
-        canvas: { context: "2d", width: 1440, height: 900, fill: [0, 0, 0, 0] } }
+        canvas: { width: 1440, height: 900, fill: [0, 0, 0, 0] } }
     ]
   });
   const engine = core.createEngine({ document, window });

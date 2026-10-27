@@ -290,10 +290,7 @@
   // its pixels, so cover samples its tone and inverts it when it fights the
   // resolved palette.
   const BACKDROP_COVER_RATIO = 0.5;
-  const BACKDROP_SAMPLE_POINTS = Object.freeze([
-    [0.25, 0.25], [0.5, 0.5], [0.75, 0.25], [0.25, 0.75], [0.75, 0.75]
-  ]);
-  const BACKDROP_SAMPLE_PATCH = 48;
+  const BACKDROP_SAMPLE_SIZE = 64;
   const BACKDROP_OPAQUE_RATIO = 0.6;
   const BACKDROP_DARK_LUMINANCE = 96;
   const BACKDROP_LIGHT_LUMINANCE = 160;
@@ -1439,6 +1436,8 @@
     let activePageTone = "mixed";
     // original color + assigned palette fill, so nested paper can follow a parent
     let surfaceRecords = new WeakMap();
+    // Scratch 2D context for canvas backdrop sampling, created lazily.
+    let backdropSampler = null;
 
     function matchesOverride(element, property, item) {
       return element.style.getPropertyValue(property) === item.appliedValue
@@ -1844,35 +1843,39 @@
       return x * y >= width * height * BACKDROP_COVER_RATIO;
     }
 
-    // Only readable 2D contexts can be sampled; WebGL reads back empty outside
-    // its own frame, and tainted canvases throw, so those keep their look.
+    // Sample through a scratch canvas we own instead of the site's context:
+    // repeated getImageData on a foreign 2D context trips Chrome's
+    // willReadFrequently warning, and getContext("2d") on a fresh canvas
+    // would lock it out of WebGL. Tainted sources taint the scratch too,
+    // so getImageData throws and those canvases keep their look.
     function canvasBackdropTone(canvas) {
-      const context = canvas.getContext?.("2d");
-      if (!context || typeof context.getImageData !== "function") return null;
       const width = canvas.width;
       const height = canvas.height;
       if (!width || !height) return null;
+      if (!backdropSampler) {
+        const scratch = document.createElement("canvas");
+        scratch.width = BACKDROP_SAMPLE_SIZE;
+        scratch.height = BACKDROP_SAMPLE_SIZE;
+        backdropSampler = scratch.getContext("2d", { willReadFrequently: true });
+      }
+      if (!backdropSampler) return null;
+      const scale = Math.min(1, BACKDROP_SAMPLE_SIZE / Math.max(width, height));
+      const targetWidth = Math.max(1, Math.round(width * scale));
+      const targetHeight = Math.max(1, Math.round(height * scale));
       let painted = 0;
-      let total = 0;
       let sum = 0;
       try {
-        for (const [fx, fy] of BACKDROP_SAMPLE_POINTS) {
-          const patchWidth = Math.min(BACKDROP_SAMPLE_PATCH, width);
-          const patchHeight = Math.min(BACKDROP_SAMPLE_PATCH, height);
-          const x = Math.round(fx * (width - patchWidth));
-          const y = Math.round(fy * (height - patchHeight));
-          const { data } = context.getImageData(x, y, patchWidth, patchHeight);
-          for (let index = 0; index + 3 < data.length; index += 4) {
-            total += 1;
-            if (data[index + 3] <= 32) continue;
-            painted += 1;
-            sum += luminance({ red: data[index], green: data[index + 1], blue: data[index + 2] });
-          }
+        backdropSampler.drawImage(canvas, 0, 0, targetWidth, targetHeight);
+        const { data } = backdropSampler.getImageData(0, 0, targetWidth, targetHeight);
+        for (let index = 0; index + 3 < data.length; index += 4) {
+          if (data[index + 3] <= 32) continue;
+          painted += 1;
+          sum += luminance({ red: data[index], green: data[index + 1], blue: data[index + 2] });
         }
       } catch {
         return null;
       }
-      if (!total || painted / total < BACKDROP_OPAQUE_RATIO) return null;
+      if (!painted || painted / (targetWidth * targetHeight) < BACKDROP_OPAQUE_RATIO) return null;
       return sum / painted;
     }
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.6.1 - 2026-10-27
+
+- Sample painted canvas backdrops through an internal scratch canvas instead
+  of the site's 2D context, removing Chrome's willReadFrequently warning and
+  keeping canvases free for WebGL.
+
 ## 0.2.6 - 2026-10-27
 
 - Invert viewport-covering canvas backdrops whose painted tone fights the

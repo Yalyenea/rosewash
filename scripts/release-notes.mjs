@@ -7,7 +7,7 @@ if (!tag) {
 }
 
 const version = tag.replace(/^v/, "");
-if (!/^\d+\.\d+\.\d+$/.test(version)) {
+if (!/^\d+\.\d+\.\d+(?:\.\d+)?$/.test(version)) {
   throw new Error(`Release tags must look like vX.Y.Z, got: ${tag}`);
 }
 
