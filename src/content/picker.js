@@ -16,22 +16,27 @@
     return (selector) => element.getRootNode().querySelectorAll(selector).length;
   }
 
-  function createOverlay() {
+  function createOverlay(palette) {
     const host = document.createElement("div");
     host.setAttribute("data-rosewash-ignore", "");
+    // Palette tokens inherit from the host into the shadow tree; `all` leaves custom properties alone.
+    for (const token of ["surface", "text", "muted", "link"]) host.style.setProperty(`--${token}`, palette[token]);
     const shadow = host.attachShadow({ mode: "closed" });
     shadow.innerHTML = `
       <style>
         :host { all: initial; }
         .box, .tip { position: fixed; z-index: 2147483647; pointer-events: none; box-sizing: border-box; }
-        .box { border: 2px solid #d7827e; background: rgb(215 130 126 / 0.14); border-radius: 3px; transition: all 60ms ease-out; }
+        .box {
+          border: 2px solid var(--link); background: color-mix(in srgb, var(--link) 14%, transparent);
+          border-radius: 3px; transition: all 60ms ease-out;
+        }
         .tip {
           max-width: min(520px, calc(100vw - 16px)); padding: 6px 9px; border-radius: 6px;
-          background: #232136; color: #e0def4; font: 12px/1.45 ui-sans-serif, system-ui, sans-serif;
+          background: var(--surface); color: var(--text); font: 12px/1.45 ui-sans-serif, system-ui, sans-serif;
           box-shadow: 0 4px 16px rgb(0 0 0 / 0.25);
         }
-        .selector { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #ea9a97; word-break: break-all; }
-        .hint { color: #908caa; }
+        .selector { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--link); word-break: break-all; }
+        .hint { color: var(--muted); }
       </style>
       <div class="box"></div>
       <div class="tip"><div class="selector"></div><div class="hint">Click to ignore · ↑ parent · ↓ child · Esc cancel</div></div>
@@ -120,9 +125,12 @@
     ["keydown", handleKeyDown]
   ];
 
-  function start() {
+  async function start() {
     if (session) return;
-    session = { overlay: createOverlay(), target: null, trail: [], saving: false };
+    session = { overlay: null, target: null, trail: [], saving: false };
+    const settings = core.plainSettings(await chrome.storage.sync.get(null));
+    const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    session.overlay = createOverlay(core.PALETTES[core.resolveSettingsThemeKey(settings, dark)]);
     for (const [type, listener] of listeners) window.addEventListener(type, listener, true);
     window.addEventListener("scroll", paint, true);
     window.addEventListener("resize", paint);

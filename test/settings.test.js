@@ -202,6 +202,14 @@ test("options saves the independent reply expansion switch", async () => {
   assert.equal(ui.raw().xAutoExpandReplies, false);
 });
 
+test("options follows storage changes made outside the page", async () => {
+  const ui = await settingsUI("options", { enabled: true });
+  await ui.storage.set({ enabled: false, disabledHosts: ["example.com"] });
+  await settle();
+  assert.equal(ui.element("#enabled").checked, false);
+  assert.equal(ui.element("#disabled-hosts").value, "example.com");
+});
+
 test("popup persists subsequent edits without waiting for an earlier broadcast", async () => {
   const ui = await settingsUI("popup", { appearance: "auto" });
   const held = ui.holdBroadcast();
@@ -216,7 +224,9 @@ test("popup persists subsequent edits without waiting for an earlier broadcast",
   assert.equal(ui.element("#enabled").checked, false);
   held.resolve();
   await Promise.all([dark, light, paused]);
-  assert.deepEqual(ui.writes.map((settings) => settings.appearance), ["dark", "light", "light"]);
+  assert.equal(ui.writes[0].appearance, "dark");
+  // Later saves write only the keys they change.
+  assert.deepEqual(ui.writes.slice(1), [{ appearance: "light" }, { enabled: false }]);
   assert.equal(ui.raw().appearance, "light");
   assert.equal(ui.raw().enabled, false);
   assert.ok(ui.messages.every((message) => message.type === "rosewash:settings-updated" && !message.settings));
@@ -247,7 +257,8 @@ test("popup sends all edits to the background before closing during a pending sa
   await ui.done();
   assert.equal(ui.raw().appearance, "dark");
   assert.equal(ui.raw().enabled, false);
-  assert.deepEqual(ui.writes.map((settings) => settings.enabled), [true, false]);
+  assert.equal(ui.writes[0].appearance, "dark");
+  assert.deepEqual(ui.writes[1], { enabled: false });
 });
 
 test("popup discards a storage read that predates local edits", async () => {
@@ -298,10 +309,13 @@ test("classic popup site button toggles explicit policy without changing other s
   assert.equal(ui.element("#site-toggle").textContent, "Blocked");
 });
 
-test("classic popup reports global pause and disables element picking", async () => {
+test("classic popup reports global pause and disables site toggling and picking", async () => {
   const ui = await settingsUI("popup", { enabled: false });
   assert.equal(ui.element("#site-toggle").textContent, "Paused");
+  assert.equal(ui.element("#site-toggle").disabled, true);
   assert.equal(ui.element("#pick-element").disabled, true);
+  await ui.element("#site-toggle").emit("click");
+  assert.equal(ui.requests.length, 0);
 });
 
 test("options saves only edited fields and retains settings changed by another UI", async () => {
@@ -352,7 +366,7 @@ test("options merges host additions and removals with external rule changes", as
   await ui.change();
   assert.deepEqual(ui.raw().disabledHosts, ["added.com", "external.com"]);
   assert.deepEqual(ui.raw().enabledHosts, ["external-on.com", "new.com"]);
-  assert.equal(ui.element("#disabled-hosts").value, "unchanged.com\nadded.com");
+  assert.equal(ui.element("#disabled-hosts").value, "added.com\nexternal.com");
   await ui.storage.set({ disabledHosts: ["added.com", "external.com", "later.com"] });
   ui.element("#enabled").checked = false;
   await ui.change();
@@ -365,6 +379,7 @@ test("options retains edits made while saving and writes them on the next save",
   ui.element("#enabled").checked = false;
   const saving = ui.change();
   ui.element("#disabled-hosts").value = "later.com";
+  ui.element("#disabled-hosts").emit("input");
   held.resolve();
   await saving;
   assert.equal(ui.element("#disabled-hosts").value, "later.com");

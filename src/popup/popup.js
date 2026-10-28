@@ -46,22 +46,24 @@
     zhihuLayoutInput.checked = settings.zhihuArticleLayout;
     customFontsInput.checked = settings.customFontsEnabled;
     document.querySelector("#x-layout-row").hidden = activeHost !== "x.com";
-    document.querySelector("#zhihu-layout-row").hidden = !["zhihu.com", "www.zhihu.com", "zhuanlan.zhihu.com"].includes(activeHost);
+    document.querySelector("#zhihu-layout-row").hidden = !core.isZhihuHost(activeHost);
     for (const button of appearanceButtons) {
       button.setAttribute("aria-pressed", String(button.dataset.appearance === settings.appearance));
     }
     const allowed = core.isHostEnabled(activeHost, settings);
-    siteButton.disabled = Boolean(restriction) || !activeHost;
-    siteButton.textContent = siteButton.disabled ? "Unavailable" : !settings.enabled ? "Paused" : allowed ? "Allowed" : "Blocked";
+    const unavailable = Boolean(restriction) || !activeHost;
+    // While paused, a click would silently change a rule the user cannot see take effect.
+    siteButton.disabled = unavailable || !settings.enabled;
+    siteButton.textContent = unavailable ? "Unavailable" : !settings.enabled ? "Paused" : allowed ? "Allowed" : "Blocked";
     siteButton.setAttribute("aria-pressed", String(allowed));
-    siteButton.title = settings.enabled ? "Toggle Rosewash on this site" : "Site preference; Rosewash is paused globally";
+    siteButton.title = settings.enabled ? "Toggle Rosewash on this site" : "Resume Rosewash to change this site";
     const siteStatus = document.querySelector("#site-status");
     siteStatus.hidden = !restriction;
     siteStatus.textContent = restriction === "webstore"
       ? "The browser blocks extensions on the Web Store and its developer dashboard."
       : restriction ? "Rosewash cannot run on this page." : "";
     refreshButton.disabled = Boolean(restriction);
-    pickButton.disabled = siteButton.disabled || !settings.enabled || !allowed;
+    pickButton.disabled = siteButton.disabled || !allowed;
     paintPopupChrome();
   }
 
@@ -116,7 +118,7 @@
     button.addEventListener("click", () => updateSettings({ ...settings, appearance: button.dataset.appearance }));
   }
   siteButton.addEventListener("click", () => {
-    if (activeHost && !core.pageRestrictionForUrl(activeTab?.url)) {
+    if (!siteButton.disabled) {
       const policy = core.isHostEnabled(activeHost, settings) ? "off" : "on";
       updateSettings(core.setHostPolicy(activeHost, policy, settings), {
         type: "rosewash:set-host-policy", host: activeHost, policy
@@ -135,7 +137,7 @@
   document.querySelector("#options").addEventListener("click", () => chrome.runtime.openOptionsPage());
   refreshButton.addEventListener("click", async () => {
     try {
-      const response = await chrome.runtime.sendMessage({ type: "rosewash:reapply" });
+      const response = await chrome.runtime.sendMessage({ type: "rosewash:reapply", tabId: activeTab.id });
       if (!response?.ok) throw new Error(response?.error || "Settings were not reapplied");
     } catch (error) {
       saveStatus.textContent = `Reapply failed: ${error.message}`;

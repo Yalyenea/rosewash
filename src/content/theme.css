@@ -24,18 +24,12 @@ html[data-rosewash-theme] body {
 
 /* Common SPA shells paint white on deep roots, not body — cover them in CSS
    so client navigations do not flash white before the mutation scan.
-   Substack uses div#main / #entry / .use-theme-bg (not <main>). */
-html[data-rosewash-theme] #react-root,
-html[data-rosewash-theme] #root,
-html[data-rosewash-theme] #app,
-html[data-rosewash-theme] #__next,
-html[data-rosewash-theme] [data-testid="primaryColumn"],
-html[data-rosewash-theme] main,
-html[data-rosewash-theme] #entry,
-html[data-rosewash-theme] #main,
-html[data-rosewash-theme] .use-theme-bg,
-html[data-rosewash-theme] .intro-popup,
-html[data-rosewash-theme] .intro-popup-page {
+   Substack uses div#main / #entry / .use-theme-bg (not <main>).
+   Picker-ignored roots ([data-rosewash-ignored]) and their contents keep page styles. */
+html[data-rosewash-theme] :is(
+  #react-root, #root, #app, #__next, [data-testid="primaryColumn"], main,
+  #entry, #main, .use-theme-bg, .intro-popup, .intro-popup-page
+):not([data-rosewash-ignored], [data-rosewash-ignored] *) {
   background-color: var(--rosewash-base) !important;
   color: var(--rosewash-text) !important;
 }
@@ -45,7 +39,9 @@ html[data-rosewash-theme] ::selection {
   color: var(--rosewash-text);
 }
 
-html[data-rosewash-theme] a:not([data-rosewash-ignore]) {
+/* Links on kept colored fills ([data-rosewash-kept]) keep their designed color. */
+html[data-rosewash-theme] a:not([data-rosewash-ignore], [data-rosewash-ignored], [data-rosewash-ignored] *,
+  [data-rosewash-kept], [data-rosewash-kept] *) {
   color: var(--rosewash-link) !important;
 }
 
@@ -122,6 +118,6 @@ html[data-rosewash-theme] [class*="threadFooterContentFade"]::after {
 
 
 /* Image dimming: set only for dark palettes when the user turns it on. */
-html[data-rosewash-dim] :is(img, video, image) {
+html[data-rosewash-dim] :is(img, video, image):not([data-rosewash-ignored], [data-rosewash-ignored] *) {
   filter: brightness(var(--rosewash-image-brightness));
 }

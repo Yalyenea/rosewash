@@ -60,7 +60,7 @@ function background({ url = "https://x.com/home", messageError = false, beforeSe
       set: async (next) => {
         await flush();
         if (beforeSet) await beforeSet(++writeAttempts);
-        stored = structuredClone(next);
+        stored = { ...stored, ...structuredClone(next) };
         writes.push(structuredClone(stored));
       },
       remove: async (keys) => { for (const key of keys) delete stored[key]; }
@@ -212,6 +212,13 @@ test("global shortcut pauses and resumes Rosewash and notifies every tab", async
   assert.equal(runtime.messages.length, 2);
 });
 
+test("popup Refresh reapplies only the tab it was opened on", async () => {
+  const runtime = background();
+  assert.equal((await runtime.send({ type: "rosewash:reapply", tabId: 9 })).ok, true);
+  await flush();
+  assert.deepEqual(runtime.messages, [{ tabId: 9, message: { type: "rosewash:settings-updated" } }]);
+});
+
 test("picker saves take the site from the sender's top-frame tab", async () => {
   const runtime = background();
   const tab = { id: 4, url: "https://news.example.com/story" };
@@ -219,7 +226,8 @@ test("picker saves take the site from the sender's top-frame tab", async () => {
   const saved = await runtime.receiveFrom({ type: "rosewash:ignore-element", selector, host: "evil.com" },
     { id: "test", tab, frameId: 0, url: tab.url });
   assert.equal(saved.ok, true);
-  assert.deepEqual(runtime.writes.at(-1).ignoredElements, { "news.example.com": [selector] });
+  assert.deepEqual(runtime.writes.at(-1)["ignored:news.example.com"], [selector]);
+  assert.equal(runtime.writes.at(-1).ignoredElements, undefined);
   for (const sender of [{ id: "test", tab, frameId: 3 }, { id: "other", tab, frameId: 0 }]) {
     assert.equal(await runtime.receiveFrom({ type: "rosewash:ignore-element", selector: "p" }, sender), null);
   }

@@ -12,10 +12,11 @@ content pipeline, and change recipes, see
   as Catppuccin, Nord, Gruvbox, Tokyo Night, …) with light/dark variants, plus
   plain Light and Dark options that preserve website colors.
 - Color parsing for hex, `rgb()`, and CSS Color 4 `color(srgb ...)`, `lab()`,
-  `oklab()`, `lch()`, and `oklch()` forms. Computed sRGB colors from `color-mix()`
-  and relative RGB colors follow the same surface, text, and border rules.
-- Full-page surface and text covering into the active palette.
-- Optional page-tone sampling (still used for diagnostics and mixed re-detect).
+  `oklab()`, `lch()`, and `oklch()` forms, converted with the CSS Color 4
+  matrices so hue survives. Computed sRGB colors from `color-mix()` and
+  relative RGB colors follow the same surface, text, and border rules.
+- Full-page surface and text covering into the active palette, keeping
+  chromatic fills and text recognizable.
 - Default site policy and per-host on/off rules, with subdomain matching.
 - DOM tinting and restoration.
 - A batched `MutationObserver` for inserted elements, class changes, and
@@ -26,7 +27,8 @@ The content scripts run in every frame. Embedded frames follow the tab's
 top-level site rule, and site layouts only apply to the top-level page.
 
 An element picker in the top frame saves CSS selectors per site. The engine
-leaves matched elements and their contents untouched. With image dimming on,
+leaves matched elements and their contents untouched and marks the matched
+roots `data-rosewash-ignored`, so `theme.css` rules skip them too. With image dimming on,
 a tinted dark palette also lowers image and video brightness through
 `theme.css`.
 
@@ -35,8 +37,8 @@ colors, fonts, or layouts. Disabled sites stay untouched while storage loads.
 Enabled sites receive `data-rosewash-theme`, activating the CSS canvas cover.
 MutationObserver scans coalesce to `requestAnimationFrame` (not a multi-hundred
 millisecond delay). Theme re-apply only restores previous tints when the
-resolved palette actually changes, so mixed page-tone re-detect no longer
-flashes the whole document white. CSS variable overrides are diffed in place.
+resolved palette or rules actually change, so ordinary re-applies do not
+flash the whole document white. CSS variable overrides are diffed in place.
 
 The engine writes inline styles (with `!important`) so every non-protected
 painted surface becomes Rose Pine:
@@ -48,7 +50,11 @@ painted surface becomes Rose Pine:
 - Existing palette surface colors retain their role across repeated scans, so
   SPA roots and lazy-loaded regions do not develop `base` / `surface` seams.
 - Transparent `html`/`body` roots are treated as the default document canvas.
-- Opaque text maps to `palette.text`; anchors map to `palette.link`.
+- Strongly colored fills (buttons, badges, highlights) keep their color and
+  the text on them, marked `data-rosewash-kept`. Pale tints such as diff rows
+  and alerts become a palette surface tinted with the same hue.
+- Neutral text maps to `palette.text`; anchors map to `palette.link`. Colored
+  text keeps its hue with lightness adjusted to read on the palette.
 - Only a border that is already stroked is recolored, and it uses
   `palette.muted`. A zero-width or `none` border is left alone: writing the
   color can make the site turn it into a solid frame. A stroke that matches
@@ -87,9 +93,6 @@ records retain the original value and priority plus the applied override.
 Restoration only changes declarations that still match the override, preserving
 later website writes. Re-applying captures those writes before tinting again.
 
-Page-tone sampling runs on initial apply and palette or font changes. Surface
-covering does not depend on the sampled tone.
-
 Only properties changed by the engine are recorded and restored. A declaration
 updated later by the website remains in place; untouched properties such as
 X's dynamically loaded background images are preserved. The original and
@@ -120,12 +123,13 @@ Firefox event page. Chromium loads `src/content/core.js` via `importScripts`;
 the Firefox manifest lists core before background in `background.scripts`.
 Popup edits, settings-page saves and resets, and keyboard commands share one
 storage write queue. Each operation reads current storage, applies its edit,
-and persists the result. Accepted operations continue after the popup closes.
+and writes only the items that changed. Picker rules are stored one
+`ignored:<host>` item per site to stay under the sync per-item quota. Accepted operations continue after the popup closes.
 A failed operation reports its error and lets later operations proceed.
 
 `toggle-current-site` (default `Alt+Shift+B`) saves an explicit on/off rule
 for the command's hostname. The worker notifies that tab after saving; UI saves
-notify all tabs. Notifications contain only their message type, and content
+notify all tabs, and the popup's Refresh notifies only its own tab. Notifications contain only their message type, and content
 scripts read current storage before applying. Tab responses do not block
 subsequent writes. Storage change listeners keep other tabs synchronized.
 
@@ -186,7 +190,8 @@ Remove a hostname from the settings site lists to clear its override. Explicit
 choices persist when `defaultEnabled` changes. Clearing a hostname's rule
 restores its parent rule if present, otherwise the global
 default. The most specific hostname wins; a blocked rule wins a tie, and the
-global enable switch pauses every site. Pick sits beside the site button;
+global enable switch pauses every site; while paused, the site button is
+disabled. Pick sits beside the site button;
 X and Zhihu layout switches appear only on their matching site.
 The popup's Fonts switch shares `customFontsEnabled` with the settings page.
 Each popup change immediately sends an edit to the worker. Pending local edits
@@ -195,13 +200,15 @@ The settings page sends its edited form and baseline to the same queue.
 `mergeSettingsEdits` applies changed fields and host-list additions/removals
 to current storage. Explicit additions clear the opposite rule for that host;
 disabled wins when the edited form explicitly keeps both. Unrelated external
-changes remain intact.
+changes remain intact. The settings page re-renders on storage changes from
+the popup, picker, or shortcuts once its own input and saves settle.
 Settings has Theme, Fonts, Sites, and Shortcuts tabs. Palette grids stay
 expanded, and changes save automatically. Text and sliders settle for 350ms;
 leaving the field or page flushes pending input. The worker owns each save
 once sent. Shortcuts displays the browser bindings and opens shortcut settings.
 
-The flat settings layout follows the selected palette and system appearance.
+The flat settings layout follows the selected palette and system appearance,
+and turns plain when the theme switch is off.
 The shared font picker enumerates installed families in Chromium with
 `chrome.fontSettings.getFontList()` using the `fontSettings` permission.
 Its searchable menu stays within 280px, scrolls through results, and supports

@@ -33,6 +33,34 @@ curated theme presets.
 - [x] Root surface CSS-variable remapping so token-driven `::after` fades
   (ChatGPT thread footer) follow the paper palette.
 
+## Current Milestone: Review Fixes
+
+Bugs and risks
+
+- [x] Settings page follows storage changes made by the popup, picker, and shortcuts.
+- [x] Picker-ignored elements escape the `theme.css` link, container, and image-dimming rules.
+- [x] The popup site button is disabled while Rosewash is paused globally.
+- [x] Settings writes only changed keys, skip no-op saves, and store ignored
+  elements per site (`ignored:<host>`) to stay under the sync per-item quota.
+- [x] Backdrop canvas sampling is throttled instead of running on every mutation frame.
+- [x] Remove unused page-tone detection from the apply path.
+
+Experience
+
+- [x] Keep chromatic colors: strong colored backgrounds keep their color and
+  text, pale tints map to a palette-harmonized tint, and colored text keeps its
+  hue with lightness adjusted for the palette.
+- [x] Settings chrome honors the Override theme switch, matching the popup.
+- [x] Popup Refresh reapplies only the current tab.
+- [x] Picker overlay follows the active palette.
+
+Cleanup
+
+- [x] Remove unused core exports (`toggleHostDisabled`, `resolveThemeMode`,
+  `generatedBackgroundHasDarkSurface`, page-tone helpers).
+- [x] Derive the content script's watched storage keys from `DEFAULT_SETTINGS`.
+- [x] Popup uses `core.isZhihuHost` for the Zhihu layout row.
+
 ## Known Limitations
 
 ### Chrome Web Store developer dashboard — 2026-09-30
@@ -60,9 +88,9 @@ curated theme presets.
   highlighting; ordinary code follows the page palette.
 - Store user state in `chrome.storage.sync`.
 - Avoid site-specific rules until the generic behavior proves insufficient.
-- Keep dark-only adaptation generic: detect page tone first, then reuse the
-  active light palette instead of adding URL rules.
-- Include modern CSS color functions in tone detection before considering
+- Keep color adaptation generic: classify fills and text by chroma and
+  luminance instead of adding URL rules.
+- Parse modern CSS color functions accurately before considering
   site-specific presets.
 - Add theme presets through a shared palette registry, not scattered conditionals.
 - Keep every preset small: base, surface, overlay, muted, text, and link tokens.

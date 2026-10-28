@@ -93,6 +93,7 @@
   let saveTimer = 0;
   let statusTimer = 0;
   let saveRevision = 0;
+  let pendingSaves = 0;
 
   const panels = Array.from(document.querySelectorAll(".tab-panel"));
   const tabs = Array.from(document.querySelectorAll("[data-panel]"));
@@ -123,6 +124,7 @@
 
   function paintSettingsChrome() {
     const themeKey = core.resolveSettingsThemeKey({
+      colorOverridesEnabled: colorsInput.checked,
       appearance: selectedAppearance(),
       presetLight: selectedLight,
       presetDark: selectedDark
@@ -316,8 +318,9 @@
     ignoredElements = normalized.ignoredElements;
     renderIgnoredElements();
     document.querySelector(`input[name='appearance'][value='${normalized.appearance}']`).checked = true;
-    hostTextarea.value = normalized.disabledHosts.join("\n");
-    enabledHostsTextarea.value = normalized.enabledHosts.join("\n");
+    // A focused list keeps the user's typing; its normalized form matches storage.
+    if (document.activeElement !== hostTextarea) hostTextarea.value = normalized.disabledHosts.join("\n");
+    if (document.activeElement !== enabledHostsTextarea) enabledHostsTextarea.value = normalized.enabledHosts.join("\n");
     selectLight(normalized.presetLight);
     selectDark(normalized.presetDark);
   }
@@ -327,6 +330,14 @@
     render(raw);
     loaded = true;
     await fontPicker.load();
+  }
+
+  // Popup edits, picker rules, and shortcuts change storage while this page is open.
+  // Pending input wins; the next settled save reloads storage.
+  async function reloadFromStorage() {
+    if (!loaded || saveTimer || pendingSaves) return;
+    const raw = await chrome.storage.sync.get(null);
+    if (!saveTimer && !pendingSaves) render(raw);
   }
 
   function formSettings() {
@@ -361,6 +372,7 @@
     const baseline = formBaseline;
     formBaseline = next;
     const revision = ++saveRevision;
+    pendingSaves++;
     window.clearTimeout(statusTimer);
     status.textContent = "Saving…";
     try {
@@ -375,6 +387,9 @@
       if (revision === saveRevision) formBaseline = baseline;
       window.clearTimeout(statusTimer);
       status.textContent = `Save failed: ${error.message}`;
+    } finally {
+      pendingSaves--;
+      reloadFromStorage();
     }
   }
 
@@ -422,12 +437,15 @@
     scheduleSave();
   });
   dimInput.addEventListener("change", renderImageDimming);
-  colorsInput.addEventListener("change", renderImageDimming);
+  colorsInput.addEventListener("change", () => { paintSettingsChrome(); renderImageDimming(); });
 
   for (const input of document.querySelectorAll("input[name='appearance']")) {
     input.addEventListener("change", () => { paintSettingsChrome(); renderImageDimming(); return saveSettings(); });
   }
   systemAppearance.addEventListener("change", () => { paintSettingsChrome(); renderImageDimming(); });
+  chrome.storage.onChanged.addListener((_changes, areaName) => {
+    if (areaName === "sync") reloadFromStorage();
+  });
 
   fillPresetList(lightList, "light", (id) => { selectLight(id); return saveSettings(); });
   fillPresetList(darkList, "dark", (id) => { selectDark(id); return saveSettings(); });

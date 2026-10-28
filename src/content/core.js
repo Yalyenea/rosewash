@@ -4,6 +4,10 @@
   const THEME_ATTRIBUTE = "data-rosewash-theme";
   const TINT_ATTRIBUTE = "data-rosewash-tinted";
   const DIM_ATTRIBUTE = "data-rosewash-dim";
+  // Marks picker-matched roots so theme.css rules can leave them alone too.
+  const IGNORED_ATTRIBUTE = "data-rosewash-ignored";
+  // Marks strongly colored fills that keep their page color and text.
+  const KEPT_ATTRIBUTE = "data-rosewash-kept";
   const STYLE_OVERRIDES_ATTRIBUTE = "data-rosewash-style-overrides";
   const HAD_STYLE_ATTRIBUTE = "data-rosewash-had-style";
   const ORIGINAL_STYLE_ATTRIBUTE = "data-rosewash-original-style";
@@ -245,6 +249,8 @@
     ignoredElements: Object.freeze({})
   });
 
+  const IGNORED_KEY_PREFIX = "ignored:";
+  const LEGACY_STORAGE_KEYS = Object.freeze(["mode", "preset", "ignoredElements"]);
   const VALID_APPEARANCES = new Set(["auto", "light", "dark"]);
   const LEGACY_MODE_TO_APPEARANCE = Object.freeze({
     auto: "auto",
@@ -295,6 +301,7 @@
   const BACKDROP_DARK_LUMINANCE = 96;
   const BACKDROP_LIGHT_LUMINANCE = 160;
   const BACKDROP_INVERT_FILTER = "invert(1) hue-rotate(180deg)";
+  const BACKDROP_INTERVAL_MS = 500;
 
   function clamp255(value) {
     return Math.max(0, Math.min(255, Number(value)));
@@ -349,15 +356,38 @@
     return Math.max(0, Math.min(1, value.endsWith("%") ? number / 100 : number));
   }
 
-  function colorFromLightness(lightness, chroma) {
-    const base = clamp255(lightness * 255);
-    const spread = clamp255(chroma);
-    return {
-      red: clamp255(base + (spread * 0.55)),
-      green: clamp255(base - (spread * 0.25)),
-      blue: clamp255(base - (spread * 0.3)),
-      alpha: 1
-    };
+  function gammaEncode(channel) {
+    const sign = channel < 0 ? -1 : 1;
+    const magnitude = Math.abs(channel);
+    return sign * (magnitude <= 0.0031308 ? 12.92 * magnitude : (1.055 * (magnitude ** (1 / 2.4))) - 0.055);
+  }
+
+  // CSS Color 4 conversions, so hue survives for colored text and fills.
+  function oklabToRgb(lightness, a, b) {
+    const l = (lightness + (0.3963377774 * a) + (0.2158037573 * b)) ** 3;
+    const m = (lightness - (0.1055613458 * a) - (0.0638541728 * b)) ** 3;
+    const s = (lightness - (0.0894841775 * a) - (1.2914855480 * b)) ** 3;
+    return [
+      (4.0767416621 * l) - (3.3077115913 * m) + (0.2309699292 * s),
+      (-1.2684380046 * l) + (2.6097574011 * m) - (0.3413193965 * s),
+      (-0.0041960863 * l) - (0.7034186147 * m) + (1.7076147010 * s)
+    ];
+  }
+
+  function labToRgb(lightness, a, b) {
+    const epsilon = 216 / 24389;
+    const kappa = 24389 / 27;
+    const fy = (lightness + 16) / 116;
+    const fx = fy + (a / 500);
+    const fz = fy - (b / 200);
+    const x = 0.96422 * (fx ** 3 > epsilon ? fx ** 3 : ((116 * fx) - 16) / kappa);
+    const y = lightness > kappa * epsilon ? fy ** 3 : lightness / kappa;
+    const z = 0.82521 * (fz ** 3 > epsilon ? fz ** 3 : ((116 * fz) - 16) / kappa);
+    return [
+      (3.1341359569958707 * x) - (1.6173863321612538 * y) - (0.4906619460083532 * z),
+      (-0.978795502912089 * x) + (1.916254567259524 * y) + (0.03344273116131949 * z),
+      (0.07195537988411677 * x) - (0.2289768264158322 * y) + (1.405386058324125 * z)
+    ];
   }
 
   function parseCssColor4(value) {
@@ -390,40 +420,27 @@
 
     const fn = match[1];
     const [body, alphaBody] = match[2].split("/");
-    const parts = body.match(/[-+]?(?:\d*\.)?\d+(?:e[-+]?\d+)?%?/g);
-    if (!parts || parts.length < 3) {
+    const parts = body.trim().split(/\s+/);
+    if (parts.length !== 3) {
       return null;
     }
-
-    const rawLightness = parseFloat(parts[0]);
-    if (!Number.isFinite(rawLightness)) {
+    // Percentages scale to each space's reference range; `none` is zero.
+    const ranges = fn.startsWith("ok") ? [1, 0.4, 0.4] : [100, 125, 125];
+    const [lightness, second, third] = parts.map((part, index) => {
+      if (part === "none") return 0;
+      const number = parseFloat(part);
+      return part.endsWith("%") ? (number / 100) * ranges[index] : number;
+    });
+    if (![lightness, second, third].every(Number.isFinite)) {
       return null;
     }
-
-    const lightness = parts[0].endsWith("%")
-      ? rawLightness / 100
-      : (fn.startsWith("ok") ? rawLightness : rawLightness / 100);
-    let chroma = 0;
-
-    if (fn === "lab" || fn === "oklab") {
-      const a = parseFloat(parts[1]);
-      const b = parseFloat(parts[2]);
-      if (!Number.isFinite(a) || !Number.isFinite(b)) {
-        return null;
-      }
-      chroma = Math.sqrt((a * a) + (b * b));
-    } else {
-      chroma = parseFloat(parts[1]);
-      if (!Number.isFinite(chroma)) {
-        return null;
-      }
-    }
-
-    const normalizedChroma = fn.startsWith("ok") ? chroma * 600 : chroma * 2;
-    return {
-      ...colorFromLightness(Math.max(0, Math.min(1, lightness)), normalizedChroma),
-      alpha: parseColorAlpha((alphaBody || "").trim())
-    };
+    const polar = fn === "lch" || fn === "oklch";
+    const angle = (third * Math.PI) / 180;
+    const a = polar ? second * Math.cos(angle) : second;
+    const b = polar ? second * Math.sin(angle) : third;
+    const linear = fn.startsWith("ok") ? oklabToRgb(lightness, a, b) : labToRgb(lightness, a, b);
+    const [red, green, blue] = linear.map((channel) => clamp255(gammaEncode(channel) * 255));
+    return { red, green, blue, alpha: parseColorAlpha((alphaBody || "").trim()) };
   }
 
   function parseColor(value) {
@@ -486,11 +503,83 @@
     return !color || color.alpha <= 0.05;
   }
 
-  function isNearWhiteColor(color) {
-    return Boolean(color)
-      && color.alpha > 0.05
-      && luminance(color) >= 235
-      && channelSpread(color) <= 22;
+  function hueOf({ red, green, blue }) {
+    const max = Math.max(red, green, blue);
+    const delta = max - Math.min(red, green, blue);
+    if (!delta) return 0;
+    const hue = max === red ? ((green - blue) / delta) % 6
+      : max === green ? ((blue - red) / delta) + 2
+        : ((red - green) / delta) + 4;
+    return (hue * 60 + 360) % 360;
+  }
+
+  function hslColor(hue, saturation, lightness) {
+    const chroma = (1 - Math.abs((2 * lightness) - 1)) * saturation;
+    const x = chroma * (1 - Math.abs(((hue / 60) % 2) - 1));
+    const [r, g, b] = hue < 60 ? [chroma, x, 0] : hue < 120 ? [x, chroma, 0]
+      : hue < 180 ? [0, chroma, x] : hue < 240 ? [0, x, chroma]
+        : hue < 300 ? [x, 0, chroma] : [chroma, 0, x];
+    const m = lightness - (chroma / 2);
+    return { red: (r + m) * 255, green: (g + m) * 255, blue: (b + m) * 255, alpha: 1 };
+  }
+
+  function hslParts(color) {
+    const max = Math.max(color.red, color.green, color.blue) / 255;
+    const min = Math.min(color.red, color.green, color.blue) / 255;
+    const lightness = (max + min) / 2;
+    const saturation = max === min ? 0 : (max - min) / (1 - Math.abs((2 * lightness) - 1));
+    return { hue: hueOf(color), saturation, lightness };
+  }
+
+  function hexColor({ red, green, blue }) {
+    return `#${[red, green, blue].map((channel) =>
+      Math.round(clamp255(channel)).toString(16).padStart(2, "0")).join("")}`;
+  }
+
+  // Chroma thresholds on the 0–255 channel spread. Strong fills (buttons,
+  // badges, highlights) keep their color; pale tints (diff rows, alerts)
+  // become a palette-harmonized tint of the same hue. Warm hues need more
+  // chroma, so cream and beige paper still reads as paper.
+  const STRONG_SURFACE_SPREAD = 80;
+  const TINT_SURFACE_SPREAD = 20;
+  const WARM_PAPER_TINT_SPREAD = 40;
+  const CHROMATIC_TEXT_SPREAD = 60;
+  // Text luminance bounds that stay readable on the palette's paper.
+  const LIGHT_PALETTE_MAX_TEXT_LUMINANCE = 120;
+  const DARK_PALETTE_MIN_TEXT_LUMINANCE = 150;
+
+  // "keep", a tint color, or null when the fill is neutral paper.
+  function chromaticSurfaceFor(color, palette, dark) {
+    if (!isOpaqueColor(color)) return null;
+    const spread = channelSpread(color);
+    if (spread >= STRONG_SURFACE_SPREAD && color.alpha >= 0.9) return "keep";
+    const hue = hueOf(color);
+    const warmPaper = hue >= 20 && hue <= 60;
+    if (spread < (warmPaper ? WARM_PAPER_TINT_SPREAD : TINT_SURFACE_SPREAD)) return null;
+    const paper = parseColor(palette.surface);
+    const accent = hslColor(hue, 0.65, 0.5);
+    const weight = dark ? 0.22 : 0.14;
+    return hexColor({
+      red: paper.red + ((accent.red - paper.red) * weight),
+      green: paper.green + ((accent.green - paper.green) * weight),
+      blue: paper.blue + ((accent.blue - paper.blue) * weight)
+    });
+  }
+
+  // Colored text keeps its hue; lightness moves until it reads on the palette.
+  function chromaticTextFor(color, dark) {
+    if (!isOpaqueColor(color) || channelSpread(color) < CHROMATIC_TEXT_SPREAD) return null;
+    const { hue, saturation, lightness: original } = hslParts(color);
+    let lightness = original;
+    const fits = (candidate) => dark
+      ? luminance(candidate) >= DARK_PALETTE_MIN_TEXT_LUMINANCE
+      : luminance(candidate) <= LIGHT_PALETTE_MAX_TEXT_LUMINANCE;
+    let next = hslColor(hue, saturation, lightness);
+    while (!fits(next) && lightness > 0 && lightness < 1) {
+      lightness = Math.max(0, Math.min(1, lightness + (dark ? 0.02 : -0.02)));
+      next = hslColor(hue, saturation, lightness);
+    }
+    return hexColor(next);
   }
 
   function isOpaqueColor(color) {
@@ -504,27 +593,6 @@
       return true;
     }
     return pageElement && isTransparentColor(color);
-  }
-
-  function isDarkNeutralColor(color) {
-    return Boolean(color)
-      && color.alpha > 0.05
-      && luminance(color) <= 118
-      && channelSpread(color) <= 92;
-  }
-
-  function isDarkSurfaceColor(color) {
-    return Boolean(color)
-      && color.alpha > 0.05
-      && luminance(color) <= 92
-      && channelSpread(color) <= 86;
-  }
-
-  function isLightNeutralColor(color) {
-    return Boolean(color)
-      && color.alpha > 0.05
-      && luminance(color) >= 150
-      && channelSpread(color) <= 100;
   }
 
   // Preserve a little hierarchy: page root → base, elevated mids → overlay,
@@ -616,104 +684,6 @@
     return normalized !== "" && normalized !== "none" && normalized !== "hidden";
   }
 
-  function classifyPageTone(samples) {
-    let darkSurfaces = 0;
-    let lightSurfaces = 0;
-    let lightText = 0;
-    let darkSignals = 0;
-
-    for (const sample of samples) {
-      const background = parseColor(sample.backgroundColor);
-      const color = parseColor(sample.color);
-      if (isDarkSurfaceColor(background)) {
-        darkSurfaces += 1;
-      }
-      if (isNearWhiteColor(background)) {
-        lightSurfaces += 1;
-      }
-      if (isLightNeutralColor(color)) {
-        lightText += 1;
-      }
-      if (sample.darkSignal === true) {
-        darkSignals += 1;
-      }
-    }
-
-    if (lightSurfaces > 0) {
-      return "light-page";
-    }
-
-    // Branded dark sites (e.g. Substack publication themes) often expose a
-    // single dark root plus light text, or an explicit dark theme flag, without
-    // prefers-color-scheme wiring or a second dark layout sample.
-    if (darkSurfaces >= 1 && darkSignals >= 1) {
-      return "dark-only";
-    }
-
-    if (darkSurfaces >= 1 && lightText >= 1) {
-      return "dark-only";
-    }
-
-    return "mixed";
-  }
-
-  const TONE_SKIP_TAGS = new Set([
-    "SCRIPT",
-    "STYLE",
-    "LINK",
-    "META",
-    "NOSCRIPT",
-    "TEMPLATE",
-    "BR",
-    "HR",
-    "SOURCE",
-    "TRACK"
-  ]);
-
-  function isToneSampleElement(element) {
-    return isElementNode(element) && !TONE_SKIP_TAGS.has(element.tagName);
-  }
-
-  function readRootThemeSamples(window, document) {
-    const samples = [];
-    const rootStyle = window.getComputedStyle(document.documentElement);
-    if (!rootStyle || typeof rootStyle.getPropertyValue !== "function") {
-      return samples;
-    }
-
-    const darkFlag = String(rootStyle.getPropertyValue("--theme_bg_is_dark") || "")
-      .trim()
-      .toLowerCase();
-    if (darkFlag === "1" || darkFlag === "true") {
-      samples.push({
-        backgroundColor: "rgba(0, 0, 0, 0)",
-        color: "rgb(0, 0, 0)",
-        darkSignal: true
-      });
-    }
-
-    for (const property of [
-      "--web_bg_color",
-      "--color_theme_bg_web",
-      "--background",
-      "--bg",
-      "--color-bg",
-      "--background-color"
-    ]) {
-      const value = String(rootStyle.getPropertyValue(property) || "").trim();
-      if (!value) {
-        continue;
-      }
-      samples.push({
-        backgroundColor: value,
-        color: "rgb(0, 0, 0)",
-        darkSignal: false
-      });
-    }
-
-    return samples;
-  }
-
   function normalizeHost(host) {
     return String(host || "")
       .trim()
@@ -779,24 +749,6 @@
       return disabledHost
         && (normalizedHost === disabledHost || normalizedHost.endsWith(`.${disabledHost}`));
     });
-  }
-
-  function toggleHostDisabled(host, disabledHosts) {
-    const normalizedHost = normalizeHost(host);
-    const current = Array.isArray(disabledHosts)
-      ? disabledHosts.map(normalizeHost).filter(Boolean)
-      : [];
-
-    if (!normalizedHost) {
-      return Array.from(new Set(current)).sort();
-    }
-
-    const next = current.filter((entry) => !isHostDisabled(normalizedHost, [entry]));
-    if (next.length === current.length) {
-      next.push(normalizedHost);
-    }
-
-    return Array.from(new Set(next)).sort();
   }
 
   function isHostEnabled(host, settings) {
@@ -941,7 +893,25 @@
         : DEFAULT_SETTINGS.imageBrightness,
       disabledHosts: Array.from(new Set(disabledHosts)).sort(),
       enabledHosts: Array.from(new Set(enabledHosts)).sort(),
-      ignoredElements: normalizeIgnoredElements(source.ignoredElements)
+      ignoredElements: normalizeIgnoredEntries(storedIgnoredEntries(source))
+    };
+  }
+
+  function isSettingsStorageKey(key) {
+    return Object.hasOwn(DEFAULT_SETTINGS, key) || LEGACY_STORAGE_KEYS.includes(key)
+      || key.startsWith(IGNORED_KEY_PREFIX);
+  }
+
+  // Writes only changed items, so no-op saves cost no sync write quota. Each
+  // site's picker rules get their own item to stay under the 8 KB per-item limit.
+  function storageChanges(raw, settings) {
+    const { ignoredElements, ...items } = plainSettings(settings);
+    for (const [host, selectors] of Object.entries(ignoredElements)) items[IGNORED_KEY_PREFIX + host] = selectors;
+    return {
+      set: Object.fromEntries(Object.entries(items)
+        .filter(([key, value]) => JSON.stringify(raw[key]) !== JSON.stringify(value))),
+      remove: Object.keys(raw).filter((key) => !Object.hasOwn(items, key)
+        && (LEGACY_STORAGE_KEYS.includes(key) || key.startsWith(IGNORED_KEY_PREFIX)))
     };
   }
 
@@ -950,11 +920,27 @@
     return selector.length <= MAX_IGNORED_SELECTOR_LENGTH ? selector : "";
   }
 
+  function isPlainObject(value) {
+    return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  }
+
   // { host: [selector] } with sorted hosts and selectors; empty hosts dropped.
   function normalizeIgnoredElements(value) {
+    return normalizeIgnoredEntries(isPlainObject(value) ? Object.entries(value) : []);
+  }
+
+  // Storage keeps one `ignored:<host>` item per site; older blobs used one `ignoredElements` item.
+  function storedIgnoredEntries(source) {
+    const entries = isPlainObject(source.ignoredElements) ? Object.entries(source.ignoredElements) : [];
+    for (const [key, selectors] of Object.entries(source)) {
+      if (key.startsWith(IGNORED_KEY_PREFIX)) entries.push([key.slice(IGNORED_KEY_PREFIX.length), selectors]);
+    }
+    return entries;
+  }
+
+  function normalizeIgnoredEntries(entries) {
     const result = {};
-    if (!value || typeof value !== "object" || Array.isArray(value)) return result;
-    for (const [rawHost, selectors] of Object.entries(value)) {
+    for (const [rawHost, selectors] of entries) {
       const host = normalizeHost(rawHost);
       if (!host || !Array.isArray(selectors)) continue;
       const list = selectors.map(normalizeSelector).filter(Boolean);
@@ -1029,20 +1015,6 @@
     if (!normalized.colorOverridesEnabled) return desired === "dark" ? "dark-dark" : "light-light";
     const presetId = desired === "dark" ? normalized.presetDark : normalized.presetLight;
     return `${presetId}-${desired}`;
-  }
-
-  // Legacy helper: maps old mode strings onto rose-pine theme keys.
-  function resolveThemeMode(mode, prefersDark) {
-    if (mode === "dawn" || mode === "moon") {
-      return mode === "dawn" ? "rose-pine-light" : "rose-pine-dark";
-    }
-    if (LEGACY_MODE_TO_APPEARANCE[mode]) {
-      return resolveThemeKey("rose-pine", LEGACY_MODE_TO_APPEARANCE[mode], prefersDark);
-    }
-    if (typeof mode === "object" && mode) {
-      return resolveSettingsThemeKey(mode, prefersDark);
-    }
-    return resolveThemeKey("rose-pine", "auto", prefersDark);
   }
 
   function applyThemeTokens(root, theme) {
@@ -1146,11 +1118,6 @@
     return Array.from(new Set([...latest.filter((item) => !removed.has(item)), ...added])).sort();
   }
 
-  // Full cover remaps any non-transparent text into the active palette.
-  function shouldTintTextColor(_theme, color, _surfaceTinted) {
-    return isOpaqueColor(color);
-  }
-
   const PAGE_CHROME_CLASSES = new Set([
     "AppHeader",
     "LeanAppHeaderBar",
@@ -1180,15 +1147,6 @@
     return typeof value === "string"
       && !/\burl\(/i.test(value)
       && /\b(?:linear|radial|conic|repeating-linear|repeating-radial|repeating-conic)-gradient\(/.test(value);
-  }
-
-  function generatedBackgroundHasDarkSurface(value) {
-    if (!isGeneratedBackgroundImage(value)) {
-      return false;
-    }
-
-    const colors = value.match(/#[0-9a-fA-F]{3,8}\b|rgba?\([^)]*\)/g) || [];
-    return colors.some((color) => isDarkSurfaceColor(parseColor(color)));
   }
 
   // Design-system tokens often paint ::before/::after. Inline element styles
@@ -1416,6 +1374,7 @@
     let activeFonts = [];
     let fontKey = "[]";
     let tintedPageChrome = new WeakSet();
+    let keptSurfaces = new WeakSet();
     // Original and applied declarations, with the same ownership rules as tints.
     let cssVarOverrides = new Map();
     let observer = null;
@@ -1433,11 +1392,12 @@
     let activePresetDark = null;
     let activeAppearance = null;
     let activeTheme = null;
-    let activePageTone = "mixed";
     // original color + assigned palette fill, so nested paper can follow a parent
     let surfaceRecords = new WeakMap();
     // Scratch 2D context for canvas backdrop sampling, created lazily.
     let backdropSampler = null;
+    let backdropTimer = 0;
+    let lastBackdropCheck = -Infinity;
 
     function matchesOverride(element, property, item) {
       return element.style.getPropertyValue(property) === item.appliedValue
@@ -1632,16 +1592,28 @@
       return surfaceColorFor(background, palette, options);
     }
 
+    // Text on a kept colored fill was designed for that fill; leave it alone.
+    function isOnKeptSurface(element) {
+      for (let current = element; current; current = composedParent(current)) {
+        if (keptSurfaces.has(current)) return true;
+        if (surfaceRecords.has(current)) return false;
+      }
+      return false;
+    }
+
     function tintText(element, snapshot, palette) {
       const color = parseColor(snapshot.color);
-      if (!shouldTintTextColor(activeTheme, color, true)) {
+      if (!isOpaqueColor(color) || isOnKeptSurface(element)) {
         return;
       }
       if (element.tagName === "A") {
         setStyle(element, "color", palette.link);
         return;
       }
-      setStyle(element, "color", palette.text);
+      // Inherited palette colors (link children, tinted parents) pass through unchanged.
+      const hex = hexColor(color);
+      const inherited = [palette.text, palette.link].find((token) => token.toLowerCase() === hex);
+      setStyle(element, "color", inherited || chromaticTextFor(color, isDarkThemeKey(activeTheme)) || palette.text);
     }
 
     function elementClassName(element) {
@@ -1669,40 +1641,6 @@
         }
       }
       return false;
-    }
-
-    function detectPageTone() {
-      const bodyChildren = document.body
-        ? Array.from(document.body.children).filter(isToneSampleElement)
-        : [];
-      const candidates = [
-        document.documentElement,
-        document.body,
-        document.querySelector("#root"),
-        document.querySelector("#entry"),
-        document.querySelector("#main"),
-        document.querySelector(".main"),
-        document.querySelector("[class*='use-theme-bg']"),
-        ...bodyChildren,
-        ...document.querySelectorAll("#root > *, #entry > *, #main, .main"),
-        ...document.querySelectorAll("main, article, section, header, footer, nav, aside")
-      ].filter(isToneSampleElement);
-
-      const uniqueCandidates = Array.from(new Set(candidates)).slice(0, 48);
-      const elementSamples = uniqueCandidates.map((element) => {
-        const computedStyle = window.getComputedStyle(element);
-        return {
-          backgroundColor: computedStyle.backgroundColor,
-          color: computedStyle.color,
-          darkSignal: element.classList.contains("dark")
-            || computedStyle.colorScheme.split(/\s+/).includes("dark")
-        };
-      });
-
-      return classifyPageTone([
-        ...readRootThemeSamples(window, document),
-        ...elementSamples
-      ]);
     }
 
     function readTintSnapshot(element, scanFont) {
@@ -1794,11 +1732,22 @@
       const coverSurface = !gradientText && !pageChromeTinted
         && (!hasBackgroundImage || generatedBackground)
         && (isCoverSurfaceBackground(background, { pageElement }) || generatedBackground);
-      if (coverSurface) {
+      const chromatic = coverSurface && !pageElement && !generatedBackground
+        ? chromaticSurfaceFor(background, palette, isDarkThemeKey(theme))
+        : null;
+      const kept = chromatic === "keep";
+      if (kept) keptSurfaces.add(element);
+      else keptSurfaces.delete(element);
+      // theme.css reads the mark to leave links on the kept fill alone.
+      if (element.hasAttribute(KEPT_ATTRIBUTE) !== kept) {
+        if (kept) element.setAttribute(KEPT_ATTRIBUTE, "");
+        else element.removeAttribute(KEPT_ATTRIBUTE);
+      }
+      if (coverSurface && !kept) {
         if (generatedBackground) {
           setStyle(element, "background-image", "none");
         }
-        const fill = resolveSurfaceFill(element, background, palette, {
+        const fill = chromatic || resolveSurfaceFill(element, background, palette, {
           pageElement,
           theme,
           tagName: element.tagName
@@ -1908,6 +1857,22 @@
       flushStyleRecords();
     }
 
+    function checkBackdrops() {
+      window.clearTimeout(backdropTimer);
+      backdropTimer = 0;
+      lastBackdropCheck = window.performance.now();
+      updateBackdropCanvases();
+    }
+
+    // Mutation-heavy pages flush every frame; reading canvas pixels that often
+    // is costly, so sampling after scans runs at most once per interval.
+    function requestBackdropCheck() {
+      if (backdropTimer) return;
+      const wait = lastBackdropCheck + BACKDROP_INTERVAL_MS - window.performance.now();
+      if (wait <= 0) checkBackdrops();
+      else backdropTimer = window.setTimeout(checkBackdrops, wait);
+    }
+
     function forgetElement(element) {
       if (element.hasAttribute(TINT_ATTRIBUTE)) restoreElement(element);
       surfaceRecords.delete(element);
@@ -1935,6 +1900,9 @@
     }
 
     function enqueueElement(element, restore) {
+      if (ignoredSelector && !element.hasAttribute(IGNORED_ATTRIBUTE) && element.matches(ignoredSelector)) {
+        element.setAttribute(IGNORED_ATTRIBUTE, "");
+      }
       const scan = scanOptions(element);
       // Protected formula nodes must not split useful work into hundreds of
       // tiny read/write batches. Keep old overrides queued until restored.
@@ -2040,7 +2008,7 @@
         }
       }
       drainScanQueue();
-      updateBackdropCanvases();
+      requestBackdropCheck();
     }
 
     // Coalesce SPA mutations to the next frame — not 250ms — so new white
@@ -2154,9 +2122,22 @@
         window.clearTimeout(pendingFrame);
         pendingFrame = null;
       }
+      window.clearTimeout(backdropTimer);
+      backdropTimer = 0;
       pendingRoots = new Map();
       pendingSheets = new Set();
       resetScanQueue();
+    }
+
+    function clearMarks() {
+      for (const attribute of [IGNORED_ATTRIBUTE, KEPT_ATTRIBUTE]) {
+        const selector = `[${attribute}]`;
+        for (const element of [
+          ...document.querySelectorAll(selector),
+          ...[...connectedShadowRoots()].flatMap((shadow) => [...shadow.querySelectorAll(selector)])
+        ]) element.removeAttribute(attribute);
+      }
+      keptSurfaces = new WeakSet();
     }
 
     function restoreCssVarOverrides() {
@@ -2234,12 +2215,12 @@
       restoreCssVarOverrides();
       surfaceRecords = new WeakMap();
       ignoredSelector = "";
+      clearMarks();
       clearImageDimming(document.documentElement);
       activePresetLight = null;
       activePresetDark = null;
       activeAppearance = null;
       activeTheme = null;
-      activePageTone = "mixed";
       clearThemeTokens(document.documentElement);
     }
 
@@ -2275,10 +2256,11 @@
           || (nextPalette && currentBase && currentBase !== nextPalette.base)
         )
       );
-      // Full-cover no longer depends on pageTone for surface decisions. Only
-      // restore when the resolved palette actually changes — never on mixed
-      // re-detect (that path flashed the whole page white on every load).
+      // Only restore when the resolved palette or rules change; restoring on
+      // every load flashed the whole page white.
       const scans = tintEnabled || definitions.length > 0;
+      // A new content-script instance, palette, or rule set rebuilds the marks during the rescan.
+      if (!activeTheme || themeChanged || rulesChanged) clearMarks();
       if (themeChanged || rulesChanged) {
         disconnectObserver();
         // A rescan restores each element in its own slice.
@@ -2290,9 +2272,6 @@
       if (fontsChanged) replaceFonts(definitions);
       ignoredSelector = nextIgnoredSelector;
       const redundant = Boolean(activeTheme) && !themeChanged && !rulesChanged;
-      if (!redundant) {
-        activePageTone = tintEnabled ? detectPageTone() : "mixed";
-      }
       activePresetLight = normalized.presetLight;
       activePresetDark = normalized.presetDark;
       activeAppearance = normalized.appearance;
@@ -2308,7 +2287,7 @@
       } else {
         disconnectObserver();
       }
-      updateBackdropCanvases();
+      checkBackdrops();
       return {
         enabled: true,
         theme,
@@ -2325,7 +2304,6 @@
         presetDark: activePresetDark,
         appearance: activeAppearance,
         theme: activeTheme,
-        pageTone: activePageTone,
         tinted: connectedTintedElements().length
       };
     }
@@ -2350,33 +2328,25 @@
     clearIgnoredSelectors,
     createFontFaces,
     registerFontFaces,
-    classifyPageTone,
     hostFromUrl,
     policyHostForLocation,
     browserKind,
     pageRestrictionForUrl,
-    isDarkNeutralColor,
-    isDarkSurfaceColor,
     isDarkThemeKey,
-    generatedBackgroundHasDarkSurface,
     isHostDisabled,
     isHostEnabled,
     hostPolicyForHost,
     isZhihuHost,
     isZhihuArticlePath,
-    toggleHostDisabled,
     toggleHostEnabled,
     setHostPolicy,
-    isLightNeutralColor,
     isGeneratedBackgroundImage,
-    isNearWhiteColor,
     isOpaqueColor,
     isPageChromeCandidate,
     isCoverSurfaceBackground,
     isCoverBorderColor,
     colorsSharePaper,
     isPaintedBorder,
-    isToneSampleElement,
     isTransparentColor,
     classifySurfaceCssVar,
     classifyTextCssVar,
@@ -2387,16 +2357,17 @@
     luminance,
     normalizeSettings,
     plainSettings,
+    isSettingsStorageKey,
+    storageChanges,
     mergeSettingsEdits,
     parseColor,
-    readRootThemeSamples,
     resolveAppearance,
     resolveThemeKey,
     resolveSettingsThemeKey,
-    resolveThemeMode,
     applyThemeTokens,
     clearThemeTokens,
-    shouldTintTextColor
+    chromaticSurfaceFor,
+    chromaticTextFor
   });
 
   global.RosewashCore = api;

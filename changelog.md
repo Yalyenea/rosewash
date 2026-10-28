@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.2.7 - 2026-10-27
+
+- Keep colored content recognizable. Buttons, badges, and highlights keep
+  their color and text. Pale tints such as diff rows and alerts become a
+  palette tint of the same hue, and colored text such as syntax highlighting
+  keeps its hue with lightness adjusted to read on the palette.
+- Parse `lab()`, `lch()`, `oklab()`, and `oklch()` with exact CSS Color 4
+  conversions, so Tailwind colors keep their hue.
+- Elements ignored with Pick now also keep their links, container
+  backgrounds, and image brightness.
+- The settings page updates when the popup, picker, or shortcuts change
+  settings while it is open.
+- The settings page turns plain when Override theme is off, matching the popup.
+- The popup's site button is disabled while Rosewash is paused.
+- The popup's Refresh reapplies only the current tab.
+- The Pick overlay uses the active palette.
+- Saves write only changed settings. Ignored elements are stored per site,
+  so many rules no longer hit the sync storage per-item limit. Existing rules
+  migrate on the next save.
+- Canvas backdrop sampling runs at most every 500 ms on busy pages.
+- Remove unused page-tone detection.
+
 ## 0.2.6.1 - 2026-10-27
 
 - Sample painted canvas backdrops through an internal scratch canvas instead

@@ -114,23 +114,18 @@ test("parses computed sRGB colors from color-mix and relative colors", async () 
   }
 });
 
-test("parses modern CSS color functions enough for tone detection", async () => {
+test("parses modern CSS color functions", async () => {
   const core = await loadCore();
-  assert.equal(core.isDarkSurfaceColor(core.parseColor("lab(0.0177803 0 0)")), true);
-  assert.equal(core.isLightNeutralColor(core.parseColor("lab(93.736 0 0)")), true);
-  assert.equal(core.isDarkSurfaceColor(core.parseColor("oklch(0.09 0.025 45)")), true);
-  assert.equal(core.isDarkSurfaceColor(core.parseColor("oklab(0.144788 7.45058e-9 7.45058e-9 / 0.8)")), true);
-  assert.equal(core.isLightNeutralColor(core.parseColor("oklch(0.922 0 0)")), true);
-  assert.equal(core.isLightNeutralColor(core.parseColor("oklch(70.5% .213 47.604)")), false);
-});
-
-test("detects harsh near-white backgrounds", async () => {
-  const core = await loadCore();
-  assert.equal(core.isNearWhiteColor(core.parseColor("rgb(255, 255, 255)")), true);
-  assert.equal(core.isNearWhiteColor(core.parseColor("rgb(250, 244, 237)")), true);
-  assert.equal(core.isNearWhiteColor(core.parseColor("rgb(238, 242, 246)")), true);
-  assert.equal(core.isNearWhiteColor(core.parseColor("rgb(240, 230, 210)")), false);
-  assert.equal(core.isNearWhiteColor(core.parseColor("rgba(255, 255, 255, 0)")), false);
+  const level = (value) => core.luminance(core.parseColor(value));
+  assert.ok(level("lab(0.0177803 0 0)") < 10);
+  assert.ok(level("lab(93.736 0 0)") > 230);
+  assert.ok(level("oklch(0.09 0.025 45)") < 40);
+  assert.equal(core.parseColor("oklab(0.144788 7.45058e-9 7.45058e-9 / 0.8)").alpha, 0.8);
+  // Tailwind neutral-200, #e5e5e5.
+  assert.equal(Math.round(level("oklch(0.922 0 0)")), 229);
+  // Hue survives: Tailwind blue-500 stays blue.
+  const blue = core.parseColor("oklch(0.623 0.214 259.815)");
+  assert.ok(blue.blue > 200 && blue.red < 80);
 });
 
 test("covers any opaque surface and transparent page roots", async () => {
@@ -235,61 +230,10 @@ test("treats nearby fills as one paper and ignores unpainted borders", async () 
   assert.equal(byId.get("nested").style.getPropertyValue("background-color"), dawn.base);
   assert.equal(byId.get("nested-white").style.getPropertyValue("background-color"), dawn.base);
   assert.equal(byId.get("card").style.getPropertyValue("background-color"), dawn.surface);
-  assert.equal(byId.get("chip").style.getPropertyValue("background-color"), dawn.overlay);
+  // A colored chip keeps its hue as a palette tint instead of flattening to paper.
+  assert.equal(byId.get("chip").style.getPropertyValue("background-color"), core.chromaticSurfaceFor(brown, dawn, false));
   assert.equal(byId.get("seam").style.getPropertyValue("border-top-color"), "");
   assert.equal(byId.get("rule").style.getPropertyValue("border-left-color"), dawn.muted);
-});
-
-test("detects dark-only page tone from root surfaces and theme signals", async () => {
-  const core = await loadCore();
-  assert.equal(core.isDarkSurfaceColor(core.parseColor("#080b0a")), true);
-  assert.equal(core.isLightNeutralColor(core.parseColor("rgba(224, 214, 189, 0.72)")), true);
-  assert.equal(core.classifyPageTone([
-    { backgroundColor: "rgb(8, 11, 10)", color: "rgb(0, 0, 0)", darkSignal: true },
-    { backgroundColor: "rgb(8, 11, 10)", color: "rgba(224, 214, 189, 0.72)" }
-  ]), "dark-only");
-  assert.equal(core.classifyPageTone([
-    { backgroundColor: "rgba(0, 0, 0, 0)", color: "rgb(0, 0, 0)", darkSignal: true },
-    { backgroundColor: "lab(0.0177803 0 0)", color: "lab(93.736 0 0)" }
-  ]), "dark-only");
-  assert.equal(core.classifyPageTone([
-    { backgroundColor: "oklch(0.09 0.025 45)", color: "rgb(0, 0, 0)" },
-    { backgroundColor: "rgb(5, 5, 5)", color: "oklch(0.922 0 0)" }
-  ]), "dark-only");
-  // Single dark root + light body text (Substack-like nested shells).
-  assert.equal(core.classifyPageTone([
-    { backgroundColor: "rgb(23, 23, 23)", color: "rgb(0, 0, 0)" },
-    { backgroundColor: "rgb(23, 23, 23)", color: "rgb(255, 255, 255)" }
-  ]), "dark-only");
-  // Single dark root + publication theme flag, no light text on the root sample.
-  assert.equal(core.classifyPageTone([
-    { backgroundColor: "rgba(0, 0, 0, 0)", color: "rgb(0, 0, 0)", darkSignal: true },
-    { backgroundColor: "#171717", color: "rgb(0, 0, 0)" }
-  ]), "dark-only");
-});
-
-test("keeps normal light and mixed pages out of dark-only adaptation", async () => {
-  const core = await loadCore();
-  assert.equal(core.classifyPageTone([
-    { backgroundColor: "rgb(255, 255, 255)", color: "rgb(17, 17, 17)" },
-    { backgroundColor: "rgb(250, 250, 250)", color: "rgb(17, 17, 17)" }
-  ]), "light-page");
-  assert.equal(core.classifyPageTone([
-    { backgroundColor: "rgb(8, 11, 10)", color: "rgb(229, 219, 192)" },
-    { backgroundColor: "rgb(255, 250, 243)", color: "rgb(87, 82, 121)" }
-  ]), "light-page");
-  // Lone dark surface without light text or theme flags stays mixed.
-  assert.equal(core.classifyPageTone([
-    { backgroundColor: "rgb(23, 23, 23)", color: "rgb(0, 0, 0)" }
-  ]), "mixed");
-});
-
-test("skips non-layout nodes when sampling page tone", async () => {
-  const core = await loadCore();
-  assert.equal(core.isToneSampleElement({ nodeType: 1, tagName: "DIV" }), true);
-  assert.equal(core.isToneSampleElement({ nodeType: 1, tagName: "SCRIPT" }), false);
-  assert.equal(core.isToneSampleElement({ nodeType: 1, tagName: "STYLE" }), false);
-  assert.equal(core.isToneSampleElement({ nodeType: 3, tagName: undefined }), false);
 });
 
 test("detects generated CSS gradients without treating image urls as safe backgrounds", async () => {
@@ -298,8 +242,6 @@ test("detects generated CSS gradients without treating image urls as safe backgr
   assert.equal(core.isGeneratedBackgroundImage("radial-gradient(circle, #111, #0000)"), true);
   assert.equal(core.isGeneratedBackgroundImage("url(hero.png)"), false);
   assert.equal(core.isGeneratedBackgroundImage("none"), false);
-  assert.equal(core.generatedBackgroundHasDarkSurface("linear-gradient(rgb(8, 11, 10), transparent)"), true);
-  assert.equal(core.generatedBackgroundHasDarkSurface("linear-gradient(#d1bd95, #b39769)"), false);
 });
 
 test("classifies design-system surface and text tokens for root CSS var overrides", async () => {
@@ -384,10 +326,6 @@ test("resolves auto appearance from system preference", async () => {
   assert.equal(core.resolveThemeKey("rose-pine", "auto", true), "rose-pine-dark");
   assert.equal(core.resolveThemeKey("rose-pine", "light", true), "rose-pine-light");
   assert.equal(core.resolveThemeKey("rose-pine", "dark", false), "rose-pine-dark");
-  assert.equal(core.resolveThemeMode("auto", false), "rose-pine-light");
-  assert.equal(core.resolveThemeMode("auto", true), "rose-pine-dark");
-  assert.equal(core.resolveThemeMode("dawn", true), "rose-pine-light");
-  assert.equal(core.resolveThemeMode("moon", false), "rose-pine-dark");
 });
 
 test("uses the same dark palette for auto dark and manual dark", async () => {
@@ -666,14 +604,25 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
   assert.deepEqual(plain(media.ignoredElements), { "docs.example.com": ["#nav"] });
 });
 
-test("covers opaque text colors in both dawn and moon", async () => {
+test("chromatic fills and text keep their hue within the palette", async () => {
   const core = await loadCore();
-  assert.equal(core.shouldTintTextColor("moon", core.parseColor("rgb(17, 17, 17)"), false), true);
-  assert.equal(core.shouldTintTextColor("moon", core.parseColor("#575279"), false), true);
-  assert.equal(core.shouldTintTextColor("moon", core.parseColor("#e0def4"), false), true);
-  assert.equal(core.shouldTintTextColor("dawn", core.parseColor("rgb(17, 17, 17)"), false), true);
-  assert.equal(core.shouldTintTextColor("dawn", core.parseColor("rgb(255, 255, 255)"), false), true);
-  assert.equal(core.shouldTintTextColor("dawn", core.parseColor("rgba(0, 0, 0, 0)"), false), false);
+  const color = (value) => core.parseColor(value);
+  const { dawn, moon } = core.PALETTES;
+  // Neutral and warm paper stay paper; strong fills keep their color.
+  assert.equal(core.chromaticSurfaceFor(color("#f6f8fa"), dawn, false), null);
+  assert.equal(core.chromaticSurfaceFor(color("#fdf6e3"), dawn, false), null);
+  assert.equal(core.chromaticSurfaceFor(color("#1f883d"), moon, true), "keep");
+  // GitHub diff rows become green and red tints of the palette surface.
+  const added = color(core.chromaticSurfaceFor(color("#dafbe1"), moon, true));
+  const removed = color(core.chromaticSurfaceFor(color("#ffebe9"), moon, true));
+  assert.ok(added.green > added.red && removed.red > removed.green);
+  assert.ok(core.luminance(added) < 80);
+  // Neutral text has no chromatic mapping; colored text keeps its hue.
+  assert.equal(core.chromaticTextFor(color("rgb(17, 17, 17)"), true), null);
+  const keyword = color(core.chromaticTextFor(color("#0a3069"), true));
+  assert.ok(keyword.blue > keyword.red && core.luminance(keyword) >= 150);
+  const error = color(core.chromaticTextFor(color("#ff8182"), false));
+  assert.ok(error.red > error.green && core.luminance(error) <= 120);
 });
 
 test("recognizes page-level headers and navigation without matching article chrome", async () => {
@@ -1626,6 +1575,23 @@ test("ignored element edits merge per site with picker saves made elsewhere", as
   assert.deepEqual(plain(core.mergeSettingsEdits(latest, baseline, edited).ignoredElements), { "a.com": ["#nav", "#popup"] });
 });
 
+test("storage keeps one item per site's picker rules and writes only changed keys", async () => {
+  const core = await loadCore();
+  const raw = { mode: "moon", enabled: true, ignoredElements: { "a.com": ["#ad"] }, "ignored:b.com": ["#x"] };
+  const settings = core.plainSettings(raw);
+  assert.deepEqual(plain(settings.ignoredElements), { "a.com": ["#ad"], "b.com": ["#x"] });
+  const migrated = core.storageChanges(raw, settings);
+  assert.deepEqual(plain(migrated.set["ignored:a.com"]), ["#ad"]);
+  assert.equal("ignored:b.com" in migrated.set, false);
+  assert.deepEqual(plain(migrated.remove), ["mode", "ignoredElements"]);
+  const stored = { enabled: true, "ignored:b.com": ["#x"], ...plain(migrated.set) };
+  assert.deepEqual(plain(core.storageChanges(stored, settings)), { set: {}, remove: [] });
+  const cleared = core.storageChanges(stored, core.clearIgnoredSelectors("b.com", settings));
+  assert.deepEqual(plain(cleared), { set: {}, remove: ["ignored:b.com"] });
+  assert.equal(core.isSettingsStorageKey("ignored:b.com"), true);
+  assert.equal(core.isSettingsStorageKey("unrelated"), false);
+});
+
 test("picker rules restore ignored elements with their contents and leave them untouched", async () => {
   const core = await loadCore();
   const { document, window, byId } = createMockDom({ tree: [
@@ -1643,9 +1609,14 @@ test("picker rules restore ignored elements with their contents and leave them u
   assert.equal(fill("inner"), "");
   assert.equal(byId.get("inner").hasAttribute("data-rosewash-tinted"), false);
   assert.ok(fill("other"));
+  // theme.css reads this mark to leave the matched root and its contents alone.
+  assert.equal(byId.get("broken").hasAttribute("data-rosewash-ignored"), true);
+  assert.equal(byId.get("inner").hasAttribute("data-rosewash-ignored"), false);
   window.deliverMutations([{ type: "attributes", attributeName: "class", target: byId.get("broken") }]);
   window.flushFrames();
   assert.equal(fill("inner"), "");
+  engine.apply({ appearance: "light" });
+  assert.equal(byId.get("broken").hasAttribute("data-rosewash-ignored"), false);
 });
 
 test("image dimming applies only to dark tinted palettes", async () => {
@@ -1927,9 +1898,11 @@ test("engine tints colored and near-white page chrome to base with forced text",
   assert.equal(byId.get("zhihu-header").style.getPropertyValue("color"), palette.text);
   assert.equal(byId.get("zhihu-title").style.getPropertyPriority("color"), "important");
 
-  // A white main on a white page stays on the same paper. A distinctly colored
-  // nested box still takes its own surface.
-  assert.equal(byId.get("inner-header").style.getPropertyValue("background-color"), palette.surface);
+  // A white main on a white page stays on the same paper. A strongly colored
+  // nested box keeps its color and its white text.
+  assert.equal(byId.get("inner-header").style.getPropertyValue("background-color"), "");
+  assert.equal(byId.get("inner-header").style.getPropertyValue("color"), "");
+  assert.equal(byId.get("inner-header").hasAttribute("data-rosewash-kept"), true);
   assert.equal(byId.get("article-header").style.getPropertyValue("background-color"), palette.base);
 
   engine.clear();
@@ -2225,7 +2198,6 @@ test("engine adapts nested Substack-like dark publication shells in Dawn", async
 
   assert.equal(result.enabled, true);
   assert.equal(result.theme, "rose-pine-light");
-  assert.equal(engine.stats().pageTone, "dark-only");
   assert.equal(document.documentElement.style.getPropertyValue("background-color"), palette.base);
   assert.equal(byId.get("main").style.getPropertyValue("background-color"), palette.base);
   assert.equal(byId.get("main").style.getPropertyValue("color"), palette.text);
@@ -2291,7 +2263,6 @@ test("engine covers light Substack publication shells in Moon", async () => {
 
   assert.equal(result.enabled, true);
   assert.equal(result.theme, "rose-pine-dark");
-  assert.equal(engine.stats().pageTone, "light-page");
   assert.equal(document.documentElement.style.getPropertyValue("background-color"), moon.base);
   assert.equal(byId.get("main").style.getPropertyValue("background-color"), moon.surface);
   assert.equal(byId.get("main").style.getPropertyValue("color"), moon.text);
@@ -2404,14 +2375,6 @@ test("normalizes settings and blocked hosts", async () => {
   assert.equal(core.isHostDisabled("news.example.com", ["example.com"]), true);
   assert.equal(core.isHostDisabled("example.org", ["example.com"]), false);
 
-  assert.deepEqual(plain(core.toggleHostDisabled("Example.COM", [])), ["example.com"]);
-  assert.deepEqual(plain(core.toggleHostDisabled("example.com", ["example.com"])), []);
-  assert.deepEqual(plain(core.toggleHostDisabled("news.example.com", ["example.com"])), []);
-  assert.deepEqual(
-    plain(core.toggleHostDisabled("docs.example.com", ["other.org"])),
-    ["docs.example.com", "other.org"]
-  );
-  assert.deepEqual(plain(core.toggleHostDisabled("", ["example.com"])), ["example.com"]);
 });
 
 test("site defaults preserve legacy blocks and use the most specific exception", async () => {

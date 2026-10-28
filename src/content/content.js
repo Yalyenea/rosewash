@@ -151,32 +151,7 @@
       return;
     }
 
-    const watched = [
-      "enabled",
-      "defaultEnabled",
-      "colorOverridesEnabled",
-      "customFontsEnabled",
-      "fontEnglish",
-      "fontChinese",
-      "fontMath",
-      "fontMonospace",
-      "preset",
-      "presetLight",
-      "presetDark",
-      "appearance",
-      "mode",
-      "xCompactLayout",
-      "xAutoExpandReplies",
-      "xSingleColumnWidth",
-      "zhihuArticleLayout",
-      "zhihuArticleWidth",
-      "dimImages",
-      "imageBrightness",
-      "disabledHosts",
-      "enabledHosts",
-      "ignoredElements"
-    ];
-    if (!watched.some((key) => Object.prototype.hasOwnProperty.call(changes, key))) {
+    if (!Object.keys(changes).some(core.isSettingsStorageKey)) {
       return;
     }
 

@@ -156,6 +156,10 @@ Normalization lives in `RosewashCore.normalizeSettings()`:
 - `ignoredElements` hosts follow the same rules; selectors are trimmed,
   deduped, sorted, and dropped beyond 300 characters. Hosts without selectors
   are removed.
+- In storage, picker rules live in one `ignored:<host>` item per site, which
+  keeps each item under the sync 8 KB per-item quota. `normalizeSettings`
+  assembles them into `ignoredElements`, merging any legacy `ignoredElements`
+  item. `isSettingsStorageKey` recognizes settings, legacy, and `ignored:` keys.
 - Unknown or variant-missing `presetLight` / `presetDark` become `rose-pine`.
 - Unknown `appearance` falls back to `auto`.
 - Legacy blobs with only `preset` copy that family into both slots when the
@@ -278,6 +282,8 @@ Attributes used:
 | `data-rosewash-style-overrides` | Original and applied declarations for properties changed by the engine |
 | `data-rosewash-had-style`, `data-rosewash-original-style` | Whole-style snapshots from earlier versions, read only during stale cleanup |
 | `data-rosewash-ignore` | Opt-out marker (also in `SKIP_SELECTOR`) |
+| `data-rosewash-ignored` | Root matched by a picker rule; `theme.css` link, container, and dimming rules skip it and its contents |
+| `data-rosewash-kept` | Strongly colored fill that keeps its page color; `theme.css` leaves its links alone |
 | `data-rosewash-dim` | Image dimming is active; `--rosewash-image-brightness` holds the factor |
 
 ## Engine (`src/content/core.js`)
@@ -313,12 +319,14 @@ branching inside `processElement`. `muted` is also used for scrollbar tracks.
 
 Supports `#rgb` / `#rrggbb` / `#rrggbbaa`, `rgb()` / `rgba()`, and CSS Color 4
 `color(srgb ...)`, `lab()`, `oklab()`, `lch()`, `oklch()` (enough for modern
-Tailwind output). sRGB parsing handles numeric and percentage channels, alpha,
-and missing (`none`) components. This covers computed colors from
+Tailwind output). Lab and OKLab families convert to sRGB with the CSS Color 4
+matrices, so hue survives for chromatic fills and text. Percentages scale to
+each space's reference range. sRGB parsing handles numeric and percentage
+channels, alpha, and missing (`none`) components. This covers computed colors from
 `color-mix(in srgb, ...)` and relative RGB colors, including translucent page
 headers such as Lanyon.AI's. Other `color()` spaces are not parsed.
 
-Helpers classify near-white, dark surfaces, opaque text, low-chroma borders,
+Helpers classify opaque colors, chromatic fills and text, low-chroma borders,
 and generated gradients. A background containing `url()` is treated as media,
 including backgrounds with both image and gradient layers.
 
@@ -330,7 +338,13 @@ For each non-skipped element:
    `.AppHeader` / `.LeanAppHeaderBar` / `.MobileAppHeader` outside
    `main`/`article`): force `palette.base` + clear generated backgrounds with
    `!important`; descendants get forced text color.
-2. **Surfaces**: any opaque background (or CSS gradient) maps via
+2. **Chromatic fills** (`chromaticSurfaceFor`): strong colors (channel spread
+   ≥ 80, alpha ≥ 0.9) such as buttons, badges, and `mark` keep their page color.
+   The engine marks them `data-rosewash-kept` and leaves text on them, and
+   `theme.css` leaves their links alone. Pale tints (spread ≥ 20, or ≥ 40 for
+   warm 20–60° hues so cream paper stays paper), such as diff rows and alerts,
+   become the palette surface mixed with the same hue (14% light, 22% dark).
+3. **Surfaces**: any other opaque background (or CSS gradient) maps via
    `surfaceColorFor` to `base` / `surface` / `overlay`. If that color still
    shares paper with an opaque ancestor (`colorsSharePaper`, about 12 levels
    per channel), it keeps the ancestor's fill instead. Transparent
@@ -338,13 +352,16 @@ For each non-skipped element:
    left alone. Colors already matching one of the active palette's three
    surface tokens keep that role, so repeated scans cannot turn a page shell
    or elevated region into a different layer.
-3. **Text**: opaque colors → `palette.text`; anchors → `palette.link`.
+4. **Text**: neutral colors → `palette.text`; anchors → `palette.link`.
+   Colored text (spread ≥ 60) keeps its hue through `chromaticTextFor`, with
+   HSL lightness moved until luminance is ≤ 120 on light palettes or ≥ 150 on
+   dark ones. Inherited palette text and link colors pass through unchanged.
    Generated gradients clipped to text become palette text rather than a
    painted surface. Their background image is cleared and
    `-webkit-text-fill-color` is set to `currentColor`; the original fill is
    restored when tinting is cleared. Ordinary `code`, `kbd`, and `samp`
    elements and their children follow the palette.
-4. **Borders**: a low-chroma border is recolored to `palette.muted` only when
+5. **Borders**: a low-chroma border is recolored to `palette.muted` only when
    that side is already painted (`isPaintedBorder`: width above 0 and a style
    other than `none` / `hidden`) and the stroke is not the same paper as the
    element's own fill. Unpainted sides are not written. Sites such as
@@ -398,8 +415,9 @@ frames it does not expose), small canvases, and picker-ignored subtrees
 stay untouched. Sampling never calls `getContext` on the page canvas, so it
 cannot lock a fresh canvas into 2D mode or trip readback warnings. The
 filter uses the same inline-style records as tints, so palette changes and
-`clear()` restore it. Sampling runs after each scan flush and on apply,
-which also catches canvases that paint after `document_start`.
+`clear()` restore it. Sampling runs on apply and after scan flushes, at most
+once every 500 ms, so mutation-heavy pages do not read canvas pixels every
+frame. This also catches canvases that paint after `document_start`.
 
 ### Shadow DOM
 
@@ -434,7 +452,7 @@ attach a shadow root after their host was scanned, are not covered.
 - Disabled or blocked host → `clear()` (restore inline styles, CSS vars, drop
   theme attribute, disconnect observer).
 - Plain Light / Dark → restore previous tints and root CSS variables, clear
-  theme tokens, and skip page-tone sampling and color overrides. With no
+  theme tokens, and skip color overrides. With no
   custom fonts selected, skip DOM scanning and disconnect the observer.
   Custom fonts and site layouts remain independent of palette tinting.
 - Theme overrides off → resolve to the corresponding plain palette without
@@ -447,8 +465,8 @@ attach a shadow root after their host was scanned, are not covered.
 - Page completion and stylesheet updates explicitly request a refresh even
   when the resolved theme is unchanged. Pending scans and stylesheet listeners
   are removed on clear or disconnect.
-- Page-tone sampling runs on first apply and on palette change only. Full
-  cover does not use page tone for surface choice.
+- First apply, palette changes, and rule changes clear and rebuild the
+  `data-rosewash-ignored` and `data-rosewash-kept` marks during the rescan.
 
 ## Custom fonts
 
@@ -508,7 +526,10 @@ This is the first-frame layer; nested boxes still need the JS engine.
 Firefox loads it first through `background.scripts`.
 All settings writes run through `settingsQueue`: popup edits, options saves
 and resets, and the site-toggle shortcut. Each operation reads current storage,
-normalizes and merges its edit, persists it, and removes migrated legacy keys.
+normalizes and merges its edit, then applies `storageChanges(raw, settings)`:
+only changed items are written, so a no-op save costs no sync write quota.
+Legacy keys (`mode`, `preset`, `ignoredElements`) and `ignored:<host>` items
+for sites without rules are removed after the new items land.
 A rejected operation reports an error without blocking later saves.
 
 `mergeSettingsEdits(latest, baseline, edited)` applies fields changed from the
@@ -539,7 +560,8 @@ and on startup and install.
 
 The `toggle-current-site` command resolves the command tab (or active tab),
 skips protected pages, and calls `toggleHostEnabled` against current settings.
-After saving, it notifies that tab; UI saves notify all tabs. Notifications
+After saving, it notifies that tab; UI saves notify all tabs, and the popup's
+Refresh notifies only the tab it was opened on. Notifications
 contain only `{ type: "rosewash:settings-updated" }`. Content scripts read
 current storage before applying, so delayed notifications cannot restore an
 old snapshot. Notification responses never block the next save.
@@ -551,7 +573,8 @@ old snapshot. Notification responses never block the next save.
 - Uses a 292px classic layout: host, global switch, appearance, light and dark
   palette selectors, Fonts switch, site controls, and Settings / Refresh.
 - Pick sits immediately before Allowed / Blocked. The site button saves an
-  explicit on/off rule. Storage changes update the open popup.
+  explicit on/off rule. While Rosewash is paused globally it shows Paused and
+  is disabled. Storage changes update the open popup.
 - X and Zhihu layout switches appear only on their matching hosts. Font
   choices, image dimming, widths, site lists, and shortcut bindings live in
   settings. The popup Fonts switch shares `customFontsEnabled` with settings.
@@ -567,13 +590,17 @@ old snapshot. Notification responses never block the next save.
 - Four tabs: Theme, Fonts, Sites, and Shortcuts. The tab label identifies
   its panel; there is no repeated panel heading.
 - Light and dark palettes remain expanded in equal-width button grids.
-  Settings chrome follows the selected palette and system appearance.
+  Settings chrome follows the selected palette and system appearance, and
+  turns plain when Override theme is off, matching the popup.
 - Override theme and Override fonts are independent switches. Theme overrides
   use `colorOverridesEnabled`, which defaults to true for existing installs.
 - Changes save automatically through the background merge queue. Text and
   sliders debounce by 350ms; change, tab switches, page hiding, and page exit
   flush pending input. Each edit advances its baseline before sending, so
   rapid reversals remain ordered. Save responses leave current form edits intact.
+- Storage changes from the popup, picker, or shortcuts re-render the page once
+  no input is pending and no save is in flight. A focused site list keeps the
+  user's typing.
 - Saving / Saved feedback clears after success; failures remain visible.
 - The shared font picker enumerates system fonts in Chromium with
   `chrome.fontSettings.getFontList()`. Its searchable list is capped at 280px,
@@ -597,7 +624,8 @@ old snapshot. Notification responses never block the next save.
 `src/content/picker.js` starts on `rosewash:start-picker` from an extension
 page. It draws a highlight box and a tooltip inside a closed shadow root on a
 host marked `data-rosewash-ignore`, so neither the engine nor page styles
-touch it. Pointer movement selects the element under the cursor, read from
+touch it. The overlay reads current settings and uses the resolved palette's
+`surface`, `text`, `muted`, and `link` tokens. Pointer movement selects the element under the cursor, read from
 `composedPath()` so open shadow roots resolve to the inner element. ↑ widens
 the selection to the parent and ↓ steps back. Clicks and pointer presses are
 blocked in the capture phase, so selecting a link does not follow it. A click
@@ -610,7 +638,8 @@ classes, and adds `:nth-of-type()` among same-tag siblings. Hashed build
 classes (`css-1jxf684`, `r-bcqeeo`) and state classes (`is-active`, `open`, …)
 never anchor a selector.
 
-The engine joins the site's queryable selectors into one list. Elements that
+The engine joins the site's queryable selectors into one list and marks each
+matched root `data-rosewash-ignored` while queuing it. Elements that
 match it, or sit inside a match across shadow boundaries, are skipped by the
 scan queue: no tint and no custom font. Changing the list restores and rescans
 like a palette change, so newly ignored elements return to their page styles.
@@ -690,7 +719,7 @@ Popup and options load `src/content/core.js` for `PRESETS` / `listPresets` /
 | `rosewash:edit-settings` | popup / options → background | Merge `baseline` and edited `settings` into current storage |
 | `rosewash:set-host-policy` | popup → background | Apply `host` and `policy` to current settings |
 | `rosewash:reset-settings` | options → background | Save defaults through the write queue |
-| `rosewash:reapply` | popup → background | Notify open tabs to read and apply current storage |
+| `rosewash:reapply` | popup → background | Notify the popup's tab (`tabId`) to read and apply current storage |
 | `rosewash:start-picker` | popup → content (top frame) | Start the element picker |
 | `rosewash:ignore-element` | picker → background | Save `selector` for the sender tab's host |
 | `rosewash:settings-updated` | background → content | Read current storage, apply, and respond with `stats` |
@@ -730,7 +759,7 @@ branch other than `main`.
    No continuous `getComputedStyle` loops.
 3. **Cache-driven Auto**: system theme flips re-apply from memory, never
    re-read storage in the content script path.
-4. **Prefer generic tone + palette registry** over URL allowlists for themes.
+4. **Prefer generic color rules + palette registry** over URL allowlists for themes.
 5. **No fallback soup**: keep paths explicit; avoid compatibility shims that
    hide real bugs.
 6. Temporary artifacts go under **`.tmp/`**.
@@ -744,7 +773,7 @@ branch other than `main`.
 | New design-token names | `SURFACE_VAR_INCLUDE` / `TEXT_VAR_*` + unit tests |
 | New page-chrome shell | `PAGE_CHROME_CLASSES` + matching `theme.css` rules if CSS-in-JS |
 | New keyboard command | `manifest.json` `commands` + `background.js` handler + validate |
-| Settings field | schema in all of: core defaults, content `handleStorageChanged`, popup, options, docs |
+| Settings field | schema in all of: core defaults and normalization, popup, options, docs (content watches `DEFAULT_SETTINGS` keys automatically) |
 
 ## Related docs
 

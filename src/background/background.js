@@ -22,8 +22,10 @@ function enqueueSettings(operation) {
 async function persistSettings(edit) {
   const raw = await chrome.storage.sync.get(null);
   const settings = edit(core.plainSettings(raw));
-  await chrome.storage.sync.set(settings);
-  await chrome.storage.sync.remove(["mode", "preset"]);
+  const { set, remove } = core.storageChanges(raw, settings);
+  // New items land before stale ones go, so readers never miss a rule.
+  if (Object.keys(set).length) await chrome.storage.sync.set(set);
+  if (remove.length) await chrome.storage.sync.remove(remove);
   return settings;
 }
 
@@ -198,7 +200,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id || !sender.url?.startsWith(chrome.runtime.getURL(""))) return false;
 
   if (message.type === "rosewash:reapply") {
-    notifySaved();
+    // The popup's Refresh targets the tab it was opened on.
+    notifySaved(message.tabId);
     sendResponse({ ok: true });
     return false;
   }
