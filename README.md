@@ -64,6 +64,15 @@ Firefox's browser frame follows the palette. Matching Chrome and Edge frame them
 
 Open the toolbar popup to get started. **Settings** has fonts, site rules, layouts, and shortcuts.
 
+## Store releases
+
+Pushing a `v*` tag runs checks, builds the browser packages, publishes a GitHub
+Release, and uploads Chrome, Edge, and Firefox updates in parallel for review.
+Store approval and rollout happen after submission. The Release Zip workflow
+also supports choosing a single store or packaging without store uploads.
+See [publishing setup](docs/implementation.md#store-publishing) for credentials
+and read-only checks.
+
 ## Development
 
 Plain JavaScript, no build step or runtime dependencies. Requires Node.js and [just](https://github.com/casey/just).

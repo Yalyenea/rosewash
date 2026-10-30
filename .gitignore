@@ -8,4 +8,5 @@ dist-themes/
 release/
 node_modules/
 coverage/
+gha-creds-*.json
 

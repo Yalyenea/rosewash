@@ -1,0 +1,74 @@
+name: Upload to Edge Add-ons
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      submit:
+        type: boolean
+        default: true
+      check_only:
+        type: boolean
+        default: false
+    secrets:
+      EDGE_CLIENT_ID:
+        required: true
+      EDGE_API_KEY:
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag, for example v0.2.7
+        required: true
+        type: string
+      submit:
+        description: Submit the uploaded package for certification
+        type: boolean
+        default: true
+      check_only:
+        description: Check local configuration and package only (no server authentication)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: store-edge
+  cancel-in-progress: false
+
+jobs:
+  edge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TAG_NAME: ${{ inputs.tag }}
+      SUBMIT: ${{ inputs.submit }}
+      CHECK_ONLY: ${{ inputs.check_only }}
+      EDGE_PRODUCT_ID: ${{ vars.EDGE_PRODUCT_ID }}
+      EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
+      EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
+    steps:
+      - name: Check out upload tooling
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Validate Edge configuration
+        run: node --input-type=module -e 'import { edgeConfig } from "./scripts/upload-edge.mjs"; edgeConfig();'
+
+      - name: Download Edge release package
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .tmp
+          gh release download "$TAG_NAME" --repo "$GITHUB_REPOSITORY" \
+            --pattern "rosewash-${TAG_NAME}-edge.zip" --dir .tmp
+
+      - name: Upload package and optionally submit for certification
+        run: node scripts/upload-edge.mjs ".tmp/rosewash-${TAG_NAME}-edge.zip"

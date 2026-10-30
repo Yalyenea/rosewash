@@ -61,7 +61,10 @@ const scriptFiles = [
   "scripts/browsers.mjs",
   "scripts/dist.mjs",
   "scripts/themes.mjs",
-  "scripts/release-notes.mjs"
+  "scripts/release-notes.mjs",
+  "scripts/upload-chrome.mjs",
+  "scripts/upload-edge.mjs",
+  "scripts/upload-firefox.mjs"
 ].filter((file, index, files) => files.indexOf(file) === index);
 
 for (const command of ["toggle-current-site", "toggle-enabled"]) {

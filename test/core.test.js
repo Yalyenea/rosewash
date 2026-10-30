@@ -1797,6 +1797,12 @@ test("injected styles refresh only existing elements their color rules select", 
   inject([{ selectorText: ".card", style: ["will-change"] }]);
   assert.ok(!readIds.includes("card"));
 
+  inject([{
+    selectorText: ".unused-slider",
+    get style() { assert.fail("Unused declarations must not be parsed"); }
+  }]);
+  assert.ok(!readIds.includes("card"));
+
   inject([{ cssRules: [{ selectorText: ".card", style: ["background-color"] }] }]);
   assert.ok(readIds.includes("card"));
   assert.ok(!readIds.includes("other"));

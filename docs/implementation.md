@@ -744,6 +744,42 @@ Storage remains the source of truth across tabs and the service worker.
 
 ## Testing & packaging
 
+### Store publishing
+
+The release workflow builds and publishes the release archives first, then calls
+three independent store workflows. Tag pushes upload and submit to every store;
+manual runs can select one store, disable submission, or select `none` to create
+only the GitHub Release. Upload failures remain visible as failed jobs. Upload
+and submission requests are never automatically retried: inspect the store's
+state before rerunning a failed job.
+
+| Store | Repository variables | Repository secrets |
+| --- | --- | --- |
+| Chrome | `CHROME_PUBLISHER_ID`, `CHROME_EXTENSION_ID`, `CHROME_WORKLOAD_IDENTITY_PROVIDER`, `CHROME_SERVICE_ACCOUNT` | None; GitHub identity obtains a short-lived token |
+| Edge | `EDGE_PRODUCT_ID` (Partner Center product GUID) | `EDGE_CLIENT_ID`, `EDGE_API_KEY` |
+| Firefox | `FIREFOX_ADDON_ID` | `FIREFOX_API_KEY`, `FIREFOX_API_SECRET` |
+
+Chrome uses Workload Identity Federation restricted to this repository's main
+branch and version tags. Link its service account in the Chrome developer
+dashboard and enable the Chrome Web Store API in the account's Cloud project.
+No service account private key is stored. Edge requires its Publish API to be
+enabled. Firefox requires a verified email and a complete API secret; the API
+key page masks the secret after reloading. Store credentials belong in GitHub
+Secrets, never in repository files or logs.
+
+Each store workflow accepts `tag`, `submit` (default true), and `check_only`
+(default false). Chrome and Firefox check-only runs authenticate and read store
+state. Edge has no documented read-only product authentication endpoint, so
+its check-only mode validates configuration and the package locally and reports
+that server authentication has not been verified. Firefox `submit: false`
+uploads for validation without creating a listed version; Chrome and Edge leave
+the uploaded package as a draft. The scripts live in `scripts/upload-*.mjs` and
+their protocol tests run with `just check`.
+
+Prepare a new release by updating both version fields and adding its changelog
+section, then push the matching version tag. A tag must identify the packaged
+version. Store reviews are separate from successful API submission.
+
 ```sh
 just test       # node --test test/*.test.js
 just validate   # manifest + required files + --check scripts

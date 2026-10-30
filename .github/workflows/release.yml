@@ -10,6 +10,15 @@ on:
         description: "Existing tag to publish, for example v0.1.0"
         required: true
         type: string
+      store:
+        description: Store uploads to run after packaging
+        type: choice
+        default: all
+        options: [all, chrome, edge, firefox, none]
+      submit:
+        description: Submit uploaded packages for store review
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -78,3 +87,36 @@ jobs:
               --notes-file "${{ steps.notes.outputs.path }}" \
               --verify-tag
           fi
+
+  chrome:
+    needs: release
+    if: ${{ github.event_name == 'push' || inputs.store == 'all' || inputs.store == 'chrome' }}
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/store-chrome.yml
+    with:
+      tag: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      submit: ${{ github.event_name == 'push' || inputs.submit }}
+
+  edge:
+    needs: release
+    if: ${{ github.event_name == 'push' || inputs.store == 'all' || inputs.store == 'edge' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/store-edge.yml
+    with:
+      tag: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      submit: ${{ github.event_name == 'push' || inputs.submit }}
+    secrets: inherit
+
+  firefox:
+    needs: release
+    if: ${{ github.event_name == 'push' || inputs.store == 'all' || inputs.store == 'firefox' }}
+    permissions:
+      contents: read
+    uses: ./.github/workflows/store-firefox.yml
+    with:
+      tag: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+      submit: ${{ github.event_name == 'push' || inputs.submit }}
+    secrets: inherit

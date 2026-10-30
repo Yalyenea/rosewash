@@ -1,0 +1,85 @@
+name: Upload to Chrome Web Store
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      submit:
+        type: boolean
+        default: true
+      check_only:
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag, for example v0.2.7
+        required: true
+        type: string
+      submit:
+        description: Submit the uploaded package for review
+        type: boolean
+        default: true
+      check_only:
+        description: Verify authentication and item access without uploading
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: store-chrome
+  cancel-in-progress: false
+
+jobs:
+  chrome:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TAG_NAME: ${{ inputs.tag }}
+      SUBMIT: ${{ inputs.submit }}
+      CHECK_ONLY: ${{ inputs.check_only }}
+      CHROME_PUBLISHER_ID: ${{ vars.CHROME_PUBLISHER_ID }}
+      CHROME_EXTENSION_ID: ${{ vars.CHROME_EXTENSION_ID }}
+    steps:
+      - name: Check out upload tooling
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Authenticate with short-lived credentials
+        id: auth
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: ${{ vars.CHROME_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.CHROME_SERVICE_ACCOUNT }}
+          token_format: access_token
+          access_token_scopes: https://www.googleapis.com/auth/chromewebstore
+          create_credentials_file: false
+          export_environment_variables: false
+
+      - name: Validate Chrome configuration
+        env:
+          CHROME_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: node --input-type=module -e 'import { chromeConfig } from "./scripts/upload-chrome.mjs"; chromeConfig();'
+
+      - name: Download Chrome release package
+        if: ${{ !inputs.check_only }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p .tmp
+          gh release download "$TAG_NAME" --repo "$GITHUB_REPOSITORY" \
+            --pattern "rosewash-${TAG_NAME}.zip" --dir .tmp
+
+      - name: Check access or upload and submit for review
+        env:
+          CHROME_ACCESS_TOKEN: ${{ steps.auth.outputs.access_token }}
+        run: node scripts/upload-chrome.mjs ".tmp/rosewash-${TAG_NAME}.zip"

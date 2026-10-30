@@ -1,0 +1,73 @@
+name: Upload Firefox Add-on
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        required: true
+        type: string
+      submit:
+        description: "Create a listed version and submit it for review; false uploads for AMO validation only"
+        type: boolean
+        default: true
+      check_only:
+        description: "Read configuration and existing AMO state without uploading or submitting"
+        type: boolean
+        default: false
+    secrets:
+      FIREFOX_API_KEY:
+        required: true
+      FIREFOX_API_SECRET:
+        required: true
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing release tag, for example v0.2.7"
+        required: true
+        type: string
+      submit:
+        description: "Create a listed version and submit it for review; false validates the upload only"
+        type: boolean
+        default: true
+      check_only:
+        description: "Check configuration and AMO state without uploading or submitting"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: store-firefox
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TAG_NAME: ${{ inputs.tag }}
+      SUBMIT: ${{ inputs.submit }}
+      CHECK_ONLY: ${{ inputs.check_only }}
+      FIREFOX_ADDON_ID: ${{ vars.FIREFOX_ADDON_ID }}
+      FIREFOX_API_KEY: ${{ secrets.FIREFOX_API_KEY }}
+      FIREFOX_API_SECRET: ${{ secrets.FIREFOX_API_SECRET }}
+    steps:
+      - name: Checkout uploader
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate configuration
+        run: node --input-type=module -e 'import { readConfig } from "./scripts/upload-firefox.mjs"; readConfig();'
+      - name: Download Firefox release archive
+        if: ${{ !inputs.check_only }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p .tmp
+          gh release download "$TAG_NAME" --pattern "rosewash-${TAG_NAME}-firefox.zip" --dir .tmp
+      - name: Upload and submit Firefox version
+        run: node scripts/upload-firefox.mjs

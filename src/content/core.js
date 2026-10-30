@@ -2072,8 +2072,12 @@
     function collectStyleRuleTargets(scope, rules, mark) {
       for (const rule of rules) {
         if (rule.cssRules?.length) collectStyleRuleTargets(scope, rule.cssRules, mark);
-        if (!rule.selectorText || ![...rule.style].some((name) => STYLE_RULE_PROPERTY.test(name))) continue;
-        for (const element of scope.querySelectorAll(rule.selectorText)) mark(element);
+        if (!rule.selectorText) continue;
+        const elements = scope.querySelectorAll(rule.selectorText);
+        // Reading rule.style makes Chromium parse lazy declarations, including
+        // deprecated appearance values. Leave unused rules unparsed.
+        if (!elements.length || ![...rule.style].some((name) => STYLE_RULE_PROPERTY.test(name))) continue;
+        for (const element of elements) mark(element);
       }
     }
 
