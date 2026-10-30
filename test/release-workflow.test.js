@@ -25,12 +25,14 @@ async function fixture(t) {
   const repo = join(directory, "repo.git");
   // A local bare clone tests real tag objects without changing release refs.
   const clone = spawnSync("git", ["clone", "--bare", "--shared", "--quiet", root, repo], { encoding: "utf8" });
+  assert.ifError(clone.error);
   assert.equal(clone.status, 0, clone.stderr);
   const git = (...args) => {
     const result = spawnSync("git", [
       "-c", "user.name=Release tests", "-c", "user.email=tests@rosewash.invalid",
       "-c", "tag.gpgSign=false", ...args
     ], { cwd: repo, encoding: "utf8" });
+    assert.ifError(result.error);
     assert.equal(result.status, 0, result.stderr);
   };
   let counter = 0;
@@ -43,15 +45,18 @@ async function fixture(t) {
     });
     return { ...result, output: (await readFile(output, "utf8")).trim() };
   };
-  return { git, route };
+  return { git, route, directory };
 }
 
 test("tag annotations can skip every store and unreadable tags stop release routing", async (t) => {
-  const { git, route } = await fixture(t);
+  const { git, route, directory } = await fixture(t);
   git("tag", "-a", "fixture-skip", "-m", "GitHub archives only\n\n[skip stores]");
   git("tag", "-a", "fixture-normal", "-m", "Normal release");
   git("tag", "-a", "fixture-prose", "-m", "Mention [skip stores] in prose");
-  git("tag", "-a", "fixture-long", "-m", `${"Release notes\n".repeat(10000)}\n[skip stores]`);
+  // Files avoid Linux's per-argument size limit for large annotations.
+  const annotationFile = join(directory, "long-annotation.txt");
+  await writeFile(annotationFile, `${"Release notes\n".repeat(10000)}\n[skip stores]`);
+  git("tag", "-a", "fixture-long", "-F", annotationFile);
   git("tag", "fixture-lightweight");
   for (const [tag, expected] of [
     ["fixture-skip", "none"], ["fixture-long", "none"], ["fixture-normal", "all"],
