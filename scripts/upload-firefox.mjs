@@ -6,6 +6,8 @@ import { setTimeout } from "node:timers/promises";
 
 const API = "https://addons.mozilla.org/api/v5/";
 const GUID = "rosewash@rosewash";
+// AMO FileUploadSerializer uses UUIDField(format="hex"), without hyphens.
+const UPLOAD_ID = /^[\da-f]{32}$/i;
 
 function boolean(value, name, defaultValue) {
   if (value === undefined || value === "") return defaultValue;
@@ -21,7 +23,12 @@ export function readConfig(env = process.env) {
   if (!/^v\d+\.\d+\.\d+(?:\.\d+)?$/.test(env.TAG_NAME)) {
     throw new Error("TAG_NAME must be a release tag such as v0.2.7");
   }
+  const uploadId = env.FIREFOX_UPLOAD_ID?.trim() || "";
+  if (uploadId && !UPLOAD_ID.test(uploadId)) {
+    throw new Error("FIREFOX_UPLOAD_ID must be a 32-character hexadecimal AMO upload ID");
+  }
   return {
+    uploadId,
     apiKey: env.FIREFOX_API_KEY,
     apiSecret: env.FIREFOX_API_SECRET,
     addonId: env.FIREFOX_ADDON_ID.trim(),
@@ -87,25 +94,37 @@ export async function uploadFirefox(config, {
     return { action: "checked", addonId: addon.id, existing: Boolean(existing) };
   }
   if (existing) throw new Error(`Firefox version ${config.version} already exists; inspect AMO before running again`);
-  let zip;
-  try { zip = await readFileImpl(config.zipPath); }
-  catch { throw new Error("Cannot read the Firefox release archive at FIREFOX_ZIP_PATH"); }
-  if (!zip.length) throw new Error("The Firefox release archive is empty");
-  const form = new FormData();
-  form.set("upload", new Blob([zip], { type: "application/zip" }), basename(config.zipPath));
-  form.set("channel", "listed");
-  let upload = await request("addons/upload/", { method: "POST", body: form });
-  if (typeof upload.uuid !== "string" || !/^[\da-f-]{36}$/i.test(upload.uuid)) {
+  let upload;
+  if (config.uploadId) {
+    // Explicitly resume an existing validation upload without uploading the archive again.
+    upload = await request(`addons/upload/${config.uploadId}/`);
+    if (upload.uuid !== config.uploadId) throw new Error("Firefox upload response does not match FIREFOX_UPLOAD_ID");
+    if (upload.channel !== "listed") throw new Error("Firefox upload must use the listed channel");
+    if (upload.version !== config.version) throw new Error("Firefox archive version does not match TAG_NAME");
+    if (upload.submitted !== false) throw new Error("Firefox upload was already submitted; inspect AMO before running again");
+    log("Resuming existing Firefox upload; checking AMO validation.");
+  } else {
+    let zip;
+    try { zip = await readFileImpl(config.zipPath); }
+    catch { throw new Error("Cannot read the Firefox release archive at FIREFOX_ZIP_PATH"); }
+    if (!zip.length) throw new Error("The Firefox release archive is empty");
+    const form = new FormData();
+    form.set("upload", new Blob([zip], { type: "application/zip" }), basename(config.zipPath));
+    form.set("channel", "listed");
+    upload = await request("addons/upload/", { method: "POST", body: form });
+    log("Firefox archive uploaded; waiting for AMO validation.");
+  }
+  if (typeof upload.uuid !== "string" || !UPLOAD_ID.test(upload.uuid)) {
     throw new Error("Firefox upload response is missing a valid upload UUID; inspect AMO before running again");
   }
   const uuid = upload.uuid;
   const deadline = now() + validationTimeoutMs;
-  log("Firefox archive uploaded; waiting for AMO validation.");
   while (upload.processed !== true) {
     if (now() >= deadline) throw new Error("Firefox validation timed out; inspect AMO before running again");
     await sleep(Math.min(pollIntervalMs, deadline - now()));
     upload = await request(`addons/upload/${uuid}/`);
   }
+  if (upload.channel !== "listed") throw new Error("Firefox upload must use the listed channel");
   if (upload.valid !== true) throw new Error("Firefox archive failed AMO validation; inspect validation results in Developer Hub");
   if (upload.version !== config.version) throw new Error("Firefox archive version does not match TAG_NAME");
   if (upload.submitted) throw new Error("Firefox upload was already submitted; inspect AMO before running again");

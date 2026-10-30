@@ -11,8 +11,9 @@ const addon = {
   id: 3101107, guid: "rosewash@rosewash", authors: [{ id: 12 }],
   current_version: { version: "0.2.5" }, is_disabled: false
 };
-const uuid = "4e3fc867-abcd-4321-abcd-123456789012";
-const validated = { uuid, processed: true, valid: true, version: "0.2.7", submitted: false };
+// Match the AMO serializer's 32-character hexadecimal UUID, not display UUID form.
+const uuid = "4e3fc867abcd4321abcd123456789012";
+const validated = { uuid, channel: "listed", processed: true, valid: true, version: "0.2.7", submitted: false };
 
 function harness(extra, config = {}, options = {}) {
   const sequence = [
@@ -128,4 +129,44 @@ test("Firefox failed upload is not retried and error does not expose server resp
     return true;
   });
   assert.equal(h.calls.length, 4);
+});
+
+
+test("Firefox rejects malformed upload identifiers before polling or submitting", async () => {
+  for (const invalidUuid of [undefined, "", "../another-path", "4e3fc867-abcd-4321-abcd-123456789012"]) {
+    const h = harness([["POST", "/addons/upload/", { ...validated, uuid: invalidUuid }]]);
+    await assert.rejects(h.run, /missing a valid upload UUID/);
+    assert.equal(h.calls.length, 4);
+  }
+});
+
+
+test("Firefox resume uses the existing upload and never reads or POSTs the archive", async () => {
+  const h = harness([
+    ["GET", `/addons/upload/${uuid}/`, validated],
+    ["POST", "/addons/addon/3101107/versions/", { id: 100, version: "0.2.7", file: { status: "unreviewed" } }]
+  ], { uploadId: uuid }, { readFileImpl: () => assert.fail("resume must not read the archive") });
+  assert.deepEqual(await h.run(), { action: "submitted", versionId: 100 });
+  assert.equal(h.calls.filter(call => call.method === "POST").length, 1);
+  assert.deepEqual(JSON.parse(h.calls.at(-1).body), { upload: uuid, license: "MIT" });
+});
+
+test("Firefox resume rejects a different release, unlisted channel, or submitted upload", async () => {
+  for (const [upload, error] of [
+    [{ ...validated, version: "0.2.6" }, /does not match TAG_NAME/],
+    [{ ...validated, channel: "unlisted" }, /listed channel/],
+    [{ ...validated, submitted: true }, /already submitted/],
+    [{ ...validated, uuid: "00000000000000000000000000000000" }, /does not match FIREFOX_UPLOAD_ID/]
+  ]) {
+    const h = harness([["GET", `/addons/upload/${uuid}/`, upload]], { uploadId: uuid }, {
+      readFileImpl: () => assert.fail("resume must not read the archive")
+    });
+    await assert.rejects(h.run, error);
+    assert.ok(h.calls.every(call => call.method === "GET"));
+  }
+});
+
+test("Firefox resume input validates the exact AMO identifier format", () => {
+  assert.equal(readConfig({ ...env, FIREFOX_UPLOAD_ID: uuid }).uploadId, uuid);
+  assert.throws(() => readConfig({ ...env, FIREFOX_UPLOAD_ID: "invalid" }), /FIREFOX_UPLOAD_ID/);
 });

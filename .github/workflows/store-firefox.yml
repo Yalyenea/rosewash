@@ -14,6 +14,10 @@ on:
         description: "Read configuration and existing AMO state without uploading or submitting"
         type: boolean
         default: false
+      upload_id:
+        description: "Resume an existing AMO upload UUID without uploading the archive again"
+        type: string
+        default: ""
     secrets:
       FIREFOX_API_KEY:
         required: true
@@ -33,6 +37,10 @@ on:
         description: "Check configuration and AMO state without uploading or submitting"
         type: boolean
         default: false
+      upload_id:
+        description: "Existing 32-character AMO upload UUID to resume without re-uploading"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -49,6 +57,7 @@ jobs:
       TAG_NAME: ${{ inputs.tag }}
       SUBMIT: ${{ inputs.submit }}
       CHECK_ONLY: ${{ inputs.check_only }}
+      FIREFOX_UPLOAD_ID: ${{ inputs.upload_id }}
       FIREFOX_ADDON_ID: ${{ vars.FIREFOX_ADDON_ID }}
       FIREFOX_API_KEY: ${{ secrets.FIREFOX_API_KEY }}
       FIREFOX_API_SECRET: ${{ secrets.FIREFOX_API_SECRET }}
@@ -62,7 +71,7 @@ jobs:
       - name: Validate configuration
         run: node --input-type=module -e 'import { readConfig } from "./scripts/upload-firefox.mjs"; readConfig();'
       - name: Download Firefox release archive
-        if: ${{ !inputs.check_only }}
+        if: ${{ !inputs.check_only && inputs.upload_id == '' }}
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}

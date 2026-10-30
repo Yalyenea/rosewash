@@ -24,12 +24,16 @@ export function edgeConfig(env = process.env) {
   if (env.TAG_NAME && !/^v\d+\.\d+\.\d+(?:\.\d+)?$/.test(env.TAG_NAME)) {
     throw new Error('TAG_NAME must be a version tag such as v0.2.7.');
   }
+  if (env.EDGE_RESUME_UPLOAD_ID && !GUID.test(env.EDGE_RESUME_UPLOAD_ID)) {
+    throw new Error('EDGE_RESUME_UPLOAD_ID must be an existing upload operation GUID.');
+  }
   return {
     productId: env.EDGE_PRODUCT_ID,
     clientId: env.EDGE_CLIENT_ID,
     apiKey: env.EDGE_API_KEY,
     submit: boolean(env.SUBMIT, 'SUBMIT', true),
     checkOnly: boolean(env.CHECK_ONLY, 'CHECK_ONLY', false),
+    resumeUploadId: env.EDGE_RESUME_UPLOAD_ID || undefined,
   };
 }
 
@@ -74,7 +78,7 @@ export async function uploadEdge(config, bytes, {
   const headers = { Authorization: `ApiKey ${config.apiKey}`, 'X-ClientID': config.clientId };
   const productUrl = `${API}/products/${config.productId}/submissions`;
 
-  async function request(url, options, expectedStatus, label) {
+  async function request(url, options, expectedStatuses, label) {
     let response;
     try {
       response = await fetchImpl(url, {
@@ -84,19 +88,25 @@ export async function uploadEdge(config, bytes, {
     } catch {
       throw new Error(`Edge ${label} request failed. Check Partner Center before rerunning; requests are not retried.`);
     }
-    if (response.status !== expectedStatus) {
+    if (!expectedStatuses.includes(response.status)) {
       throw new Error(`Edge ${label} returned HTTP ${response.status}. Check Partner Center before rerunning.`);
     }
     return response;
   }
 
   async function runOperation(url, options, label) {
-    const response = await request(url, options, 202, label);
+    const response = await request(url, options, [202], label);
     const id = edgeOperationId(response.headers.get('location'), url);
     log(`Edge ${label} accepted; operation ${id}.`);
+    return pollOperation(url, id, label);
+  }
+
+  async function pollOperation(url, id, label) {
     for (let attempt = 0; attempt < pollLimit; attempt++) {
       await wait(pollIntervalMs);
-      const statusResponse = await request(`${url}/operations/${id}`, { method: 'GET' }, 200, `${label} status`);
+      // The official PowerShell example and live API also return 202 for status
+      // GETs. In either case, the JSON status determines the operation outcome.
+      const statusResponse = await request(`${url}/operations/${id}`, { method: 'GET' }, [200, 202], `${label} status`);
       let result;
       try { result = await statusResponse.json(); }
       catch { throw new Error(`Edge ${label} status returned invalid JSON.`); }
@@ -112,9 +122,15 @@ export async function uploadEdge(config, bytes, {
     throw new Error(`Edge ${label} polling timed out for operation ${id}. Check Partner Center before rerunning.`);
   }
 
-  const uploadId = await runOperation(`${productUrl}/draft/package`, {
-    method: 'POST', headers: { 'Content-Type': 'application/zip' }, body: bytes,
-  }, 'upload');
+  let uploadId;
+  if (config.resumeUploadId) {
+    log(`Edge: resuming upload operation ${config.resumeUploadId}; the package will not be uploaded again.`);
+    uploadId = await pollOperation(`${productUrl}/draft/package`, config.resumeUploadId, 'upload');
+  } else {
+    uploadId = await runOperation(`${productUrl}/draft/package`, {
+      method: 'POST', headers: { 'Content-Type': 'application/zip' }, body: bytes,
+    }, 'upload');
+  }
   if (!config.submit) return { uploadId, submitted: false };
   const publishId = await runOperation(productUrl, { method: 'POST' }, 'submission');
   log('Edge: submission created for certification; store approval is pending.');
@@ -123,7 +139,7 @@ export async function uploadEdge(config, bytes, {
 
 export async function main(env = process.env, args = process.argv.slice(2)) {
   const config = edgeConfig(env);
-  const bytes = await readEdgePackage(args[0]);
+  const bytes = config.resumeUploadId && !config.checkOnly ? undefined : await readEdgePackage(args[0]);
   return uploadEdge(config, bytes);
 }
 

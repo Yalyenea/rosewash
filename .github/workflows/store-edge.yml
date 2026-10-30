@@ -12,6 +12,9 @@ on:
       check_only:
         type: boolean
         default: false
+      resume_upload_id:
+        type: string
+        default: ''
     secrets:
       EDGE_CLIENT_ID:
         required: true
@@ -31,6 +34,10 @@ on:
         description: Check local configuration and package only (no server authentication)
         type: boolean
         default: false
+      resume_upload_id:
+        description: Existing upload operation GUID to resume without uploading again
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -47,6 +54,7 @@ jobs:
       TAG_NAME: ${{ inputs.tag }}
       SUBMIT: ${{ inputs.submit }}
       CHECK_ONLY: ${{ inputs.check_only }}
+      EDGE_RESUME_UPLOAD_ID: ${{ inputs.resume_upload_id }}
       EDGE_PRODUCT_ID: ${{ vars.EDGE_PRODUCT_ID }}
       EDGE_CLIENT_ID: ${{ secrets.EDGE_CLIENT_ID }}
       EDGE_API_KEY: ${{ secrets.EDGE_API_KEY }}
@@ -63,6 +71,7 @@ jobs:
         run: node --input-type=module -e 'import { edgeConfig } from "./scripts/upload-edge.mjs"; edgeConfig();'
 
       - name: Download Edge release package
+        if: ${{ inputs.resume_upload_id == '' || inputs.check_only }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

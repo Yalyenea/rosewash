@@ -31,6 +31,7 @@ test('Edge rejects missing credentials and a public CRX ID as its product GUID',
   assert.throws(() => edgeConfig({ ...env, EDGE_API_KEY: '' }), /EDGE_API_KEY/);
   assert.throws(() => edgeConfig({ ...env, EDGE_PRODUCT_ID: 'gjbmoakfjmbcnahoigepocgbngiekhjj' }), /product GUID/);
   assert.throws(() => edgeConfig({ ...env, SUBMIT: 'yes' }), /SUBMIT/);
+  assert.throws(() => edgeConfig({ ...env, EDGE_RESUME_UPLOAD_ID: '../wrong-operation' }), /EDGE_RESUME_UPLOAD_ID/);
 });
 
 test('Edge v1.1 sends ZIP bytes and waits for upload success before submitting', async () => {
@@ -61,6 +62,45 @@ test('Edge draft-only mode never creates a certification submission', async () =
   const result = await uploadEdge(edgeConfig({ ...env, SUBMIT: 'false' }), zip, mock.options);
   assert.deepEqual(result, { uploadId, submitted: false });
   assert.equal(mock.calls.length, 2);
+});
+
+test('Edge accepts HTTP 202 status responses and reads their JSON operation state', async () => {
+  const mock = transport([
+    accepted(uploadId), Response.json({ status: 'InProgress' }, { status: 202 }), state('Succeeded'),
+    accepted(publishId), Response.json({ status: 'Succeeded' }, { status: 202 }),
+  ]);
+  const result = await uploadEdge(edgeConfig(env), zip, mock.options);
+  assert.deepEqual(result, { uploadId, publishId, submitted: true });
+  assert.equal(mock.calls.filter(({ method }) => method === 'POST').length, 2);
+});
+
+test('Edge resumes a prior upload by polling its operation and never posts ZIP bytes again', async () => {
+  const mock = transport([
+    Response.json({ status: 'InProgress' }, { status: 202 }), state('Succeeded'),
+    accepted(publishId), state('Succeeded'),
+  ]);
+  const result = await uploadEdge(edgeConfig({ ...env, EDGE_RESUME_UPLOAD_ID: uploadId }), undefined, mock.options);
+  assert.deepEqual(result, { uploadId, publishId, submitted: true });
+  assert.deepEqual(mock.calls.map(({ method, url }) => [method, url]), [
+    ['GET', `${base}/draft/package/operations/${uploadId}`],
+    ['GET', `${base}/draft/package/operations/${uploadId}`],
+    ['POST', base],
+    ['GET', `${base}/operations/${publishId}`],
+  ]);
+  assert.ok(mock.calls.every(({ body }) => body === undefined));
+});
+
+test('Edge draft-only resume only reads the existing upload operation', async () => {
+  const mock = transport([state('Succeeded')]);
+  const result = await uploadEdge(edgeConfig({ ...env, EDGE_RESUME_UPLOAD_ID: uploadId, SUBMIT: 'false' }), undefined, mock.options);
+  assert.deepEqual(result, { uploadId, submitted: false });
+  assert.deepEqual(mock.calls.map(({ method }) => method), ['GET']);
+});
+
+test('Edge failed resumed upload prevents a new upload or certification submission', async () => {
+  const mock = transport([Response.json({ status: 'Failed' }, { status: 202 })]);
+  await assert.rejects(uploadEdge(edgeConfig({ ...env, EDGE_RESUME_UPLOAD_ID: uploadId }), undefined, mock.options), /upload failed/);
+  assert.deepEqual(mock.calls.map(({ method }) => method), ['GET']);
 });
 
 test('Edge check-only makes no request and reports authentication as unverified', async () => {

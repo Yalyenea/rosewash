@@ -776,6 +776,11 @@ uploads for validation without creating a listed version; Chrome and Edge leave
 the uploaded package as a draft. The scripts live in `scripts/upload-*.mjs` and
 their protocol tests run with `just check`.
 
+If a job stops after a store accepted its upload, inspect that upload before
+rerunning. The manual Edge workflow accepts `resume_upload_id` to continue
+polling an existing upload operation. Firefox accepts `upload_id` to validate
+and submit an existing upload. Both recovery paths skip the package upload.
+
 Prepare a new release by updating both version fields and adding its changelog
 section, then push the matching version tag. A tag must identify the packaged
 version. Store reviews are separate from successful API submission.
