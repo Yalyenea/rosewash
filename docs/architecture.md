@@ -52,13 +52,16 @@ painted surface becomes Rose Pine:
 - Existing palette surface colors retain their role across repeated scans, so
   SPA roots and lazy-loaded regions do not develop `base` / `surface` seams.
 - Transparent `html`/`body` roots are treated as the default document canvas.
-- Strongly colored fills (buttons, badges, highlights) keep their color and
-  the text on them, marked `data-rosewash-kept`. Pale tints such as diff rows
-  and alerts become a palette surface tinted with the same hue.
-- Neutral text maps to `palette.text`; anchors map to `palette.link`. Colored
-  text keeps its hue with lightness adjusted to read on the palette.
-- Only a border that is already stroked is recolored, and it uses
-  `palette.muted`. A zero-width or `none` border is left alone: writing the
+- Colored fills map through eight theme roles. Website blue uses the current
+  variant's primary accent. Buttons, badges, and highlights use emphasis
+  colors; pale alerts use softer palette backgrounds.
+- Neutral text uses the theme's primary or secondary text color. Cool gray
+  text stays neutral, and anchors use `palette.link`. Colored text maps to
+  its theme role. Foregrounds are paired with the final painted background
+  to reach at least 4.5:1 contrast, including nested and inherited labels.
+- Only a border that is already stroked is recolored. Neutral strokes use
+  `palette.muted`; colored strokes use their theme role. A zero-width or
+  `none` border is left alone: writing the
   color can make the site turn it into a solid frame. A stroke that matches
   its own fill stays untouched.
 - CSS gradients are flattened to solid palette fills. Gradients clipped to text
@@ -71,8 +74,8 @@ painted surface becomes Rose Pine:
 Page chrome is `header`, `[role=banner]`, top-level `nav`, and known app shells
 such as Zhihu's `.AppHeader` / `.LeanAppHeaderBar` / `.MobileAppHeader`, when
 they sit outside `main`/`article`. Those shells get `palette.base` with
-`!important`, and descendant text is forced to `palette.text` with
-`!important`. `theme.css` also pins the known Zhihu shell selectors and the
+`!important`, and text is resolved against its final background. `theme.css`
+also pins the known Zhihu shell selectors and the
 document canvas to `--rosewash-*` tokens so CSS-in-JS layers cannot keep pure
 white chrome.
 

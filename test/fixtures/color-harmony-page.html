@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rosewash · 颜色适配</title>
+  <style>
+    :root { --main-surface-secondary: #fff; }
+    body { margin: 0; background: #fff; color: #222; font: 17px/1.6 Georgia, "Songti SC", serif; }
+    .page { max-width: 1000px; margin: auto; padding: 24px; }
+    h1 { margin: 0; font-size: 28px; }
+    h2 { margin: 0 0 12px; font-size: 19px; }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 24px; color: #222; }
+    .controls button, .controls select { padding: 6px 12px; font: inherit; background: #eee; color: #222; border: 1px solid #bbb; border-radius: 4px; }
+    header, section { background: #fff; padding: 18px; margin: 14px 0; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; }
+    .accent { padding: 9px 18px; border: 0; border-radius: 4px; font: inherit; text-decoration: none; color: #fff; }
+    .blue { background: #000080; }
+    .green { background: #1f883d; }
+    .red { background: #cf222e; }
+    .tint { padding: 10px 16px; margin-top: 8px; }
+    .added { background: #dafbe1; color: #116329; }
+    .removed { background: #ffebe9; color: #82071e; }
+    .warning { background: #fff3cd; color: #664d03; }
+    .nest { margin-top: 12px; padding: 14px; background: #fff; color: #222; }
+    .keyword { color: #0a3069; }
+    .error { color: #d1242f; }
+    .secondary { color: #536471; }
+    .gradient { background: linear-gradient(90deg, #ee00aa, #0066ff); background-clip: text; color: transparent; -webkit-text-fill-color: transparent; }
+    #token-panel { background: var(--main-surface-secondary); padding: 14px; }
+  </style>
+</head>
+<body>
+<div class="page">
+  <h1>颜色适配</h1>
+  <div class="controls" data-rosewash-ignore>
+    <select id="preset" aria-label="配色">
+      <option value="rose-pine">Rose Pine</option><option value="absolutely">Absolutely</option>
+      <option value="solarized">Solarized</option><option value="github">GitHub</option>
+      <option value="everforest">Everforest</option><option value="linear">Linear</option>
+    </select>
+    <button data-appearance="light">浅色</button><button data-appearance="dark">深色</button>
+    <button id="refresh">重新扫描</button><button id="clear">原始颜色</button>
+  </div>
+  <header>
+    <h2>页头控件</h2>
+    <div class="row"><a href="#samples" id="header-link" class="accent blue"><span>打开文章</span></a><button id="header-button" class="accent green"><span>保存更改</span></button></div>
+  </header>
+  <section id="samples">
+    <h2>正文控件</h2>
+    <div class="row"><a href="#samples" id="body-link" class="accent blue"><span>打开文章</span></a><button class="accent green">保存更改</button><button class="accent red">删除记录</button></div>
+    <div class="tint added">+ 新增：保留绿色含义</div><div class="tint removed">− 删除：保留红色含义</div><div class="tint warning">提示：请检查输入内容</div>
+    <p style="color:#000">阅读文字与 <mark id="highlight" style="background:#ffff00;color:inherit">黄色高亮内容</mark></p>
+    <p><span class="keyword">const</span> value = <span class="error">invalid</span>; <span class="gradient">渐变标题</span></p>
+    <p class="secondary">@username · 次要文字 <span>继承颜色</span></p>
+  </section>
+  <section class="green" style="color:#fff">
+    <h2>嵌套背景</h2>外层绿色区域
+    <div class="nest">独立卡片中的 <a href="#samples">普通链接</a></div>
+  </section>
+  <div id="token-panel">主题背景变量保持原值</div>
+</div>
+<script src="../../src/content/core.js"></script>
+<script>
+  // A closed shadow tree isolates the preview from an installed extension,
+  // so two independent engines cannot transform the same samples twice.
+  let engine;
+  let appearance = "light";
+  let previewDocument;
+  window.addEventListener("load", async () => {
+    const sampleStyles = document.querySelector("style").textContent.replace(":root", "html");
+    const themeStyles = await (await fetch("../../src/content/theme.css")).text();
+    const host = document.createElement("div");
+    host.setAttribute("data-rosewash-ignore", "");
+    const shadow = host.attachShadow({ mode: "closed" });
+    const html = document.createElement("html");
+    const body = document.createElement("body");
+    body.className = "page";
+    const page = document.querySelector(".page");
+    for (const node of [...page.children]) {
+      if (!node.matches("h1, .controls")) body.append(node);
+    }
+    // Clear the installed engine's recorded declarations before ownership
+    // passes to this preview. Then original CSS is available in both modes.
+    for (const element of [body, ...body.querySelectorAll("*")]) {
+      const overrides = JSON.parse(element.getAttribute("data-rosewash-style-overrides") || "{}");
+      for (const [property, item] of Object.entries(overrides)) {
+        if (element.style.getPropertyValue(property) === item.appliedValue
+          && element.style.getPropertyPriority(property) === item.appliedPriority) {
+          if (item.value) element.style.setProperty(property, item.value, item.priority);
+          else element.style.removeProperty(property);
+        }
+      }
+      for (const attribute of ["data-rosewash-style-overrides", "data-rosewash-tinted"]) element.removeAttribute(attribute);
+    }
+    const style = document.createElement("style");
+    style.textContent = sampleStyles + themeStyles;
+    html.append(style, body);
+    shadow.append(html);
+    page.after(host);
+    previewDocument = {
+      documentElement: html, body, location: document.location, fonts: document.fonts,
+      querySelector: html.querySelector.bind(html), querySelectorAll: html.querySelectorAll.bind(html),
+      createElement: document.createElement.bind(document),
+      addEventListener: html.addEventListener.bind(html), removeEventListener: html.removeEventListener.bind(html)
+    };
+    window.colorHarmonyDocument = previewDocument;
+    applyFixture();
+  });
+  function applyFixture() {
+    if (!previewDocument) return;
+    engine ||= RosewashCore.createEngine({ document: previewDocument, window });
+    const preset = document.getElementById("preset").value;
+    engine.apply({ appearance, presetLight: preset, presetDark: preset });
+  }
+  for (const button of document.querySelectorAll("[data-appearance]")) {
+    button.addEventListener("click", () => { appearance = button.dataset.appearance; applyFixture(); });
+  }
+  document.getElementById("preset").addEventListener("change", applyFixture);
+  document.getElementById("refresh").addEventListener("click", () => engine?.refresh());
+  document.getElementById("clear").addEventListener("click", () => engine?.clear());
+</script>
+</body>
+</html>

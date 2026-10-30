@@ -299,7 +299,6 @@ Attributes used:
 | `data-rosewash-had-style`, `data-rosewash-original-style` | Whole-style snapshots from earlier versions, read only during stale cleanup |
 | `data-rosewash-ignore` | Opt-out marker (also in `SKIP_SELECTOR`) |
 | `data-rosewash-ignored` | Root matched by a picker rule; `theme.css` link, container, and dimming rules skip it and its contents |
-| `data-rosewash-kept` | Strongly colored fill that keeps its page color; `theme.css` leaves its links alone |
 | `data-rosewash-dim` | Image dimming is active; `--rosewash-image-brightness` holds the factor |
 
 ## Engine (`src/content/core.js`)
@@ -314,6 +313,11 @@ Presets live in `RosewashCore.PRESETS` (28 families aligned with Codex app code
 themes, plus plain Light and Dark options). Each entry has optional `light` / `dark` token sets:
 
 `base`, `surface`, `overlay`, `muted`, `text`, `link`.
+
+Tinted families also provide eight shared `accents` seeds: red, orange, gold,
+green, cyan, blue, purple, and pink. The blue role uses the active variant's
+`link` token as its primary accent. `accentColorsFor` caches emphasis, soft
+background, and readable text pairings per palette and role.
 
 The plain presets use `tint: false`. Their tokens color only the popup and
 settings UI; pages retain their own colors and browser controls. `listPresets`
@@ -342,7 +346,7 @@ channels, alpha, and missing (`none`) components. This covers computed colors fr
 `color-mix(in srgb, ...)` and relative RGB colors, including translucent page
 headers such as Lanyon.AI's. Other `color()` spaces are not parsed.
 
-Helpers classify opaque colors, chromatic fills and text, low-chroma borders,
+Helpers classify opaque colors, chromatic fills and text, neutral borders,
 and generated gradients. A background containing `url()` is treated as media,
 including backgrounds with both image and gradient layers.
 
@@ -353,13 +357,14 @@ For each non-skipped element:
 1. **Page chrome** (`header`, `[role=banner]`, top-level `nav`, Zhihu
    `.AppHeader` / `.LeanAppHeaderBar` / `.MobileAppHeader` outside
    `main`/`article`): force `palette.base` + clear generated backgrounds with
-   `!important`; descendants get forced text color.
-2. **Chromatic fills** (`chromaticSurfaceFor`): strong colors (channel spread
-   ≥ 80, alpha ≥ 0.9) such as buttons, badges, and `mark` keep their page color.
-   The engine marks them `data-rosewash-kept` and leaves text on them, and
-   `theme.css` leaves their links alone. Pale tints (spread ≥ 20, or ≥ 40 for
-   warm 20–60° hues so cream paper stays paper), such as diff rows and alerts,
-   become the palette surface mixed with the same hue (14% light, 22% dark).
+   `!important`; text is resolved against the final painted background.
+2. **Chromatic fills** (`chromaticSurfaceFor`): match the source hue to one
+   of eight roles, then select that theme's role color. Website blue maps to
+   the current variant's primary accent. Strong fills use the emphasis color;
+   pale or translucent fills mix it into the palette surface (14% light,
+   20% dark). Tone is bounded in OKLCH and chroma reduced only as needed to
+   fit sRGB. Cool grays such as X's `#536471` remain neutral; pale semantic
+   colors use a lower chroma threshold so alerts retain their color role.
 3. **Surfaces**: any other opaque background (or CSS gradient) maps via
    `surfaceColorFor` to `base` / `surface` / `overlay`. If that color still
    shares paper with an opaque ancestor (`colorsSharePaper`, about 12 levels
@@ -368,19 +373,24 @@ For each non-skipped element:
    left alone. Colors already matching one of the active palette's three
    surface tokens keep that role, so repeated scans cannot turn a page shell
    or elevated region into a different layer.
-4. **Text**: neutral colors → `palette.text`; anchors → `palette.link`.
-   Colored text (spread ≥ 60) keeps its hue through `chromaticTextFor`, with
-   HSL lightness moved until luminance is ≤ 120 on light palettes or ≥ 150 on
-   dark ones. Inherited palette text and link colors pass through unchanged.
+4. **Text**: primary neutral text uses a readable pairing of `palette.text`
+   and `palette.base`; mid-tone neutral text uses `palette.muted` on ordinary
+   surfaces. Neutral labels on emphasis fills use their paired foreground.
+   Anchors use `palette.link`; other colored text uses its theme role through
+   `chromaticTextFor`. Text is adjusted against its final nearest painted
+   background to reach at least 4.5:1 contrast, checking rounded sRGB output.
+   Inheritance records retain original color identity across scan batches.
+   Existing palette text and link tokens retain their roles.
    Generated gradients clipped to text become palette text rather than a
    painted surface. Their background image is cleared and
    `-webkit-text-fill-color` is set to `currentColor`; the original fill is
    restored when tinting is cleared. Ordinary `code`, `kbd`, and `samp`
    elements and their children follow the palette.
-5. **Borders**: a low-chroma border is recolored to `palette.muted` only when
-   that side is already painted (`isPaintedBorder`: width above 0 and a style
-   other than `none` / `hidden`) and the stroke is not the same paper as the
-   element's own fill. Unpainted sides are not written. Sites such as
+5. **Borders**: neutral borders use `palette.muted`; chromatic borders use
+   a readable theme role color. Existing `palette.muted` strokes retain their
+   token identity. Only painted sides (`isPaintedBorder`: width above 0 and a
+   style other than `none` / `hidden`) are written, and strokes matching the
+   element's own fill remain untouched. Sites such as
    WordPress global styles turn an inline `border-*-color` into
    `border-style: solid`, which would frame every element.
 
@@ -482,7 +492,8 @@ attach a shadow root after their host was scanned, are not covered.
   when the resolved theme is unchanged. Pending scans and stylesheet listeners
   are removed on clear or disconnect.
 - First apply, palette changes, and rule changes clear and rebuild the
-  `data-rosewash-ignored` and `data-rosewash-kept` marks during the rescan.
+  `data-rosewash-ignored` marks during the rescan. Legacy
+  `data-rosewash-kept` marks are removed.
 
 ## Custom fonts
 

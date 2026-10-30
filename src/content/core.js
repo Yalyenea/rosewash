@@ -6,14 +6,13 @@
   const DIM_ATTRIBUTE = "data-rosewash-dim";
   // Marks picker-matched roots so theme.css rules can leave them alone too.
   const IGNORED_ATTRIBUTE = "data-rosewash-ignored";
-  // Marks strongly colored fills that keep their page color and text.
-  const KEPT_ATTRIBUTE = "data-rosewash-kept";
   const STYLE_OVERRIDES_ATTRIBUTE = "data-rosewash-style-overrides";
   const HAD_STYLE_ATTRIBUTE = "data-rosewash-had-style";
   const ORIGINAL_STYLE_ATTRIBUTE = "data-rosewash-original-style";
 
   // Curated presets aligned with Codex desktop app code themes (Settings →
-  // Appearance). Each preset exposes light and/or dark paper tokens only.
+  // Appearance). Accent order: red, orange, gold, green, cyan, blue, purple,
+  // pink. Seeds are shared by the light/dark paper variants.
   const PRESETS = Object.freeze({
     // Plain palette tokens preview the extension UI; pages keep their colors.
     light: Object.freeze({
@@ -29,155 +28,183 @@
     "rose-pine": Object.freeze({
       id: "rose-pine",
       label: "Rose Pine",
+      accents: Object.freeze(["#eb6f92", "#d7827e", "#f6c177", "#7fa282", "#56949f", "#78a8ca", "#c4a7e7", "#cf86b7"]),
       light: Object.freeze({ base: "#faf4ed", surface: "#fffaf3", overlay: "#f2e9de", muted: "#9893a5", text: "#575279", link: "#286983" }),
       dark: Object.freeze({ base: "#232136", surface: "#2a273f", overlay: "#393552", muted: "#6e6a86", text: "#e0def4", link: "#9ccfd8" })
     }),
     absolutely: Object.freeze({
       id: "absolutely",
       label: "Absolutely",
+      accents: Object.freeze(["#bd6b6a", "#cc7d5e", "#ba9a59", "#8d9a73", "#6f9b98", "#7c94af", "#9a86ad", "#b67e9a"]),
       light: Object.freeze({ base: "#f9f9f7", surface: "#f4f4f2", overlay: "#ebebe8", muted: "#939391", text: "#2d2d2b", link: "#cc7d5e" }),
       dark: Object.freeze({ base: "#2d2d2b", surface: "#373735", overlay: "#424240", muted: "#b2b2b0", text: "#f9f9f7", link: "#cc7d5e" })
     }),
     ayu: Object.freeze({
       id: "ayu",
       label: "Ayu",
+      accents: Object.freeze(["#f07178", "#ff8f40", "#e6b450", "#aad94c", "#73d0bd", "#59a9e8", "#b394e6", "#e79fcb"]),
       dark: Object.freeze({ base: "#0b0e14", surface: "#0d1017", overlay: "#11151c", muted: "#6c7380", text: "#bfbdb6", link: "#e6b450" })
     }),
     catppuccin: Object.freeze({
       id: "catppuccin",
       label: "Catppuccin",
+      accents: Object.freeze(["#e78284", "#ef9f76", "#e5c890", "#a6c88c", "#81c8be", "#8caaee", "#bca0e5", "#e6a0ce"]),
       light: Object.freeze({ base: "#eff1f5", surface: "#e6e9ef", overlay: "#ccd0da", muted: "#9ca0b0", text: "#4c4f69", link: "#1e66f5" }),
       dark: Object.freeze({ base: "#1e1e2e", surface: "#313244", overlay: "#45475a", muted: "#6c7086", text: "#cdd6f4", link: "#89b4fa" })
     }),
     codex: Object.freeze({
       id: "codex",
       label: "Codex",
+      accents: Object.freeze(["#da6065", "#d78b47", "#bda348", "#59a574", "#4ba6ad", "#3d8dff", "#9c7ed5", "#d77daf"]),
       light: Object.freeze({ base: "#f7f7f7", surface: "#ffffff", overlay: "#ececec", muted: "#666666", text: "#0d0d0d", link: "#0169cc" }),
       dark: Object.freeze({ base: "#111111", surface: "#1a1a1a", overlay: "#262626", muted: "#8f8f8f", text: "#fcfcfc", link: "#3d8dff" })
     }),
     dracula: Object.freeze({
       id: "dracula",
       label: "Dracula",
+      accents: Object.freeze(["#ff6d78", "#ffb86c", "#e9de81", "#69d886", "#73cddf", "#779de8", "#bd93f9", "#ed79c5"]),
       dark: Object.freeze({ base: "#282a36", surface: "#21222c", overlay: "#44475a", muted: "#6272a4", text: "#f8f8f2", link: "#8be9fd" })
     }),
     everforest: Object.freeze({
       id: "everforest",
       label: "Everforest",
+      accents: Object.freeze(["#d47b7f", "#d69a77", "#c6ad70", "#a7c080", "#7fb4a2", "#7fabc1", "#aa93bd", "#cc90af"]),
       light: Object.freeze({ base: "#fdf6e3", surface: "#f4f0d9", overlay: "#efebd4", muted: "#939f91", text: "#5c6a72", link: "#8da101" }),
       dark: Object.freeze({ base: "#2d353b", surface: "#343f44", overlay: "#3d484d", muted: "#859289", text: "#d3c6aa", link: "#a7c080" })
     }),
     github: Object.freeze({
       id: "github",
       label: "GitHub",
+      accents: Object.freeze(["#de6571", "#d89156", "#b6a14a", "#54a778", "#4ca4ac", "#2f81f7", "#a17cdb", "#ce78ab"]),
       light: Object.freeze({ base: "#ffffff", surface: "#f6f8fa", overlay: "#eaeef2", muted: "#656d76", text: "#1f2328", link: "#0969da" }),
       dark: Object.freeze({ base: "#0d1117", surface: "#161b22", overlay: "#21262d", muted: "#8b949e", text: "#e6edf3", link: "#2f81f7" })
     }),
     gruvbox: Object.freeze({
       id: "gruvbox",
       label: "Gruvbox",
+      accents: Object.freeze(["#d56857", "#d98d42", "#d0b552", "#a4ad54", "#70a896", "#6995b0", "#a78cb5", "#c9829f"]),
       light: Object.freeze({ base: "#fbf1c7", surface: "#f2e5bc", overlay: "#ebdbb2", muted: "#928374", text: "#3c3836", link: "#076678" }),
       dark: Object.freeze({ base: "#282828", surface: "#3c3836", overlay: "#504945", muted: "#928374", text: "#ebdbb2", link: "#83a598" })
     }),
     linear: Object.freeze({
       id: "linear",
       label: "Linear",
+      accents: Object.freeze(["#d87580", "#ce9467", "#baa768", "#7fa58b", "#72a7b1", "#6a95cc", "#8279ce", "#bc84b0"]),
       light: Object.freeze({ base: "#f7f8fa", surface: "#ffffff", overlay: "#eef0f4", muted: "#8a93a6", text: "#2a3140", link: "#5e6ad2" }),
       dark: Object.freeze({ base: "#0f0f11", surface: "#17181d", overlay: "#1c1e26", muted: "#636b7b", text: "#e6e9ef", link: "#5e6ad2" })
     }),
     lobster: Object.freeze({
       id: "lobster",
       label: "Lobster",
+      accents: Object.freeze(["#ff5c5c", "#ed9a5b", "#d7bd67", "#76ba91", "#5ebbc5", "#6b9ee8", "#a68bdb", "#df83b9"]),
       dark: Object.freeze({ base: "#111827", surface: "#1a1d25", overlay: "#1f2937", muted: "#71717a", text: "#e4e4e7", link: "#ff5c5c" })
     }),
     material: Object.freeze({
       id: "material",
       label: "Material",
+      accents: Object.freeze(["#e87c83", "#efad7c", "#d8c67b", "#9fbb85", "#80cbc4", "#80aee2", "#b298d8", "#d78eb8"]),
       dark: Object.freeze({ base: "#212121", surface: "#2a2a2a", overlay: "#353535", muted: "#545454", text: "#eeffff", link: "#80cbc4" })
     }),
     matrix: Object.freeze({
       id: "matrix",
       label: "Matrix",
+      accents: Object.freeze(["#d36b72", "#c99359", "#bfbd5b", "#42cf72", "#56bfa4", "#639fbe", "#a18bc2", "#c17da7"]),
       dark: Object.freeze({ base: "#040805", surface: "#0a140c", overlay: "#102016", muted: "#3f8f52", text: "#b8ffca", link: "#1eff5a" })
     }),
     monokai: Object.freeze({
       id: "monokai",
       label: "Monokai",
+      accents: Object.freeze(["#ef6875", "#fd971f", "#d8cb6b", "#a6c75b", "#66d9cf", "#66a9ef", "#ae81ff", "#e877bd"]),
       dark: Object.freeze({ base: "#272822", surface: "#1e1f1c", overlay: "#3e3d32", muted: "#75715e", text: "#f8f8f2", link: "#66d9ef" })
     }),
     "night-owl": Object.freeze({
       id: "night-owl",
       label: "Night Owl",
+      accents: Object.freeze(["#ed7d88", "#eaa16f", "#d9c982", "#9bc791", "#70c8be", "#82aaff", "#b49bdf", "#dc98c5"]),
       dark: Object.freeze({ base: "#011627", surface: "#0b2942", overlay: "#1d3b53", muted: "#637777", text: "#d6deeb", link: "#82aaff" })
     }),
     nord: Object.freeze({
       id: "nord",
       label: "Nord",
+      accents: Object.freeze(["#bf616a", "#d08770", "#d8bb7d", "#a3be8c", "#88c0c5", "#81a1c1", "#9b8db9", "#b48ead"]),
       dark: Object.freeze({ base: "#2e3440", surface: "#3b4252", overlay: "#434c5e", muted: "#4c566a", text: "#eceff4", link: "#88c0d0" })
     }),
     notion: Object.freeze({
       id: "notion",
       label: "Notion",
+      accents: Object.freeze(["#cc7771", "#c79160", "#b4a15e", "#7b9c7b", "#6c9f9e", "#6c9ec4", "#a18ab9", "#be8ba6"]),
       light: Object.freeze({ base: "#ffffff", surface: "#f7f6f3", overlay: "#f1efe8", muted: "#787774", text: "#37352f", link: "#2383e2" }),
       dark: Object.freeze({ base: "#191919", surface: "#202020", overlay: "#2c2c2c", muted: "#9b9b9b", text: "#d4d4d4", link: "#529cca" })
     }),
     one: Object.freeze({
       id: "one",
       label: "One",
+      accents: Object.freeze(["#df7b83", "#dba173", "#d0bd7e", "#98b979", "#63b5b8", "#61afef", "#b48bd2", "#d18bb4"]),
       light: Object.freeze({ base: "#fafafa", surface: "#f0f0f1", overlay: "#e5e5e6", muted: "#a0a1a7", text: "#383a42", link: "#4078f2" }),
       dark: Object.freeze({ base: "#282c34", surface: "#21252b", overlay: "#3e4452", muted: "#5c6370", text: "#abb2bf", link: "#61afef" })
     }),
     oscurange: Object.freeze({
       id: "oscurange",
       label: "Oscurange",
+      accents: Object.freeze(["#ef6b6c", "#ff7a18", "#d6b75c", "#85b76b", "#65b4b1", "#6b9ed9", "#ac86d0", "#d77eaf"]),
       dark: Object.freeze({ base: "#0b0b0f", surface: "#141419", overlay: "#1c1c22", muted: "#46474f", text: "#e6e6e6", link: "#ff7a18" })
     }),
     proof: Object.freeze({
       id: "proof",
       label: "Proof",
+      accents: Object.freeze(["#b97168", "#ba895e", "#ab9a55", "#6b9876", "#639b98", "#718fae", "#9983ac", "#b5839b"]),
       light: Object.freeze({ base: "#f5f3ed", surface: "#efede6", overlay: "#e5e2d8", muted: "#8b877c", text: "#2f312d", link: "#3d755d" })
     }),
     raycast: Object.freeze({
       id: "raycast",
       label: "Raycast",
+      accents: Object.freeze(["#ff6363", "#e99559", "#cdb250", "#6caf84", "#59aeb5", "#669fe5", "#a080d9", "#d477af"]),
       light: Object.freeze({ base: "#ffffff", surface: "#f4f4f5", overlay: "#e4e4e7", muted: "#71717a", text: "#18181b", link: "#ff6363" }),
       dark: Object.freeze({ base: "#141414", surface: "#1c1c1c", overlay: "#272727", muted: "#a1a1aa", text: "#fafafa", link: "#ff6363" })
     }),
     sentry: Object.freeze({
       id: "sentry",
       label: "Sentry",
+      accents: Object.freeze(["#df7f8b", "#d89a77", "#cbbb7e", "#91b48b", "#79b7b6", "#859ed9", "#a184e8", "#cf8cbf"]),
       dark: Object.freeze({ base: "#2d2935", surface: "#26222d", overlay: "#3a3545", muted: "#8d849f", text: "#e6dff9", link: "#7055f6" })
     }),
     solarized: Object.freeze({
       id: "solarized",
       label: "Solarized",
+      accents: Object.freeze(["#dc6162", "#cb7c48", "#b9a64f", "#94aa53", "#42aaa1", "#529bd0", "#8c8bd0", "#cf78a8"]),
       light: Object.freeze({ base: "#fdf6e3", surface: "#eee8d5", overlay: "#e4dcc8", muted: "#93a1a1", text: "#657b83", link: "#268bd2" }),
       dark: Object.freeze({ base: "#002b36", surface: "#073642", overlay: "#0a4450", muted: "#586e75", text: "#839496", link: "#268bd2" })
     }),
     temple: Object.freeze({
       id: "temple",
       label: "Temple",
+      accents: Object.freeze(["#cc7b72", "#c69b5d", "#c9cc54", "#8bb46f", "#6eafa0", "#749eae", "#a391b6", "#ba8b9e"]),
       dark: Object.freeze({ base: "#02120c", surface: "#0c1f14", overlay: "#1d2d0f", muted: "#394d46", text: "#c7e6da", link: "#e4f222" })
     }),
     "tokyo-night": Object.freeze({
       id: "tokyo-night",
       label: "Tokyo Night",
+      accents: Object.freeze(["#f7768e", "#e9a066", "#d8c076", "#9fbe7b", "#70c5c2", "#7aa2f7", "#b393e5", "#d58ccc"]),
       dark: Object.freeze({ base: "#1a1b26", surface: "#16161e", overlay: "#24283b", muted: "#565f89", text: "#a9b1d6", link: "#7aa2f7" })
     }),
     vercel: Object.freeze({
       id: "vercel",
       label: "Vercel",
+      accents: Object.freeze(["#e2636d", "#d58d4d", "#bca34b", "#5aaa7b", "#43a6b3", "#3d8ff0", "#9c7bd9", "#d176ab"]),
       light: Object.freeze({ base: "#fafafa", surface: "#ffffff", overlay: "#eaeaea", muted: "#666666", text: "#171717", link: "#0070f3" }),
       dark: Object.freeze({ base: "#000000", surface: "#0a0a0a", overlay: "#171717", muted: "#888888", text: "#ededed", link: "#0070f3" })
     }),
     "vscode-plus": Object.freeze({
       id: "vscode-plus",
       label: "VS Code Plus",
+      accents: Object.freeze(["#da7777", "#ce9978", "#c9bb79", "#88b484", "#60b7ac", "#579fe5", "#aa90d2", "#cb8ab4"]),
       light: Object.freeze({ base: "#ffffff", surface: "#f3f3f3", overlay: "#e7e7e7", muted: "#6a6a6a", text: "#000000", link: "#0000ee" }),
       dark: Object.freeze({ base: "#1e1e1e", surface: "#252526", overlay: "#2d2d2d", muted: "#858585", text: "#d4d4d4", link: "#3794ff" })
     }),
     xcode: Object.freeze({
       id: "xcode",
       label: "Xcode",
+      accents: Object.freeze(["#e77882", "#cf986b", "#c6b56b", "#83b486", "#64b3bf", "#6c98ef", "#ac8cdb", "#d88bb7"]),
       light: Object.freeze({ base: "#ffffff", surface: "#f5f5f7", overlay: "#e8e8ed", muted: "#5d6c79", text: "#1d1d1f", link: "#0e0eff" }),
       dark: Object.freeze({ base: "#1f1f24", surface: "#282830", overlay: "#32323c", muted: "#6c7986", text: "#ffffff", link: "#5482ff" })
     })
@@ -505,32 +532,41 @@
     return !color || color.alpha <= 0.05;
   }
 
-  function hueOf({ red, green, blue }) {
-    const max = Math.max(red, green, blue);
-    const delta = max - Math.min(red, green, blue);
-    if (!delta) return 0;
-    const hue = max === red ? ((green - blue) / delta) % 6
-      : max === green ? ((blue - red) / delta) + 2
-        : ((red - green) / delta) + 4;
-    return (hue * 60 + 360) % 360;
+  function gammaDecode(channel) {
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
   }
 
-  function hslColor(hue, saturation, lightness) {
-    const chroma = (1 - Math.abs((2 * lightness) - 1)) * saturation;
-    const x = chroma * (1 - Math.abs(((hue / 60) % 2) - 1));
-    const [r, g, b] = hue < 60 ? [chroma, x, 0] : hue < 120 ? [x, chroma, 0]
-      : hue < 180 ? [0, chroma, x] : hue < 240 ? [0, x, chroma]
-        : hue < 300 ? [x, 0, chroma] : [chroma, 0, x];
-    const m = lightness - (chroma / 2);
-    return { red: (r + m) * 255, green: (g + m) * 255, blue: (b + m) * 255, alpha: 1 };
+  // OKLCH separates tone from hue for role matching and theme color pairing.
+  function oklchParts(color) {
+    const [r, g, b] = [color.red, color.green, color.blue].map((value) => gammaDecode(value / 255));
+    const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+    const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+    const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+    const a = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+    const axisB = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+    return {
+      lightness: 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
+      chroma: Math.hypot(a, axisB),
+      hue: Math.atan2(axisB, a)
+    };
   }
 
-  function hslParts(color) {
-    const max = Math.max(color.red, color.green, color.blue) / 255;
-    const min = Math.min(color.red, color.green, color.blue) / 255;
-    const lightness = (max + min) / 2;
-    const saturation = max === min ? 0 : (max - min) / (1 - Math.abs((2 * lightness) - 1));
-    return { hue: hueOf(color), saturation, lightness };
+  function oklchColor(lightness, chroma, hue) {
+    const rgb = (c) => oklabToRgb(lightness, c * Math.cos(hue), c * Math.sin(hue));
+    let channels = rgb(chroma);
+    if (channels.some((value) => value < -1e-7 || value > 1 + 1e-7)) {
+      // Reduce chroma at a fixed hue/lightness until the color fits sRGB.
+      let low = 0;
+      let high = chroma;
+      for (let step = 0; step < 12; step += 1) {
+        const middle = (low + high) / 2;
+        if (rgb(middle).every((value) => value >= 0 && value <= 1)) low = middle;
+        else high = middle;
+      }
+      channels = rgb(low);
+    }
+    const [red, green, blue] = channels.map((value) => clamp255(gammaEncode(value) * 255));
+    return { red, green, blue, alpha: 1 };
   }
 
   function hexColor({ red, green, blue }) {
@@ -538,50 +574,128 @@
       Math.round(clamp255(channel)).toString(16).padStart(2, "0")).join("")}`;
   }
 
-  // Chroma thresholds on the 0–255 channel spread. Strong fills (buttons,
-  // badges, highlights) keep their color; pale tints (diff rows, alerts)
-  // become a palette-harmonized tint of the same hue. Warm hues need more
-  // chroma, so cream and beige paper still reads as paper.
-  const STRONG_SURFACE_SPREAD = 80;
-  const TINT_SURFACE_SPREAD = 20;
-  const WARM_PAPER_TINT_SPREAD = 40;
-  const CHROMATIC_TEXT_SPREAD = 60;
-  // Text luminance bounds that stay readable on the palette's paper.
-  const LIGHT_PALETTE_MAX_TEXT_LUMINANCE = 120;
-  const DARK_PALETTE_MIN_TEXT_LUMINANCE = 150;
+  const MIN_TEXT_CONTRAST = 4.5;
+  const paletteColorModels = new WeakMap();
+  const ACCENT_SOURCE_HUES = Object.freeze([
+    "#e53935", "#ff7a00", "#ffd600", "#1f883d", "#00bcd4", "#0066ff", "#7c3aed", "#ec4899"
+  ].map((color) => oklchParts(parseColor(color)).hue));
 
-  // "keep", a tint color, or null when the fill is neutral paper.
-  function chromaticSurfaceFor(color, palette, dark) {
-    if (!isOpaqueColor(color)) return null;
-    const spread = channelSpread(color);
-    if (spread >= STRONG_SURFACE_SPREAD && color.alpha >= 0.9) return "keep";
-    const hue = hueOf(color);
-    const warmPaper = hue >= 20 && hue <= 60;
-    if (spread < (warmPaper ? WARM_PAPER_TINT_SPREAD : TINT_SURFACE_SPREAD)) return null;
-    const paper = parseColor(palette.surface);
-    const accent = hslColor(hue, 0.65, 0.5);
-    const weight = dark ? 0.22 : 0.14;
-    return hexColor({
-      red: paper.red + ((accent.red - paper.red) * weight),
-      green: paper.green + ((accent.green - paper.green) * weight),
-      blue: paper.blue + ((accent.blue - paper.blue) * weight)
-    });
+  function accentRoleFor(color) {
+    const { lightness, chroma, hue } = oklchParts(color);
+    const degrees = (hue * 180 / Math.PI + 360) % 360;
+    const cream = degrees >= 65 && degrees <= 105;
+    // Cool UI grays such as X's #536471 have a blue hue but little chroma.
+    // Pale semantic papers need the lower threshold to retain their role.
+    if (chroma < (cream ? 0.04 : 0.018) || (lightness < 0.82 && chroma < 0.055)) return -1;
+    const distance = (angle) => Math.abs(Math.atan2(Math.sin(hue - angle), Math.cos(hue - angle)));
+    return ACCENT_SOURCE_HUES.reduce((best, angle, index) =>
+      distance(angle) < distance(ACCENT_SOURCE_HUES[best]) ? index : best, 0);
   }
 
-  // Colored text keeps its hue; lightness moves until it reads on the palette.
-  function chromaticTextFor(color, dark) {
-    if (!isOpaqueColor(color) || channelSpread(color) < CHROMATIC_TEXT_SPREAD) return null;
-    const { hue, saturation, lightness: original } = hslParts(color);
-    let lightness = original;
-    const fits = (candidate) => dark
-      ? luminance(candidate) >= DARK_PALETTE_MIN_TEXT_LUMINANCE
-      : luminance(candidate) <= LIGHT_PALETTE_MAX_TEXT_LUMINANCE;
-    let next = hslColor(hue, saturation, lightness);
-    while (!fits(next) && lightness > 0 && lightness < 1) {
-      lightness = Math.max(0, Math.min(1, lightness + (dark ? 0.02 : -0.02)));
-      next = hslColor(hue, saturation, lightness);
+  function mixAccentPaper(paper, accent, weight) {
+    const a = oklchParts(parseColor(paper));
+    const b = oklchParts(parseColor(accent));
+    const x = a.chroma * Math.cos(a.hue) * (1 - weight) + b.chroma * Math.cos(b.hue) * weight;
+    const y = a.chroma * Math.sin(a.hue) * (1 - weight) + b.chroma * Math.sin(b.hue) * weight;
+    return hexColor(oklchColor(a.lightness * (1 - weight) + b.lightness * weight, Math.hypot(x, y), Math.atan2(y, x)));
+  }
+
+  function pairedTextFor(palette, background) {
+    const text = parseColor(palette.text);
+    const base = parseColor(palette.base);
+    return readableTextFor(contrastRatio(text, background) >= contrastRatio(base, background) ? text : base, background);
+  }
+
+  function neutralTextFor(color, palette, background) {
+    const lightness = oklchParts(color).lightness;
+    const secondary = hexColor(color) !== palette.text.toLowerCase()
+      && lightness >= 0.4 && lightness < 0.82
+      && !paletteColorModel(palette).some(({ solid }) => solid === hexColor(background));
+    return secondary ? readableTextFor(parseColor(palette.muted), background) : pairedTextFor(palette, background);
+  }
+
+  function paletteColorModel(palette) {
+    if (!paletteColorModels.has(palette)) {
+      const preset = Object.values(PRESETS).find((entry) => entry.light === palette || entry.dark === palette);
+      const dark = preset.dark === palette;
+      paletteColorModels.set(palette, preset.accents.map((seed, role) => {
+        // Website blue commonly marks primary actions and selected states.
+        // Use this appearance's theme accent so every theme has its identity.
+        if (role === 5) seed = palette.link;
+        const parts = oklchParts(parseColor(seed));
+        const lightness = dark
+          ? Math.max(0.64, Math.min(0.82, parts.lightness))
+          : Math.max(0.56, Math.min(0.73, parts.lightness));
+        const solid = hexColor(oklchColor(lightness, parts.chroma, parts.hue));
+        const soft = mixAccentPaper(palette.surface, solid, dark ? 0.2 : 0.14);
+        return Object.freeze({
+          solid, soft,
+          ink: readableTextFor(parseColor(solid), parseColor(palette.base)),
+          onSolid: pairedTextFor(palette, parseColor(solid)),
+          onSoft: readableTextFor(parseColor(palette.text), parseColor(soft))
+        });
+      }));
     }
-    return hexColor(next);
+    return paletteColorModels.get(palette);
+  }
+
+  // One mapping supplies both the engine and the review board, keeping the
+  // approved theme colors identical across previews and actual pages.
+  function accentColorsFor(color, palette) {
+    if (!isOpaqueColor(color) || palette.tint === false) return null;
+    const role = accentRoleFor(color);
+    return role < 0 ? null : paletteColorModel(palette)[role];
+  }
+
+  function relativeLuminance(color) {
+    return 0.2126 * gammaDecode(color.red / 255)
+      + 0.7152 * gammaDecode(color.green / 255)
+      + 0.0722 * gammaDecode(color.blue / 255);
+  }
+
+  function contrastRatio(first, second) {
+    const a = relativeLuminance(first);
+    const b = relativeLuminance(second);
+    return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+  }
+
+  function readableTextFor(color, background) {
+    const original = hexColor(color);
+    if (contrastRatio(parseColor(original), background) >= MIN_TEXT_CONTRAST) return original;
+    const { lightness, chroma, hue } = oklchParts(color);
+    // Choose a readable end, then find the smallest lightness change. Test
+    // rounded output: passing floating-point colors can fail after rounding.
+    let passing = relativeLuminance(background) > 0.179 ? 0 : 1;
+    let failing = lightness;
+    let result = hexColor(oklchColor(passing, chroma, hue));
+    for (let step = 0; step < 12; step += 1) {
+      const middle = (passing + failing) / 2;
+      const candidate = hexColor(oklchColor(middle, chroma, hue));
+      if (contrastRatio(parseColor(candidate), background) >= MIN_TEXT_CONTRAST) {
+        passing = middle;
+        result = candidate;
+      } else failing = middle;
+    }
+    return result;
+  }
+
+  // Strong fills use the role's emphasis color; pale/translucent fills use
+  // its soft paper. Theme tokens and neutral paper retain their own roles.
+  function chromaticSurfaceFor(color, palette) {
+    if (!isOpaqueColor(color)) return null;
+    const token = paletteSurfaceTokenFor(color, palette);
+    if (token) return token;
+    const mapped = accentColorsFor(color, palette);
+    if (!mapped) return null;
+    const source = oklchParts(color);
+    const strong = color.alpha >= 0.9 && source.chroma >= 0.08
+      && (source.lightness < 0.82 || source.chroma >= 0.16);
+    return strong ? mapped.solid : mapped.soft;
+  }
+
+  function chromaticTextFor(color, palette, background = parseColor(palette.base)) {
+    const mapped = accentColorsFor(color, palette);
+    return mapped ? readableTextFor(parseColor(mapped.solid), background) : null;
   }
 
   function isOpaqueColor(color) {
@@ -1395,8 +1509,8 @@
     const dirtyElements = new Set();
     let activeFonts = [];
     let fontKey = "[]";
-    let tintedPageChrome = new WeakSet();
-    let keptSurfaces = new WeakSet();
+    let textRecords = new WeakMap();
+    const textColorCache = new Map();
     // Original and applied declarations, with the same ownership rules as tints.
     let cssVarOverrides = new Map();
     let observer = null;
@@ -1528,7 +1642,7 @@
       for (const element of connectedTintedElements()) {
         restoreElement(element);
       }
-      tintedPageChrome = new WeakSet();
+      textRecords = new WeakMap();
     }
 
     function restoreStaleTintedElements() {
@@ -1569,14 +1683,16 @@
           continue;
         }
         const color = parseColor(value);
-        if (!isCoverBorderColor(color)) {
-          continue;
-        }
         // A stroke that matches the fill was an invisible seam.
         if (isOpaqueColor(fill) && colorsSharePaper(color, fill)) {
           continue;
         }
-        setStyle(element, property, palette.muted);
+        // A theme's own muted stroke keeps its token identity on rescan.
+        const native = color?.alpha === 1 && hexColor(color) === palette.muted.toLowerCase();
+        const accent = native ? null : chromaticTextFor(color, palette, textBackgroundFor(element, palette));
+        if (accent || isCoverBorderColor(color)) {
+          setStyle(element, property, accent || palette.muted);
+        }
       }
     }
 
@@ -1614,28 +1730,47 @@
       return surfaceColorFor(background, palette, options);
     }
 
-    // Text on a kept colored fill was designed for that fill; leave it alone.
-    function isOnKeptSurface(element) {
+    function textBackgroundFor(element, palette) {
       for (let current = element; current; current = composedParent(current)) {
-        if (keptSurfaces.has(current)) return true;
-        if (surfaceRecords.has(current)) return false;
+        const record = surfaceRecords.get(current);
+        if (record) return parseColor(record.fill);
       }
-      return false;
+      return parseColor(palette.base);
     }
 
     function tintText(element, snapshot, palette) {
       const color = parseColor(snapshot.color);
-      if (!isOpaqueColor(color) || isOnKeptSurface(element)) {
-        return;
-      }
-      if (element.tagName === "A") {
-        setStyle(element, "color", palette.link);
-        return;
-      }
-      // Inherited palette colors (link children, tinted parents) pass through unchanged.
+      if (!isOpaqueColor(color)) return;
+      const background = textBackgroundFor(element, palette);
+      // Palette colors may already be inherited from a scanned parent. Keep
+      // their identity before considering colored syntax or semantic text.
       const hex = hexColor(color);
-      const inherited = [palette.text, palette.link].find((token) => token.toLowerCase() === hex);
-      setStyle(element, "color", inherited || chromaticTextFor(color, isDarkThemeKey(activeTheme)) || palette.text);
+      let inherited;
+      for (let parent = composedParent(element); parent; parent = composedParent(parent)) {
+        const record = textRecords.get(parent);
+        if (!record) continue;
+        // A later batch sees the parent's replacement; an earlier batch saw
+        // its original. Both must resolve to the same inherited text color.
+        if (record.original === hex || record.input === hex || record.fill === hex) inherited = record;
+        break;
+      }
+      const token = [palette.text, palette.link].find((value) => value.toLowerCase() === hex);
+      const key = [hex, hexColor(background), element.tagName === "A", inherited?.fill, activeTheme].join(":");
+      let fill = textColorCache.get(key);
+      if (!fill) {
+        const original = parseColor(inherited?.original || hex);
+        const neutral = token === palette.text || accentRoleFor(original) < 0;
+        const target = element.tagName === "A" ? palette.link
+          : token === palette.link ? token
+          : neutral ? neutralTextFor(original, palette, background)
+          : inherited?.fill || chromaticTextFor(color, palette, background);
+        fill = readableTextFor(parseColor(target), background);
+        // Bound cached color combinations on long-lived single-page apps.
+        if (textColorCache.size >= 2048) textColorCache.clear();
+        textColorCache.set(key, fill);
+      }
+      setStyle(element, "color", fill);
+      textRecords.set(element, { original: inherited?.original || hex, input: hex, fill });
     }
 
     function elementClassName(element) {
@@ -1654,15 +1789,6 @@
           "header, [role='banner'], .AppHeader, .LeanAppHeaderBar, .MobileAppHeader"
         ))
       });
-    }
-
-    function isInsideTintedPageChrome(element) {
-      for (let current = element; current; current = composedParent(current)) {
-        if (tintedPageChrome.has(current)) {
-          return true;
-        }
-      }
-      return false;
     }
 
     function readTintSnapshot(element, scanFont) {
@@ -1723,7 +1849,6 @@
         && (snapshot.backgroundClip === "text" || snapshot.webkitBackgroundClip === "text");
       if (gradientText) {
         setStyle(element, "background-image", "none");
-        setStyle(element, "color", element.tagName === "A" ? palette.link : palette.text);
         setStyle(element, "-webkit-text-fill-color", "currentColor");
       }
       const pageElement = isPageElement(element, document);
@@ -1740,13 +1865,7 @@
           setStyle(element, "background-image", "none", "important");
         }
         setStyle(element, "background-color", palette.base, "important");
-        tintedPageChrome.add(element);
         rememberSurface(element, background, palette.base);
-      }
-
-      const insidePageChrome = isInsideTintedPageChrome(element);
-      if (insidePageChrome) {
-        setStyle(element, "color", palette.text, "important");
       }
 
       // Full cover: every opaque painted box becomes Rose Pine. Gradient-only
@@ -1755,17 +1874,9 @@
         && (!hasBackgroundImage || generatedBackground)
         && (isCoverSurfaceBackground(background, { pageElement }) || generatedBackground);
       const chromatic = coverSurface && !pageElement && !generatedBackground
-        ? chromaticSurfaceFor(background, palette, isDarkThemeKey(theme))
+        ? chromaticSurfaceFor(background, palette)
         : null;
-      const kept = chromatic === "keep";
-      if (kept) keptSurfaces.add(element);
-      else keptSurfaces.delete(element);
-      // theme.css reads the mark to leave links on the kept fill alone.
-      if (element.hasAttribute(KEPT_ATTRIBUTE) !== kept) {
-        if (kept) element.setAttribute(KEPT_ATTRIBUTE, "");
-        else element.removeAttribute(KEPT_ATTRIBUTE);
-      }
-      if (coverSurface && !kept) {
+      if (coverSurface) {
         if (generatedBackground) {
           setStyle(element, "background-image", "none");
         }
@@ -1778,9 +1889,9 @@
         rememberSurface(element, background, fill);
       }
 
-      if (!insidePageChrome) {
-        tintText(element, snapshot, palette);
-      }
+      // Background records are now final, including colored buttons in page
+      // chrome. Resolve text against that paper, even when its color inherits.
+      tintText(element, gradientText ? { ...snapshot, color: palette.text } : snapshot, palette);
       tintBorders(element, snapshot, palette);
     }
 
@@ -1898,7 +2009,7 @@
     function forgetElement(element) {
       if (element.hasAttribute(TINT_ATTRIBUTE)) restoreElement(element);
       surfaceRecords.delete(element);
-      tintedPageChrome.delete(element);
+      textRecords.delete(element);
     }
 
     // Queue a subtree in document order so ancestors are painted before
@@ -2156,14 +2267,15 @@
     }
 
     function clearMarks() {
-      for (const attribute of [IGNORED_ATTRIBUTE, KEPT_ATTRIBUTE]) {
+      textRecords = new WeakMap();
+      textColorCache.clear();
+      for (const attribute of [IGNORED_ATTRIBUTE, "data-rosewash-kept"]) {
         const selector = `[${attribute}]`;
         for (const element of [
           ...document.querySelectorAll(selector),
           ...[...connectedShadowRoots()].flatMap((shadow) => [...shadow.querySelectorAll(selector)])
         ]) element.removeAttribute(attribute);
       }
-      keptSurfaces = new WeakSet();
     }
 
     function restoreCssVarOverrides() {
@@ -2397,7 +2509,9 @@
     applyThemeTokens,
     clearThemeTokens,
     chromaticSurfaceFor,
-    chromaticTextFor
+    chromaticTextFor,
+    accentColorsFor,
+    contrastRatio
   });
 
   global.RosewashCore = api;

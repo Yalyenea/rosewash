@@ -39,9 +39,9 @@ html[data-rosewash-theme] ::selection {
   color: var(--rosewash-text);
 }
 
-/* Links on kept colored fills ([data-rosewash-kept]) keep their designed color. */
+/* The engine sets inline link colors after checking the final background. */
 html[data-rosewash-theme] a:not([data-rosewash-ignore], [data-rosewash-ignored], [data-rosewash-ignored] *,
-  [data-rosewash-kept], [data-rosewash-kept] *) {
+  [data-rosewash-ignore] *) {
   color: var(--rosewash-link) !important;
 }
 

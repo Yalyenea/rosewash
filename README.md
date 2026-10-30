@@ -87,6 +87,10 @@ just package-all    # Package extensions and Chromium frame themes
 
 Load the staged folder as an unpacked extension; Firefox uses **Load Temporary Add-on** with its staged `manifest.json`. After changes, stage again, reload the extension, and refresh your tabs.
 
+Open the [color mapping board](docs/color-mapping.html) locally to compare all
+30 theme families. The standalone HTML works offline and supports zoom,
+custom colors, and JSON export.
+
 The bilingual website lives in `website/`. Cloudflare Workers Builds deploys
 changes to `website/**` or `wrangler.website.jsonc` on `main` to
 [rosewash.yfff.me](https://rosewash.yfff.me/). It has no build step; deployment uses

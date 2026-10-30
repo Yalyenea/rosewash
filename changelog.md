@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Map colored buttons, highlights, text, and borders through each theme's
+  palette. Website blue uses the theme's primary accent; pale alerts use
+  softer backgrounds.
+- Keep cool gray text in the theme's secondary text color, avoiding a blue
+  cast on sites such as X.
+- Check text against its final background, including nested buttons and
+  headers, and keep a minimum contrast ratio of 4.5:1 across theme changes.
+- Keep an offline color mapping board for all 30 theme families, with zoom,
+  custom source colors, and JSON export.
+
 ## 0.2.8 - 2026-10-30
 
 - Control theme and fonts independently for each site. The popup keeps Site

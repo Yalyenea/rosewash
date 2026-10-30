@@ -215,7 +215,7 @@ test("treats nearby fills as one paper and ignores unpainted borders", async () 
       {
         id: "rule",
         backgroundColor: "rgba(0, 0, 0, 0)",
-        borderLeftColor: "rgb(38, 67, 10)",
+        borderLeftColor: "rgb(102, 102, 102)",
         borderLeftWidth: "3px",
         borderLeftStyle: "solid"
       }
@@ -230,7 +230,7 @@ test("treats nearby fills as one paper and ignores unpainted borders", async () 
   assert.equal(byId.get("nested").style.getPropertyValue("background-color"), dawn.base);
   assert.equal(byId.get("nested-white").style.getPropertyValue("background-color"), dawn.base);
   assert.equal(byId.get("card").style.getPropertyValue("background-color"), dawn.surface);
-  // A colored chip keeps its hue as a palette tint instead of flattening to paper.
+  // A colored chip uses the theme's corresponding accent role.
   assert.equal(byId.get("chip").style.getPropertyValue("background-color"), core.chromaticSurfaceFor(brown, dawn, false));
   assert.equal(byId.get("seam").style.getPropertyValue("border-top-color"), "");
   assert.equal(byId.get("rule").style.getPropertyValue("border-left-color"), dawn.muted);
@@ -645,25 +645,145 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
   assert.deepEqual(plain(media.ignoredElements), { "docs.example.com": ["#nav"] });
 });
 
-test("chromatic fills and text keep their hue within the palette", async () => {
+test("chromatic fills and text map to the theme's semantic color roles", async () => {
   const core = await loadCore();
   const color = (value) => core.parseColor(value);
   const { dawn, moon } = core.PALETTES;
-  // Neutral and warm paper stay paper; strong fills keep their color.
+  // Neutral and warm paper stay paper; strong fills become theme accents.
   assert.equal(core.chromaticSurfaceFor(color("#f6f8fa"), dawn, false), null);
   assert.equal(core.chromaticSurfaceFor(color("#fdf6e3"), dawn, false), null);
-  assert.equal(core.chromaticSurfaceFor(color("#1f883d"), moon, true), "keep");
+  const button = color(core.chromaticSurfaceFor(color("#1f883d"), moon, true));
+  assert.ok(button.green > button.red && button.green > button.blue);
+  assert.notEqual(core.chromaticSurfaceFor(color("#1f883d"), moon, true), "#1f883d");
   // GitHub diff rows become green and red tints of the palette surface.
   const added = color(core.chromaticSurfaceFor(color("#dafbe1"), moon, true));
   const removed = color(core.chromaticSurfaceFor(color("#ffebe9"), moon, true));
   assert.ok(added.green > added.red && removed.red > removed.green);
   assert.ok(core.luminance(added) < 80);
-  // Neutral text has no chromatic mapping; colored text keeps its hue.
-  assert.equal(core.chromaticTextFor(color("rgb(17, 17, 17)"), true), null);
-  const keyword = color(core.chromaticTextFor(color("#0a3069"), true));
-  assert.ok(keyword.blue > keyword.red && core.luminance(keyword) >= 150);
-  const error = color(core.chromaticTextFor(color("#ff8182"), false));
-  assert.ok(error.red > error.green && core.luminance(error) <= 120);
+  assert.equal(core.chromaticSurfaceFor(color("#fff3cd"), moon), "#4c424c");
+  // Neutral text has no accent mapping; colored text uses its theme role.
+  assert.equal(core.chromaticTextFor(color("rgb(17, 17, 17)"), moon), null);
+  const keyword = color(core.chromaticTextFor(color("#0a3069"), moon));
+  assert.ok(keyword.blue > keyword.red && core.contrastRatio(keyword, color(moon.base)) >= 4.5);
+  const error = color(core.chromaticTextFor(color("#ff8182"), dawn));
+  assert.ok(error.red > error.green && core.contrastRatio(error, color(dawn.base)) >= 4.5);
+});
+
+test("approved role colors cover every tinted variant with readable pairings", async () => {
+  const core = await loadCore();
+  const colors = ["#e53935", "#ff7a00", "#ffd600", "#1f883d", "#00bcd4", "#0066ff", "#7c3aed", "#ec4899"];
+  const parse = core.parseColor;
+  for (const preset of Object.values(core.PRESETS)) {
+    for (const appearance of ["light", "dark"]) {
+      const palette = preset[appearance];
+      if (!palette) continue;
+      if (palette.tint === false) {
+        assert.equal(core.accentColorsFor(parse(colors[0]), palette), null);
+        continue;
+      }
+      assert.equal(preset.accents.length, 8, preset.id);
+      const mapped = colors.map((color) => core.accentColorsFor(parse(color), palette));
+      // The primary role can share a semantic color chosen by the theme.
+      assert.equal(new Set(mapped.filter((_, index) => index !== 5).map((entry) => entry.solid)).size, 7, `${preset.id} ${appearance}`);
+      for (const [index, entry] of mapped.entries()) {
+        const label = `${preset.id} ${appearance} role ${index}`;
+        assert.equal(core.chromaticSurfaceFor(parse(colors[index]), palette), entry.solid, label);
+        for (const [foreground, background] of [[entry.onSolid, entry.solid], [entry.onSoft, entry.soft], [entry.ink, palette.base]]) {
+          assert.ok(core.contrastRatio(parse(foreground), parse(background)) >= 4.5, label);
+        }
+      }
+    }
+  }
+  const light = core.PALETTES["absolutely-light"];
+  const dark = core.PALETTES["absolutely-dark"];
+  // Website blues converge on the current theme's primary accent.
+  for (const source of ["#1d9bf0", "#000080", "#0066ff"]) {
+    assert.deepEqual(plain(core.accentColorsFor(parse(source), light)), {
+      solid: "#cc7d5e", soft: "#f0e3dd", ink: "#aa5f40", onSolid: "#2b2b29", onSoft: "#2d2d2b"
+    });
+  }
+  assert.equal(core.chromaticSurfaceFor(parse("#e8f3ff"), light), "#f0e3dd");
+  assert.equal(core.chromaticSurfaceFor(parse("rgba(29,155,240,.2)"), dark), "#53453e");
+  assert.equal(core.chromaticSurfaceFor(parse("#ffebe9"), dark), "#524340");
+  assert.equal(core.chromaticTextFor(parse("#1d9bf0"), light), "#aa5f40");
+  assert.equal(core.chromaticSurfaceFor(parse("#1d9bf0"), core.PALETTES["everforest-light"]), "#8da101");
+  assert.equal(core.chromaticSurfaceFor(parse("#1d9bf0"), core.PALETTES["linear-light"]), "#5e6ad2");
+});
+
+test("accent backgrounds pair neutral labels and map painted semantic borders", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [
+    { id: "button", tag: "button", backgroundColor: "#1d9bf0", color: "#ffffff", children: [
+      { id: "label", tag: "span", color: "inherit" }
+    ] },
+    ...["#e53935", "#1f883d", "#0066ff"].map((color, index) => ({
+      id: `border-${index}`, backgroundColor: "#ffffff", borderLeftColor: color,
+      borderLeftWidth: "2px", borderLeftStyle: "solid"
+    })),
+    { id: "hidden", borderLeftColor: "#e53935", borderLeftWidth: "2px", borderLeftStyle: "none" },
+    { id: "seam", backgroundColor: "#0066ff", borderLeftColor: "#0066ff", borderLeftWidth: "2px", borderLeftStyle: "solid" }
+  ] });
+  trackRenderedColorStyles(document, window);
+  const engine = core.createEngine({ document, window });
+  for (const appearance of ["dark", "light", "dark"]) {
+    const palette = core.PALETTES[`absolutely-${appearance}`];
+    engine.apply({ appearance, presetLight: "absolutely", presetDark: "absolutely" });
+    for (const refresh of [false, true]) {
+      if (refresh) { engine.refresh(); window.flushFrames(); }
+      for (const id of ["button", "label"]) assert.equal(byId.get(id).style.getPropertyValue("color"), "#2b2b29", `${appearance} ${id}`);
+      assert.equal(byId.get("button").style.getPropertyValue("background-color"), "#cc7d5e");
+      for (const [index, color] of ["#e53935", "#1f883d", "#0066ff"].entries()) {
+        assert.equal(byId.get(`border-${index}`).style.getPropertyValue("border-left-color"), core.chromaticTextFor(core.parseColor(color), palette, core.parseColor(palette.base)));
+      }
+      assert.equal(byId.get("hidden").style.getPropertyValue("border-left-color"), "");
+      assert.equal(byId.get("seam").style.getPropertyValue("border-left-color"), "");
+    }
+  }
+  engine.clear();
+  for (const element of byId.values()) {
+    assert.equal(element.style.getPropertyValue("color"), "");
+    assert.equal(element.style.getPropertyValue("background-color"), "");
+    assert.equal(element.style.getPropertyValue("border-left-color"), "");
+  }
+});
+
+test("X cool grays stay secondary while primary controls follow the selected theme", async () => {
+  const core = await loadCore();
+  const grays = ["#536471", "#71767b", "#64748b", "#6b7280"];
+  for (const theme of ["absolutely-light", "everforest-light", "linear-light", "rose-pine-dark"]) {
+    const palette = core.PALETTES[theme];
+    const appearance = theme.endsWith("dark") ? "dark" : "light";
+    const preset = theme.slice(0, -(appearance.length + 1));
+    const { document, window, byId } = createMockDom({ tree: [
+      { id: "body-text", color: "#0f1419" },
+      ...grays.map((color, index) => ({ id: `gray-${index}`, color, children: [
+        { id: `inherited-${index}`, color: "inherit" }
+      ] })),
+      { id: "primary", tag: "button", backgroundColor: "#1d9bf0", color: "#536471", children: [
+        { id: "label", color: "inherit" }
+      ] }
+    ] });
+    trackRenderedColorStyles(document, window);
+    const engine = core.createEngine({ document, window });
+    const accent = core.accentColorsFor(core.parseColor("#1d9bf0"), palette);
+    engine.apply({ appearance, presetLight: preset, presetDark: preset });
+    const initial = byId.get("gray-0").style.getPropertyValue("color");
+    for (const refresh of [false, true]) {
+      if (refresh) { engine.refresh(); window.flushFrames(); }
+      assert.equal(byId.get("body-text").style.getPropertyValue("color"), palette.text, theme);
+      for (const [index, gray] of grays.entries()) {
+        assert.equal(core.chromaticTextFor(core.parseColor(gray), palette), null, gray);
+        const foreground = byId.get(`gray-${index}`).style.getPropertyValue("color");
+        assert.equal(foreground, initial, `${theme} ${gray}`);
+        assert.equal(byId.get(`inherited-${index}`).style.getPropertyValue("color"), initial, `${theme} inherited`);
+        assert.notEqual(foreground, accent.ink, theme);
+        assert.ok(core.contrastRatio(core.parseColor(foreground), core.parseColor(palette.base)) >= 4.5, theme);
+      }
+      assert.equal(byId.get("primary").style.getPropertyValue("background-color"), accent.solid, theme);
+      for (const id of ["primary", "label"]) assert.equal(byId.get(id).style.getPropertyValue("color"), accent.onSolid, `${theme} ${id}`);
+    }
+    engine.clear();
+  }
 });
 
 test("recognizes page-level headers and navigation without matching article chrome", async () => {
@@ -1937,7 +2057,7 @@ test("engine tints colored and near-white page chrome to base with forced text",
   assert.equal(byId.get("site-header").style.getPropertyPriority("background-color"), "important");
   assert.equal(byId.get("site-header").style.getPropertyValue("color"), palette.text);
   assert.equal(byId.get("site-header").style.getPropertyPriority("color"), "important");
-  assert.equal(byId.get("header-link").style.getPropertyValue("color"), palette.text);
+  assert.equal(byId.get("header-link").style.getPropertyValue("color"), palette.link);
   assert.equal(byId.get("header-link").style.getPropertyPriority("color"), "important");
 
   assert.equal(byId.get("zhihu-header").style.getPropertyValue("background-color"), palette.base);
@@ -1945,11 +2065,12 @@ test("engine tints colored and near-white page chrome to base with forced text",
   assert.equal(byId.get("zhihu-header").style.getPropertyValue("color"), palette.text);
   assert.equal(byId.get("zhihu-title").style.getPropertyPriority("color"), "important");
 
-  // A white main on a white page stays on the same paper. A strongly colored
-  // nested box keeps its color and its white text.
-  assert.equal(byId.get("inner-header").style.getPropertyValue("background-color"), "");
-  assert.equal(byId.get("inner-header").style.getPropertyValue("color"), "");
-  assert.equal(byId.get("inner-header").hasAttribute("data-rosewash-kept"), true);
+  // Colored content headers receive an accent and readable text together.
+  const innerHeader = byId.get("inner-header");
+  const innerFill = innerHeader.style.getPropertyValue("background-color");
+  assert.equal(innerFill, core.chromaticSurfaceFor(core.parseColor("#0066cc"), palette, false));
+  assert.ok(core.contrastRatio(core.parseColor(innerHeader.style.getPropertyValue("color")), core.parseColor(innerFill)) >= 4.5);
+  assert.equal(innerHeader.hasAttribute("data-rosewash-kept"), false);
   assert.equal(byId.get("article-header").style.getPropertyValue("background-color"), palette.base);
 
   engine.clear();
@@ -2562,4 +2683,162 @@ test("viewport-covering canvas backdrops invert against the palette tone", async
 
   engine.clear();
   assert.equal(lightBackdrop.style.getPropertyValue("filter"), "");
+});
+
+// Resolve only the CSS behavior these regressions depend on: inline overrides,
+// inherited text, and root custom properties consumed by a painted box.
+function trackRenderedColorStyles(document, window) {
+  const computedStyle = window.getComputedStyle;
+  const inheritedColor = (element) => {
+    const inline = element.style.getPropertyValue("color");
+    const value = inline || element._computed.color;
+    return value === "inherit" && element.parentElement
+      ? inheritedColor(element.parentElement) : value;
+  };
+  window.getComputedStyle = (element) => {
+    const snapshot = computedStyle(element);
+    let backgroundColor = element.style.getPropertyValue("background-color") || snapshot.backgroundColor;
+    const variable = backgroundColor.match(/^var\((--[^)]+)\)$/);
+    if (variable) backgroundColor = document.documentElement.style.getPropertyValue(variable[1]);
+    return { ...snapshot, backgroundColor, color: inheritedColor(element) };
+  };
+}
+
+test("palette surface and muted border tokens stay exact through refresh", async () => {
+  const core = await loadCore();
+  for (const [theme, palette] of Object.entries(core.PALETTES)) {
+    if (palette.tint === false || theme === "dawn" || theme === "moon") continue;
+    const appearance = theme.endsWith("-dark") ? "dark" : "light";
+    const preset = theme.slice(0, -(appearance.length + 1));
+    const roles = ["base", "surface", "overlay"];
+    const variables = { base: "--main-surface-primary", surface: "--composer-surface-primary", overlay: "--rosewash-overlay" };
+    const { document, window, byId } = createMockDom({
+      rootCssVars: { "--main-surface-primary": "#ffffff", "--composer-surface-primary": "#eeeeee" },
+      tree: [...roles.flatMap((role) => [
+        { id: role, backgroundColor: palette[role] },
+        { id: `${role}-variable`, backgroundColor: `var(${variables[role]})` }
+      ]), { id: "muted-border", borderLeftColor: palette.muted, borderLeftWidth: "1px", borderLeftStyle: "solid" }]
+    });
+    trackRenderedColorStyles(document, window);
+    const engine = core.createEngine({ document, window });
+    engine.apply({ appearance, presetLight: preset, presetDark: preset });
+    for (const role of roles) {
+      for (const id of [role, `${role}-variable`]) {
+        assert.equal(byId.get(id).style.getPropertyValue("background-color"), palette[role], `${theme}: ${id}`);
+      }
+    }
+    engine.refresh();
+    window.flushFrames();
+    for (const role of roles) {
+      assert.equal(byId.get(`${role}-variable`).style.getPropertyValue("background-color"), palette[role], `${theme}: refreshed ${role}`);
+    }
+    assert.equal(window.getComputedStyle(byId.get("muted-border")).borderLeftColor, palette.muted, `${theme}: muted border`);
+    engine.clear();
+  }
+});
+
+test("accent text uses its final nearest surface through theme changes, refresh, and restoration", async () => {
+  const core = await loadCore();
+  assert.equal(core.contrastRatio(core.parseColor("#000000"), core.parseColor("#ffffff")), 21);
+  const { document, window, byId } = createMockDom({ tree: [
+    { id: "header", tag: "header", backgroundColor: "#ffffff", color: "#222222", children: [
+      { id: "button", tag: "button", backgroundColor: "#1f883d", color: "#ffffff", children: [
+        { id: "button-label", tag: "span", color: "inherit" },
+        { id: "link", tag: "a", color: "inherit", children: [{ id: "link-label", tag: "span", color: "inherit" }] },
+        { id: "nested", backgroundColor: "#0044ee", color: "inherit", children: [{ id: "nested-label", tag: "span", color: "inherit" }] },
+        { id: "gradient", tag: "span", color: "transparent", backgroundClip: "text", backgroundImage: "linear-gradient(#fff, #ff0)" }
+      ] }
+    ] },
+    { id: "paragraph", tag: "p", color: "#b40000", children: [
+      { id: "highlight", tag: "mark", backgroundColor: "#ffff00", color: "inherit", children: [{ id: "highlight-label", tag: "span", color: "inherit" }] }
+    ] }
+  ] });
+  trackRenderedColorStyles(document, window);
+  const engine = core.createEngine({ document, window });
+  const button = byId.get("button");
+  const gradient = byId.get("gradient");
+  button.style.setProperty("color", "#ffffff", "important");
+  button.style.setProperty("background-color", "#1f883d", "important");
+  gradient.style.setProperty("-webkit-text-fill-color", "transparent", "important");
+  const assertReadable = (stage) => {
+    for (const [id, element] of byId) {
+      let background;
+      for (let current = element; current; current = current.parentElement) {
+        const candidate = core.parseColor(window.getComputedStyle(current).backgroundColor);
+        if (candidate?.alpha > 0.05) { background = candidate; break; }
+      }
+      const foreground = core.parseColor(window.getComputedStyle(element).color);
+      assert.ok(background && foreground, `${stage}: ${id} has rendered colors`);
+      assert.ok(core.contrastRatio(foreground, background) >= 4.5, `${stage}: ${id} contrast`);
+    }
+  };
+  for (const appearance of ["light", "dark", "light"]) {
+    engine.apply({ appearance });
+    assertReadable(appearance);
+    assert.notEqual(button.style.getPropertyValue("background-color"), "#1f883d");
+    assert.equal(gradient.style.getPropertyValue("background-image"), "none");
+    assert.equal(gradient.style.getPropertyValue("background-color"), "");
+    engine.refresh();
+    window.flushFrames();
+    assertReadable(`${appearance} refreshed`);
+  }
+  // Later page declarations become the next originals, including priority.
+  button.style.setProperty("color", "#152535", "important");
+  button.style.setProperty("background-color", "#ffd900");
+  engine.refresh();
+  window.flushFrames();
+  assertReadable("page update refreshed");
+  engine.clear();
+  assert.equal(button.style.getPropertyValue("color"), "#152535");
+  assert.equal(button.style.getPropertyPriority("color"), "important");
+  assert.equal(button.style.getPropertyValue("background-color"), "#ffd900");
+  assert.equal(button.style.getPropertyPriority("background-color"), "");
+  assert.equal(gradient.style.getPropertyValue("-webkit-text-fill-color"), "transparent");
+  assert.equal(gradient.style.getPropertyPriority("-webkit-text-fill-color"), "important");
+  for (const [id, element] of byId) {
+    if (id === "button") continue;
+    assert.equal(element.style.getPropertyValue("color"), "", id);
+    assert.equal(element.style.getPropertyValue("background-color"), "", id);
+  }
+});
+
+test("inherited accent text is identical within a batch and across the 1000 element boundary", async () => {
+  const core = await loadCore();
+  const makeEngine = (padding) => {
+    const dom = createMockDom({ tree: [
+      ...Array.from({ length: padding }, () => ({})),
+      { id: "parent", backgroundColor: "#0044dd", color: "#e60000", children: [
+        { id: "child", tag: "span", color: "inherit", children: [
+          { id: "grandchild", tag: "span", color: "inherit" }
+        ] },
+        { id: "highlight", tag: "mark", backgroundColor: "#ffff00", color: "inherit", children: [
+          { id: "highlight-child", tag: "span", color: "inherit" }
+        ] }
+      ] }
+    ] });
+    trackRenderedColorStyles(dom.document, dom.window);
+    let now = 0;
+    dom.window.performance = { now: () => (now += 10) };
+    return { ...dom, engine: core.createEngine(dom) };
+  };
+  const sameBatch = makeEngine(0);
+  // html + body + 997 siblings put the parent last in the first batch.
+  const splitBatch = makeEngine(997);
+  const finishFrames = (dom) => { for (let index = 0; index < 3; index += 1) dom.window.flushFrames(); };
+  const assertSameColors = (stage) => {
+    for (const id of ["parent", "child", "grandchild", "highlight", "highlight-child"]) {
+      assert.equal(splitBatch.byId.get(id).style.getPropertyValue("color"), sameBatch.byId.get(id).style.getPropertyValue("color"), `${stage}: ${id}`);
+    }
+  };
+  for (const appearance of ["light", "dark", "light"]) {
+    for (const dom of [sameBatch, splitBatch]) dom.engine.apply({ appearance });
+    assert.equal(splitBatch.byId.get("parent").getAttribute("data-rosewash-tinted"), `rose-pine-${appearance}`);
+    finishFrames(sameBatch);
+    finishFrames(splitBatch);
+    assertSameColors(appearance);
+    for (const dom of [sameBatch, splitBatch]) { dom.engine.refresh(); finishFrames(dom); }
+    assertSameColors(`${appearance} refreshed`);
+  }
+  sameBatch.engine.clear();
+  splitBatch.engine.clear();
 });
