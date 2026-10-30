@@ -69,7 +69,8 @@ async function ignoreElement(tab, selector) {
 function iconStateForTab(tab, settings) {
   const host = core.hostFromUrl(tab.url);
   const active = settings.enabled && Boolean(host) && !core.pageRestrictionForUrl(tab.url)
-    && core.isHostEnabled(host, settings);
+    && (core.isHostEnabled(host, settings)
+      || (settings.customFontsEnabled && core.isHostEnabled(host, settings, "fonts")));
   return active ? "on" : "off";
 }
 
@@ -210,7 +211,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "rosewash:reset-settings") return core.plainSettings(core.DEFAULT_SETTINGS);
     if (message.type === "rosewash:set-host-policy") {
       if (typeof message.host !== "string" || !message.host.trim()) throw new TypeError("Missing site hostname");
-      return core.setHostPolicy(message.host, message.policy, latest);
+      return core.setHostPolicy(message.host, message.policy, latest, message.feature);
     }
     if (!message.baseline || !message.settings) throw new TypeError("Missing settings edit");
     return core.mergeSettingsEdits(latest, message.baseline, message.settings);

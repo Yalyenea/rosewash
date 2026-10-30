@@ -125,6 +125,8 @@ Stored in **`chrome.storage.sync`**.
   "imageBrightness": 80,
   "disabledHosts": [],
   "enabledHosts": [],
+  "fontDisabledHosts": [],
+  "fontEnabledHosts": [],
   "ignoredElements": {}
 }
 ```
@@ -146,13 +148,17 @@ Stored in **`chrome.storage.sync`**.
 | `zhihuArticleWidth` | 720 / 840 / 960 / 1080 | Centered Zhihu column width |
 | `dimImages` | boolean | Dims images and videos while a tinted dark palette is active |
 | `imageBrightness` | 70 / 80 / 90 | Image brightness in percent when dimming applies |
-| `disabledHosts` | string[] | Hostnames (and parents) where Rosewash is blocked |
-| `enabledHosts` | string[] | Hostnames (and parents) where Rosewash is explicitly enabled |
+| `disabledHosts` | string[] | Hostnames (and parents) where theme and site layouts are blocked |
+| `enabledHosts` | string[] | Hostnames (and parents) where theme and site layouts are explicitly enabled |
+| `fontDisabledHosts` | string[] | Hostnames (and parents) where custom fonts are blocked |
+| `fontEnabledHosts` | string[] | Hostnames (and parents) where custom fonts are explicitly allowed; the global font setting must also be enabled |
 | `ignoredElements` | `{ host: selector[] }` | Picker rules; matched elements and their contents stay untouched on that exact host |
 
 Normalization lives in `RosewashCore.normalizeSettings()`:
 
 - Hosts lowercased, leading dots stripped, deduped, sorted.
+- Missing font host lists inherit the existing theme host lists. The next save
+  stores them separately, preserving old choices while allowing independent edits.
 - `ignoredElements` hosts follow the same rules; selectors are trimmed,
   deduped, sorted, and dropped beyond 300 characters. Hosts without selectors
   are removed.
@@ -179,13 +185,15 @@ Host matching (`isHostDisabled`): exact match or subdomain of a listed host
 (`news.example.com` matches entry `example.com`).
 
 `isHostEnabled` uses the most specific matching rule in `enabledHosts` or
-`disabledHosts`, otherwise `defaultEnabled`. A disabled rule wins a tie.
+`disabledHosts`, otherwise `defaultEnabled`. Passing `"fonts"` as the feature
+uses `fontEnabledHosts` and `fontDisabledHosts` with the same matching rules.
+A disabled rule wins a tie.
 The global `enabled` flag takes priority over every site choice.
 
 Embedded frames use the tab's top-level host. `policyHostForLocation` reads the
 last entry of `location.ancestorOrigins`, which Chromium exposes even to
-cross-origin and `about:blank` frames, so an iframe on a site that is turned off
-stays untouched.
+cross-origin and `about:blank` frames, so embedded content follows the top-level
+site's separate theme and font rules.
 
 `hostPolicyForHost` returns the current hostname's explicit `on` / `off`
 choice, or `default`. `setHostPolicy` removes that exact hostname from both
@@ -193,7 +201,13 @@ lists, then adds it to the chosen list for `on` or `off`, even when its value
 matches the current default. Selecting `default` leaves no explicit rule and
 restores the parent rule, if present, or the global default. Parent and sibling
 rules remain intact. `toggleHostEnabled` saves the opposite of the current
-effective state as an explicit choice; the background shortcut uses this helper.
+effective theme state as an explicit choice; the background shortcut uses this
+helper and leaves font rules unchanged. `hostPolicyForHost` and `setHostPolicy`
+also accept `"fonts"` to read and edit only the font lists.
+
+The popup's Site button controls the theme rule. A single Fonts switch below
+it controls the current site's font rule, independently of Site. The global
+`customFontsEnabled` setting and font selections remain in Settings.
 
 ## Manifest details
 
@@ -238,7 +252,9 @@ On every page match, roughly:
    apply before this read, so default-off and blocked sites stay untouched.
 3. **`applyCachedSettings()`** resolves the site policy, applies layouts, and
    runs the engine. `theme.css` becomes active when the engine sets the theme
-   attribute. Disabled sites clear the theme instead.
+   attribute. A blocked theme clears page colors while independently allowed
+   custom fonts remain active. Blocking fonts restores typography without
+   changing page colors.
 4. `storage.onChanged` and background notifications read current storage,
    replace the cache, and re-apply. A read counter discards older overlapping
    results. Notifications carry no settings snapshot.
@@ -501,8 +517,8 @@ editors, icon fonts, and opt-out elements retain their original font stacks.
 The original page stack remains after each custom face for uncovered glyphs.
 
 Changing fonts restores styles and rescans even when the palette is unchanged.
-Disabling the extension, blocking the site, or turning custom fonts off removes
-the registered faces and restores inline font declarations and priorities.
+Disabling the extension, blocking fonts for the site, or turning custom fonts off
+removes the registered faces and restores inline font declarations and priorities.
 Newly added subtrees receive the current font settings through the observer.
 
 ## theme.css
@@ -717,7 +733,7 @@ Popup and options load `src/content/core.js` for `PRESETS` / `listPresets` /
 | Message type | Direction | Purpose |
 | --- | --- | --- |
 | `rosewash:edit-settings` | popup / options → background | Merge `baseline` and edited `settings` into current storage |
-| `rosewash:set-host-policy` | popup → background | Apply `host` and `policy` to current settings |
+| `rosewash:set-host-policy` | popup → background | Apply `host` and `policy` for `feature: theme|fonts` (theme by default) to current settings |
 | `rosewash:reset-settings` | options → background | Save defaults through the write queue |
 | `rosewash:reapply` | popup → background | Notify the popup's tab (`tabId`) to read and apply current storage |
 | `rosewash:start-picker` | popup → content (top frame) | Start the element picker |
@@ -743,6 +759,7 @@ just clean      # remove .tmp and local debug leftovers
 | Content startup | `test/content.test.js` verifies stored policy gating and layout changes |
 | Background | `test/background.test.js` covers ordered writes, closed senders, blocked notifications, shortcut concurrency, failures, and protected pages |
 | Settings UI | `test/settings.test.js` runs UI and background scripts with mocked browser APIs; covers popup closure, stale reads, form merging, conflicting site rules, and migration |
+| Picker | `test/picker.test.js` covers focus ownership, Esc cancellation during startup and saves, and startup failures |
 | Browser fixtures | `test/fixtures/*` HTML + runners (manual / scripted) |
 | Validate | Requires background runtime files, the site-toggle command, storage + `<all_urls>` |
 

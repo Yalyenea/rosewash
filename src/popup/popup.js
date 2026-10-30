@@ -44,26 +44,28 @@
     darkSelect.value = settings.presetDark;
     xLayoutInput.checked = settings.xCompactLayout;
     zhihuLayoutInput.checked = settings.zhihuArticleLayout;
-    customFontsInput.checked = settings.customFontsEnabled;
     document.querySelector("#x-layout-row").hidden = activeHost !== "x.com";
     document.querySelector("#zhihu-layout-row").hidden = !core.isZhihuHost(activeHost);
     for (const button of appearanceButtons) {
       button.setAttribute("aria-pressed", String(button.dataset.appearance === settings.appearance));
     }
     const allowed = core.isHostEnabled(activeHost, settings);
+    const fontsAllowed = core.isHostEnabled(activeHost, settings, "fonts");
     const unavailable = Boolean(restriction) || !activeHost;
     // While paused, a click would silently change a rule the user cannot see take effect.
     siteButton.disabled = unavailable || !settings.enabled;
     siteButton.textContent = unavailable ? "Unavailable" : !settings.enabled ? "Paused" : allowed ? "Allowed" : "Blocked";
     siteButton.setAttribute("aria-pressed", String(allowed));
-    siteButton.title = settings.enabled ? "Toggle Rosewash on this site" : "Resume Rosewash to change this site";
+    siteButton.title = !settings.enabled ? "Resume Rosewash to change this site" : "Toggle theme on this site";
+    customFontsInput.checked = fontsAllowed;
+    customFontsInput.disabled = siteButton.disabled;
     const siteStatus = document.querySelector("#site-status");
     siteStatus.hidden = !restriction;
     siteStatus.textContent = restriction === "webstore"
       ? "The browser blocks extensions on the Web Store and its developer dashboard."
       : restriction ? "Rosewash cannot run on this page." : "";
     refreshButton.disabled = Boolean(restriction);
-    pickButton.disabled = siteButton.disabled || !allowed;
+    pickButton.disabled = siteButton.disabled || (!allowed && !fontsAllowed);
     paintPopupChrome();
   }
 
@@ -109,7 +111,7 @@
 
   for (const [input, key] of [
     [enabledInput, "enabled"], [xLayoutInput, "xCompactLayout"],
-    [zhihuLayoutInput, "zhihuArticleLayout"], [customFontsInput, "customFontsEnabled"]
+    [zhihuLayoutInput, "zhihuArticleLayout"]
   ]) input.addEventListener("change", () => updateSettings({ ...settings, [key]: input.checked }));
   for (const [input, key] of [[lightSelect, "presetLight"], [darkSelect, "presetDark"]]) {
     input.addEventListener("change", () => updateSettings({ ...settings, [key]: input.value }));
@@ -117,18 +119,22 @@
   for (const button of appearanceButtons) {
     button.addEventListener("click", () => updateSettings({ ...settings, appearance: button.dataset.appearance }));
   }
+  function updateSitePolicy(feature, policy) {
+    updateSettings(core.setHostPolicy(activeHost, policy, settings, feature), {
+      type: "rosewash:set-host-policy", host: activeHost, policy, feature
+    });
+  }
   siteButton.addEventListener("click", () => {
-    if (!siteButton.disabled) {
-      const policy = core.isHostEnabled(activeHost, settings) ? "off" : "on";
-      updateSettings(core.setHostPolicy(activeHost, policy, settings), {
-        type: "rosewash:set-host-policy", host: activeHost, policy
-      });
-    }
+    if (!siteButton.disabled) updateSitePolicy("theme", core.isHostEnabled(activeHost, settings) ? "off" : "on");
+  });
+  customFontsInput.addEventListener("change", () => {
+    if (!customFontsInput.disabled) updateSitePolicy("fonts", customFontsInput.checked ? "on" : "off");
   });
   pickButton.addEventListener("click", async () => {
     try {
       // The picker takes over the page, so the popup gets out of the way.
-      await chrome.tabs.sendMessage(activeTab.id, { type: "rosewash:start-picker" }, { frameId: 0 });
+      const response = await chrome.tabs.sendMessage(activeTab.id, { type: "rosewash:start-picker" }, { frameId: 0 });
+      if (!response?.ok) throw new Error(response?.error || "Picker did not start");
       window.close();
     } catch (error) {
       saveStatus.textContent = `Could not start picker: ${error.message}. Reload the page and try again.`;

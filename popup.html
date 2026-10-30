@@ -24,15 +24,8 @@
         <label class="preset"><span>Dark</span><select id="preset-dark" aria-label="Dark palette"></select></label>
       </section>
 
-      <section class="site" aria-label="Fonts">
-        <label class="site-row">
-          <span><strong>Fonts</strong></span>
-          <span class="switch"><input id="custom-fonts-enabled" type="checkbox" aria-label="Override fonts"><span></span></span>
-        </label>
-      </section>
-
       <section class="site" aria-label="Current site">
-        <div class="site-row"><span>Site</span><span class="site-actions"><button id="pick-element" type="button" aria-label="Pick element">Pick</button><button id="site-toggle" type="button" aria-pressed="false">Allowed</button></span></div>
+        <div class="site-row"><span>Site</span><span class="site-actions"><button id="pick-element" type="button" aria-label="Pick element">Pick</button><button id="site-toggle" type="button" aria-label="Toggle theme on this site" aria-pressed="false">Allowed</button></span></div>
         <p id="site-status" role="status" hidden></p>
         <label id="x-layout-row" class="site-row layout-row" hidden>
           <span><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M18.9 2H22l-6.8 7.8L23.2 22h-6.3L12 14.6 5.5 22H2.4l7.3-8.5L1 2h6.5l5.2 6.9L18.9 2zm-1.1 18h1.7L6.6 3.9H4.8L17.8 20z"/></svg><strong>Compact layout</strong></span>
@@ -41,6 +34,13 @@
         <label id="zhihu-layout-row" class="site-row layout-row" hidden>
           <span><strong>知乎</strong></span>
           <span class="switch"><input id="zhihu-article-layout" type="checkbox" aria-label="知乎布局"><span></span></span>
+        </label>
+      </section>
+
+      <section class="site" aria-label="Fonts">
+        <label class="site-row">
+          <span><strong>Fonts</strong></span>
+          <span class="switch"><input id="custom-fonts-enabled" type="checkbox" aria-label="Fonts on this site"><span></span></span>
         </label>
       </section>
 

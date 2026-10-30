@@ -24,6 +24,14 @@ Guidance for coding agents working in the Rosewash repository.
 - Prefer small, explicit changes. Do not add fallback or compatibility layers
   unless required.
 - Avoid unnecessary secondary labels and descriptions. Let the layout do the explaining.
+- Treat existing UI and interactions as constraints. Add new functionality within
+  the established layout, colors, and control styles. Explain the proposed change
+  before reordering, replacing, or removing existing controls.
+- Define each control's meaning, scope, effects, and relationships before coding.
+- Keep control positions and visibility stable. Avoid making controls appear or
+  disappear without a clear need.
+- Verify interaction outcomes as well as tests: check affected features, keyboard
+  cancellation, and the actual rendered UI against the requested behavior.
 - Do not develop on `main`; use a feature/fix branch.
 - Do not commit or push unless the user asks.
 - After behavior changes: update `changelog.md` and any docs that describe the

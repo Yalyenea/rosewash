@@ -246,6 +246,8 @@
     imageBrightness: 80,
     disabledHosts: [],
     enabledHosts: [],
+    fontDisabledHosts: [],
+    fontEnabledHosts: [],
     ignoredElements: Object.freeze({})
   });
 
@@ -751,34 +753,43 @@
     });
   }
 
-  function isHostEnabled(host, settings) {
+  function hostPolicyKeys(feature) {
+    if (feature === "theme") return ["enabledHosts", "disabledHosts"];
+    if (feature === "fonts") return ["fontEnabledHosts", "fontDisabledHosts"];
+    throw new RangeError(`Unknown site feature: ${feature}`);
+  }
+
+  function isHostEnabled(host, settings, feature = "theme") {
     const normalized = normalizeSettings(settings);
+    const [enabledKey, disabledKey] = hostPolicyKeys(feature);
     const specificity = (hosts) => hosts.reduce((length, entry) =>
       isHostDisabled(host, [entry]) ? Math.max(length, entry.length) : length, 0);
-    const allowed = specificity(normalized.enabledHosts);
-    const blocked = specificity(normalized.disabledHosts);
+    const allowed = specificity(normalized[enabledKey]);
+    const blocked = specificity(normalized[disabledKey]);
     return allowed || blocked ? allowed > blocked : normalized.defaultEnabled;
   }
 
-  function hostPolicyForHost(host, settings) {
+  function hostPolicyForHost(host, settings, feature = "theme") {
     const normalizedHost = normalizeHost(host);
     const normalized = normalizeSettings(settings);
-    if (normalized.disabledHosts.includes(normalizedHost)) return "off";
-    if (normalized.enabledHosts.includes(normalizedHost)) return "on";
+    const [enabledKey, disabledKey] = hostPolicyKeys(feature);
+    if (normalized[disabledKey].includes(normalizedHost)) return "off";
+    if (normalized[enabledKey].includes(normalizedHost)) return "on";
     return "default";
   }
 
-  function setHostPolicy(host, policy, settings) {
+  function setHostPolicy(host, policy, settings, feature = "theme") {
     if (!["default", "on", "off"].includes(policy)) {
       throw new RangeError(`Unknown site policy: ${policy}`);
     }
     const normalizedHost = normalizeHost(host);
     const next = plainSettings(settings);
+    const [enabledKey, disabledKey] = hostPolicyKeys(feature);
     if (!normalizedHost) return next;
-    next.enabledHosts = next.enabledHosts.filter((entry) => entry !== normalizedHost);
-    next.disabledHosts = next.disabledHosts.filter((entry) => entry !== normalizedHost);
+    next[enabledKey] = next[enabledKey].filter((entry) => entry !== normalizedHost);
+    next[disabledKey] = next[disabledKey].filter((entry) => entry !== normalizedHost);
     if (policy !== "default") {
-      const hosts = policy === "on" ? next.enabledHosts : next.disabledHosts;
+      const hosts = policy === "on" ? next[enabledKey] : next[disabledKey];
       hosts.push(normalizedHost);
       hosts.sort();
     }
@@ -786,6 +797,7 @@
   }
 
   function toggleHostEnabled(host, settings) {
+    // Site toggles only change theme policy; font rules stay independent.
     return setHostPolicy(host, isHostEnabled(host, settings) ? "off" : "on", settings);
   }
 
@@ -893,6 +905,11 @@
         : DEFAULT_SETTINGS.imageBrightness,
       disabledHosts: Array.from(new Set(disabledHosts)).sort(),
       enabledHosts: Array.from(new Set(enabledHosts)).sort(),
+      // Existing installs used one policy for both features; preserve those choices.
+      fontDisabledHosts: Array.from(new Set((Array.isArray(source.fontDisabledHosts)
+        ? source.fontDisabledHosts : disabledHosts).map(normalizeHost).filter(Boolean))).sort(),
+      fontEnabledHosts: Array.from(new Set((Array.isArray(source.fontEnabledHosts)
+        ? source.fontEnabledHosts : enabledHosts).map(normalizeHost).filter(Boolean))).sort(),
       ignoredElements: normalizeIgnoredEntries(storedIgnoredEntries(source))
     };
   }
@@ -1075,6 +1092,8 @@
       imageBrightness: normalized.imageBrightness,
       disabledHosts: normalized.disabledHosts.slice(),
       enabledHosts: normalized.enabledHosts.slice(),
+      fontDisabledHosts: normalized.fontDisabledHosts.slice(),
+      fontEnabledHosts: normalized.fontEnabledHosts.slice(),
       ignoredElements: Object.fromEntries(
         Object.entries(normalized.ignoredElements).map(([host, selectors]) => [host, selectors.slice()])
       )
@@ -1085,12 +1104,12 @@
     const result = plainSettings(latest);
     const before = plainSettings(baseline);
     const next = plainSettings(edited);
-    const addedHosts = new Set();
+    const addedHosts = new Map();
     for (const [key, value] of Object.entries(next)) {
       if (JSON.stringify(value) === JSON.stringify(before[key])) continue;
-      if (key === "enabledHosts" || key === "disabledHosts") {
+      if (["enabledHosts", "disabledHosts", "fontEnabledHosts", "fontDisabledHosts"].includes(key)) {
         const added = value.filter((host) => !before[key].includes(host));
-        for (const host of added) addedHosts.add(host);
+        addedHosts.set(key, added);
         result[key] = mergeListEdit(result[key], before[key], value);
       } else if (key === "ignoredElements") {
         // Merge per site so a picker save elsewhere survives this edit.
@@ -1104,10 +1123,13 @@
         result[key] = value;
       }
     }
-    for (const host of addedHosts) {
-      // An explicit addition replaces the opposite rule; disabled wins a tie.
-      const opposite = next.disabledHosts.includes(host) ? "enabledHosts" : "disabledHosts";
-      result[opposite] = result[opposite].filter((rule) => rule !== host);
+    for (const feature of ["theme", "fonts"]) {
+      const [enabledKey, disabledKey] = hostPolicyKeys(feature);
+      for (const host of [...(addedHosts.get(enabledKey) || []), ...(addedHosts.get(disabledKey) || [])]) {
+        // Resolve conflicts within each feature; a font edit never changes the theme.
+        const opposite = next[disabledKey].includes(host) ? enabledKey : disabledKey;
+        result[opposite] = result[opposite].filter((rule) => rule !== host);
+      }
     }
     return result;
   }
@@ -2231,18 +2253,22 @@
 
       const normalized = normalizeSettings(settings);
       const host = policyHostForLocation(document.location);
-      if (!normalized.enabled || !isHostEnabled(host, normalized)) {
+      const themeAllowed = isHostEnabled(host, normalized);
+      const fontsAllowed = isHostEnabled(host, normalized, "fonts");
+      if (!normalized.enabled || (!themeAllowed && !fontsAllowed)) {
         clear();
         return { enabled: false, theme: null, tinted: 0 };
       }
 
-      const definitions = fontDefinitions(normalized);
+      const definitions = fontsAllowed ? fontDefinitions(normalized) : [];
       const fontsChanged = JSON.stringify(definitions) !== fontKey;
       const nextIgnoredSelector = queryableSelectors(ignoredSelectorsForHost(host, normalized)).join(", ");
       // New fonts or picker rules restore and rescan like a palette change.
       const rulesChanged = fontsChanged || (Boolean(activeTheme) && nextIgnoredSelector !== ignoredSelector);
       const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const theme = resolveSettingsThemeKey(normalized, prefersDark);
+      const theme = resolveSettingsThemeKey({
+        ...normalized, colorOverridesEnabled: normalized.colorOverridesEnabled && themeAllowed
+      }, prefersDark);
       const nextPalette = PALETTES[theme];
       const tintEnabled = nextPalette.tint !== false;
       const currentBase = document.documentElement.style.getPropertyValue("--rosewash-base").trim();

@@ -232,16 +232,25 @@ test("popup persists subsequent edits without waiting for an earlier broadcast",
   assert.ok(ui.messages.every((message) => message.type === "rosewash:settings-updated" && !message.settings));
 });
 
-test("popup reads and saves the shared font override switch", async () => {
-  const ui = await settingsUI("popup", { customFontsEnabled: false, fontEnglish: "Georgia" });
+test("popup font switch controls only this site and ignores the removed Sync setting", async () => {
+  const ui = await settingsUI("popup", {
+    customFontsEnabled: true, fontEnglish: "Georgia", syncSiteControls: true, fontDisabledHosts: ["example.com"]
+  });
   const toggle = ui.element("#custom-fonts-enabled");
   assert.equal(toggle.checked, false);
   toggle.checked = true;
   await ui.change("#custom-fonts-enabled");
+  await ui.done();
   assert.equal(ui.raw().customFontsEnabled, true);
+  assert.deepEqual(ui.raw().fontDisabledHosts, []);
   assert.equal(ui.raw().fontEnglish, "Georgia");
   const reopened = await settingsUI("popup", ui.raw());
   assert.equal(reopened.element("#custom-fonts-enabled").checked, true);
+  reopened.element("#custom-fonts-enabled").checked = false;
+  await reopened.change("#custom-fonts-enabled");
+  await reopened.done();
+  assert.deepEqual(reopened.raw().fontDisabledHosts, ["example.com"]);
+  assert.deepEqual(reopened.raw().disabledHosts, []);
 });
 
 test("popup sends all edits to the background before closing during a pending save", async () => {
@@ -316,6 +325,45 @@ test("classic popup reports global pause and disables site toggling and picking"
   assert.equal(ui.element("#pick-element").disabled, true);
   await ui.element("#site-toggle").emit("click");
   assert.equal(ui.requests.length, 0);
+});
+
+test("popup Site and Fonts keep independent rules through repeated toggles", async () => {
+  const ui = await settingsUI("popup", { customFontsEnabled: true });
+  await ui.element("#site-toggle").emit("click");
+  await ui.done();
+  await settle();
+  assert.deepEqual(ui.raw().disabledHosts, ["example.com"]);
+  assert.deepEqual(ui.raw().fontDisabledHosts, []);
+  assert.equal(ui.element("#custom-fonts-enabled").checked, true);
+  assert.equal(ui.element("#pick-element").disabled, false);
+  ui.element("#custom-fonts-enabled").checked = false;
+  await ui.change("#custom-fonts-enabled");
+  await ui.done();
+  await settle();
+  assert.deepEqual(ui.raw().fontDisabledHosts, ["example.com"]);
+  assert.equal(ui.element("#pick-element").disabled, true);
+  await ui.element("#site-toggle").emit("click");
+  await ui.done();
+  await settle();
+  assert.deepEqual(ui.raw().fontDisabledHosts, ["example.com"]);
+  await ui.element("#site-toggle").emit("click");
+  await ui.done();
+  await settle();
+  assert.deepEqual(ui.raw().disabledHosts, ["example.com"]);
+  assert.deepEqual(ui.raw().fontDisabledHosts, ["example.com"]);
+  assert.equal(ui.element("#custom-fonts-enabled").checked, false);
+  assert.equal(ui.element("#site-toggle").title, "Toggle theme on this site");
+});
+
+test("options preserves independent font rules when saving", async () => {
+  const ui = await settingsUI("options", {
+    disabledHosts: ["theme.com"], fontDisabledHosts: ["font.com"]
+  });
+  ui.element("#enabled").checked = false;
+  await ui.change();
+  await ui.done();
+  assert.deepEqual(ui.raw().disabledHosts, ["theme.com"]);
+  assert.deepEqual(ui.raw().fontDisabledHosts, ["font.com"]);
 });
 
 test("options saves only edited fields and retains settings changed by another UI", async () => {

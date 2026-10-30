@@ -342,6 +342,7 @@
 
   function formSettings() {
     return core.plainSettings({
+      ...formBaseline,
       enabled: enabledInput.checked,
       defaultEnabled: defaultInput.checked,
       colorOverridesEnabled: colorsInput.checked,

@@ -19,6 +19,7 @@
   function createOverlay(palette) {
     const host = document.createElement("div");
     host.setAttribute("data-rosewash-ignore", "");
+    host.tabIndex = -1;
     // Palette tokens inherit from the host into the shadow tree; `all` leaves custom properties alone.
     for (const token of ["surface", "text", "muted", "link"]) host.style.setProperty(`--${token}`, palette[token]);
     const shadow = host.attachShadow({ mode: "closed" });
@@ -87,17 +88,19 @@
 
   async function handleClick(event) {
     block(event);
-    const { target, overlay } = session;
+    const current = session;
+    const { target, overlay } = current;
     if (!target || session.saving) return;
     session.saving = true;
     const selector = core.selectorForElement(target, countMatches(target));
     try {
       const response = await chrome.runtime.sendMessage({ type: "rosewash:ignore-element", selector });
       if (!response?.ok) throw new Error(response?.error || "Not saved");
-      stop();
+      if (session === current) stop();
     } catch (error) {
+      if (session !== current) return;
       overlay.hint.textContent = `Could not save: ${error.message}`;
-      session.saving = false;
+      current.saving = false;
     }
   }
 
@@ -127,13 +130,27 @@
 
   async function start() {
     if (session) return;
-    session = { overlay: null, target: null, trail: [], saving: false };
-    const settings = core.plainSettings(await chrome.storage.sync.get(null));
-    const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    session.overlay = createOverlay(core.PALETTES[core.resolveSettingsThemeKey(settings, dark)]);
-    for (const [type, listener] of listeners) window.addEventListener(type, listener, true);
-    window.addEventListener("scroll", paint, true);
-    window.addEventListener("resize", paint);
+    const current = { overlay: null, target: null, trail: [], saving: false, previousFocus: document.activeElement };
+    session = current;
+    // Install cancellation before reading storage so Esc also works during startup.
+    window.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("pagehide", stop);
+    try {
+      const settings = core.plainSettings(await chrome.storage.sync.get(null));
+      if (session !== current) return;
+      const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      current.overlay = createOverlay(core.PALETTES[core.resolveSettingsThemeKey(settings, dark)]);
+      for (const [type, listener] of listeners) window.addEventListener(type, listener, true);
+      window.addEventListener("scroll", paint, true);
+      window.addEventListener("resize", paint);
+      // Keyboard events inside iframes do not reach the top window. Move focus
+      // into the picker so Esc works even when an embedded editor had focus.
+      window.focus();
+      current.overlay.host.focus({ preventScroll: true });
+    } catch (error) {
+      if (session === current) stop();
+      throw error;
+    }
   }
 
   function stop() {
@@ -141,15 +158,18 @@
     for (const [type, listener] of listeners) window.removeEventListener(type, listener, true);
     window.removeEventListener("scroll", paint, true);
     window.removeEventListener("resize", paint);
-    session.overlay.host.remove();
+    window.removeEventListener("pagehide", stop);
+    session.overlay?.host.remove();
+    const previousFocus = session.previousFocus;
     session = null;
+    if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
   }
 
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Only Rosewash's own pages can start the picker.
     if (message?.type !== START_MESSAGE || sender.id !== chrome.runtime.id || sender.tab) return false;
-    start();
-    sendResponse({ ok: true });
-    return false;
+    start().then(() => sendResponse({ ok: true }),
+      (error) => sendResponse({ ok: false, error: error.message }));
+    return true;
   });
 })();

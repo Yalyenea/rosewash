@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Control theme and fonts independently for each site. The popup keeps Site
+  above a single Fonts switch; the site shortcut changes only the theme rule.
+  Existing site rules initialize both features, preserving previous choices.
+- Let Esc cancel Pick when an embedded frame had focus or the picker is still
+  starting. Restore page focus on exit and handle late save responses safely.
+
 ## 0.2.7 - 2026-10-27
 
 - Keep colored content recognizable. Buttons, badges, and highlights keep

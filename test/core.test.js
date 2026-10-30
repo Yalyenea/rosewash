@@ -481,6 +481,45 @@ test("switching to plain themes restores colors, root tokens, and browser contro
   }
 });
 
+test("site policies restore theme and fonts independently, including embedded frames", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [{ id: "text", tag: "p", fontFamily: "Georgia" }] });
+  const text = byId.get("text");
+  document.location = { href: "https://embed.example.net/", ancestorOrigins: ["https://example.com"] };
+  const engine = core.createEngine({ document, window });
+  const settings = core.plainSettings({ appearance: "light", customFontsEnabled: true, fontEnglish: "Arial" });
+  engine.apply(settings);
+  assert.equal(document.documentElement.hasAttribute("data-rosewash-theme"), true);
+  assert.match(text.style.getPropertyValue("font-family"), /RosewashEnglish/);
+  engine.apply(core.setHostPolicy("example.com", "off", settings, "theme"));
+  assert.equal(document.documentElement.hasAttribute("data-rosewash-theme"), false);
+  assert.equal(text.style.getPropertyValue("color"), "");
+  assert.match(text.style.getPropertyValue("font-family"), /RosewashEnglish/);
+  engine.apply(core.setHostPolicy("example.com", "off", settings, "fonts"));
+  assert.equal(document.documentElement.hasAttribute("data-rosewash-theme"), true);
+  assert.equal(text.style.getPropertyValue("font-family"), "");
+  engine.apply({ ...settings, disabledHosts: ["example.com"], fontDisabledHosts: ["example.com"] });
+  assert.equal(document.documentElement.hasAttribute("data-rosewash-theme"), false);
+  assert.equal(document.fonts.size, 0);
+});
+
+test("font rules migrate and merge concurrent edits within their own feature", async () => {
+  const core = await loadCore();
+  const baseline = core.plainSettings({ disabledHosts: ["example.com"] });
+  assert.deepEqual(plain(baseline.fontDisabledHosts), ["example.com"]);
+  const unlinked = core.plainSettings({ ...baseline, fontDisabledHosts: [] });
+  assert.equal(core.isHostEnabled("news.example.com", unlinked), false);
+  assert.equal(core.isHostEnabled("news.example.com", unlinked, "fonts"), true);
+  const latest = core.setHostPolicy("other.com", "off", unlinked, "fonts");
+  const edited = core.setHostPolicy("example.com", "off", unlinked, "fonts");
+  const merged = core.mergeSettingsEdits(latest, unlinked, edited);
+  assert.deepEqual(plain(merged.fontDisabledHosts), ["example.com", "other.com"]);
+  assert.deepEqual(plain(merged.disabledHosts), ["example.com"]);
+  const child = core.setHostPolicy("news.example.com", "on", merged, "fonts");
+  assert.equal(core.isHostEnabled("news.example.com", child, "fonts"), true);
+  assert.equal(core.isHostEnabled("news.example.com", child), false);
+});
+
 test("plain themes keep custom fonts independent from page tinting", async () => {
   const core = await loadCore();
   const { document, window, byId } = createMockDom({ tree: [{ id: "text", tag: "p", fontFamily: "Georgia" }] });
@@ -570,6 +609,8 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
     enabled: true,
     defaultEnabled: true,
     enabledHosts: [],
+    fontEnabledHosts: [],
+    fontDisabledHosts: ["example.com"],
     colorOverridesEnabled: true,
     dimImages: false,
     imageBrightness: 80,
@@ -2304,7 +2345,9 @@ test("normalizes settings and blocked hosts", async () => {
     xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
     zhihuArticleWidth: 960,
-    disabledHosts: ["docs.example.com", "example.com"]
+    disabledHosts: ["docs.example.com", "example.com"],
+    fontDisabledHosts: ["docs.example.com", "example.com"],
+    fontEnabledHosts: []
   });
 
   assert.deepEqual(plain(core.normalizeSettings({
@@ -2322,6 +2365,8 @@ test("normalizes settings and blocked hosts", async () => {
     ignoredElements: {},
     presetLight: "catppuccin",
     presetDark: "catppuccin",
+    fontDisabledHosts: [],
+    fontEnabledHosts: [],
     customFontsEnabled: false,
     fontEnglish: "",
     fontChinese: "",
@@ -2351,6 +2396,8 @@ test("normalizes settings and blocked hosts", async () => {
     ignoredElements: {},
     presetLight: "rose-pine",
     presetDark: "dracula",
+    fontDisabledHosts: [],
+    fontEnabledHosts: [],
     customFontsEnabled: false,
     fontEnglish: "",
     fontChinese: "",
@@ -2403,6 +2450,8 @@ test("site toggles work in both default modes and preserve parent and sibling po
     const again = core.toggleHostEnabled("example.com", toggled);
     assert.equal(core.isHostEnabled("example.com", again), defaultEnabled);
     assert.equal(core.hostPolicyForHost("example.com", again), defaultEnabled ? "on" : "off");
+    assert.deepEqual(plain(again.fontDisabledHosts), plain(initial.fontDisabledHosts));
+    assert.deepEqual(plain(again.fontEnabledHosts), plain(initial.fontEnabledHosts));
     assert.deepEqual(plain(core.setHostPolicy("example.com", "default", again)), plain(initial));
   }
   const initial = core.plainSettings({ disabledHosts: ["example.com"] });

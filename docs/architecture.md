@@ -17,7 +17,7 @@ content pipeline, and change recipes, see
   relative RGB colors follow the same surface, text, and border rules.
 - Full-page surface and text covering into the active palette, keeping
   chromatic fills and text recognizable.
-- Default site policy and per-host on/off rules, with subdomain matching.
+- Default site policy and separate per-host theme and font rules, with subdomain matching.
 - DOM tinting and restoration.
 - A batched `MutationObserver` for inserted elements, class changes, and
   stylesheet edits, plus a listener for stylesheet loads. Open shadow roots
@@ -31,6 +31,8 @@ leaves matched elements and their contents untouched and marks the matched
 roots `data-rosewash-ignored`, so `theme.css` rules skip them too. With image dimming on,
 a tinted dark palette also lowers image and video brightness through
 `theme.css`.
+The picker takes keyboard focus so Esc can cancel it after an embedded frame
+had focus. Exit restores the previous focus and releases event interception.
 
 At `document_start` the content runtime reads stored settings before applying
 colors, fonts, or layouts. Disabled sites stay untouched while storage loads.
@@ -169,7 +171,9 @@ plain HTML/CSS/JS and share the same storage schema:
   "presetDark": "rose-pine",
   "appearance": "auto",
   "disabledHosts": [],
-  "enabledHosts": []
+  "enabledHosts": [],
+  "fontDisabledHosts": [],
+  "fontEnabledHosts": []
 }
 ```
 
@@ -185,7 +189,7 @@ storage still normalize cleanly.
 The independent theme switch uses the plain palette path while retaining both
 selected palettes. Fonts remain active, and image dimming stops.
 
-The popup exposes an Allowed / Blocked button for the current hostname.
+The popup exposes an Allowed / Blocked button for the current hostname's theme.
 Remove a hostname from the settings site lists to clear its override. Explicit
 choices persist when `defaultEnabled` changes. Clearing a hostname's rule
 restores its parent rule if present, otherwise the global
@@ -193,7 +197,10 @@ default. The most specific hostname wins; a blocked rule wins a tie, and the
 global enable switch pauses every site; while paused, the site button is
 disabled. Pick sits beside the site button;
 X and Zhihu layout switches appear only on their matching site.
-The popup's Fonts switch shares `customFontsEnabled` with the settings page.
+The popup's single Fonts switch sits below Site and edits only the current
+host's font rule. Site clicks and the site shortcut leave font rules unchanged.
+The global `customFontsEnabled` setting remains in Settings. Existing host rules
+initialize both features; subsequent changes are stored independently.
 Each popup change immediately sends an edit to the worker. Pending local edits
 stay visible until the saves finish, then the popup reloads current storage.
 The settings page sends its edited form and baseline to the same queue.
