@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.9 - 2026-10-30
 
 - Map colored buttons, highlights, text, and borders through each theme's
   palette. Website blue uses the theme's primary accent; pale alerts use
@@ -11,6 +11,8 @@
   headers, and keep a minimum contrast ratio of 4.5:1 across theme changes.
 - Keep an offline color mapping board for all 30 theme families, with zoom,
   custom source colors, and JSON export.
+- Allow an annotated release tag to skip store uploads with a `[skip stores]`
+  line while still publishing the GitHub Release archives.
 
 ## 0.2.8 - 2026-10-30
 

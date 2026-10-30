@@ -758,9 +758,13 @@ Storage remains the source of truth across tabs and the service worker.
 ### Store publishing
 
 The release workflow builds and publishes the release archives first, then calls
-three independent store workflows. Tag pushes upload and submit to every store;
-manual runs can select one store, disable submission, or select `none` to create
-only the GitHub Release. Upload failures remain visible as failed jobs. Upload
+three independent store workflows. Tag pushes upload and submit to every store
+unless the tag annotation contains an exact `[skip stores]` line. That marker
+sets the release job's store output to `none`, so all three store jobs skip
+while the GitHub Release archives still publish. The tag ref must be present
+and readable before routing succeeds. Manual runs can select one store,
+disable submission, or select `none` to create only the GitHub Release.
+Upload failures remain visible as failed jobs. Upload
 and submission requests are never automatically retried: inspect the store's
 state before rerunning a failed job.
 

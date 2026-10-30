@@ -29,11 +29,35 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TAG_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+    outputs:
+      store: ${{ steps.stores.outputs.store }}
     steps:
       - name: Checkout release tag
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+
+      - name: Select store uploads
+        id: stores
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          STORE_INPUT: ${{ inputs.store }}
+        run: |
+          store="$STORE_INPUT"
+          if [[ "$EVENT_NAME" == "push" ]]; then
+            git show-ref --verify "refs/tags/$TAG_NAME" >/dev/null
+            annotation=$(git for-each-ref --format='%(contents)' "refs/tags/$TAG_NAME")
+            store=all
+            # An exact annotation line opts this tag out of all store uploads.
+            if grep -Fxq -- '[skip stores]' <<< "$annotation"; then
+              store=none
+            fi
+          fi
+          case "$store" in
+            all|chrome|edge|firefox|none) ;;
+            *) echo "Unsupported store target: $store" >&2; exit 1 ;;
+          esac
+          echo "store=$store" >> "$GITHUB_OUTPUT"
 
       - name: Set up Node
         uses: actions/setup-node@v4
@@ -90,7 +114,7 @@ jobs:
 
   chrome:
     needs: release
-    if: ${{ github.event_name == 'push' || inputs.store == 'all' || inputs.store == 'chrome' }}
+    if: ${{ needs.release.outputs.store == 'all' || needs.release.outputs.store == 'chrome' }}
     permissions:
       contents: read
       id-token: write
@@ -101,7 +125,7 @@ jobs:
 
   edge:
     needs: release
-    if: ${{ github.event_name == 'push' || inputs.store == 'all' || inputs.store == 'edge' }}
+    if: ${{ needs.release.outputs.store == 'all' || needs.release.outputs.store == 'edge' }}
     permissions:
       contents: read
     uses: ./.github/workflows/store-edge.yml
@@ -112,7 +136,7 @@ jobs:
 
   firefox:
     needs: release
-    if: ${{ github.event_name == 'push' || inputs.store == 'all' || inputs.store == 'firefox' }}
+    if: ${{ needs.release.outputs.store == 'all' || needs.release.outputs.store == 'firefox' }}
     permissions:
       contents: read
     uses: ./.github/workflows/store-firefox.yml
