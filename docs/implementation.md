@@ -580,10 +580,11 @@ the message. The worker appends the selector and notifies that tab.
 `toggle-enabled` flips `enabled` and notifies all tabs.
 
 The worker also sets a per-tab toolbar icon with `chrome.action.setIcon`:
-`icons/icon-*.png` while Rosewash runs on the tab's site, `icons/icon-off-*.png`
-when it is paused globally, the site is off, or the page is protected. Icons
-refresh when a tab starts loading or changes URL, on every sync storage change,
-and on startup and install.
+`icons/icon-*.png` when the popup's Site control is allowed, `icons/icon-off-*.png`
+when it is paused globally, the site is off, or the page is protected. Independent
+font rules do not keep the icon active when Site is blocked. Icons refresh when
+a tab starts loading or changes URL, on every sync storage change, and on startup
+and install.
 
 The `toggle-current-site` command resolves the command tab (or active tab),
 skips protected pages, and calls `toggleHostEnabled` against current settings.

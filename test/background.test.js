@@ -270,7 +270,8 @@ test("Firefox keeps the browser frame on the resolved palette", async () => {
 
 test("toolbar icon is gray when the tab's site is off, paused, or protected", async () => {
   const runtime = background();
-  runtime.store({ disabledHosts: ["blocked.com"] });
+  // Independent font permissions must not mask the site's theme-off indicator.
+  runtime.store({ disabledHosts: ["blocked.com"], customFontsEnabled: true, fontDisabledHosts: [] });
   const icon = async (url) => {
     runtime.tabUpdated({ id: 9, url }, { url });
     await flush();
@@ -282,4 +283,24 @@ test("toolbar icon is gray when the tab's site is off, paused, or protected", as
   assert.equal(await icon("chrome://extensions/"), "/icons/icon-off-16.png");
   runtime.store({ enabled: false });
   assert.equal(await icon("https://example.com/"), "/icons/icon-off-16.png");
+});
+
+test("site policy saves update the toolbar icon while custom fonts stay enabled", async () => {
+  const runtime = background();
+  runtime.store({ customFontsEnabled: true, fontDisabledHosts: [], fontEnabledHosts: [] });
+  for (const [policy, expected] of [["off", "off"], ["on", "on"]]) {
+    const response = await runtime.send({
+      type: "rosewash:set-host-policy", host: "x.com", policy, feature: "theme"
+    });
+    assert.equal(response.ok, true);
+    assert.equal(response.settings.customFontsEnabled, true);
+    assert.deepEqual(Array.from(response.settings.fontDisabledHosts), []);
+    runtime.storageChanged();
+    await flush();
+    assert.deepEqual(runtime.icons.at(-1), {
+      tabId: 1,
+      path: Object.fromEntries([16, 32, 48, 128].map((size) =>
+        [size, `/icons/icon${expected === "off" ? "-off" : ""}-${size}.png`]))
+    });
+  }
 });

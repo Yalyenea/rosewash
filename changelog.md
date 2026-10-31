@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Dim the toolbar icon when Site is blocked, even while custom fonts remain
+  enabled. Re-enabling Site restores the active icon.
+
 ## 0.2.9 - 2026-10-30
 
 - Map colored buttons, highlights, text, and borders through each theme's

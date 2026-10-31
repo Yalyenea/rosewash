@@ -65,12 +65,11 @@ async function ignoreElement(tab, selector) {
   return settings;
 }
 
-// Colored while Rosewash runs on the tab's site, gray when paused, off, or blocked.
+// Mirror the popup's Site control; independent font rules do not keep it lit.
 function iconStateForTab(tab, settings) {
   const host = core.hostFromUrl(tab.url);
   const active = settings.enabled && Boolean(host) && !core.pageRestrictionForUrl(tab.url)
-    && (core.isHostEnabled(host, settings)
-      || (settings.customFontsEnabled && core.isHostEnabled(host, settings, "fonts")));
+    && core.isHostEnabled(host, settings);
   return active ? "on" : "off";
 }
 
