@@ -266,6 +266,7 @@
     appearance: "auto",
     xCompactLayout: false,
     xAutoExpandReplies: false,
+    hideTopBanners: false,
     xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
     zhihuArticleWidth: 960,
@@ -1006,6 +1007,7 @@
       appearance,
       xCompactLayout: source.xCompactLayout === true,
       xAutoExpandReplies: source.xAutoExpandReplies === true,
+      hideTopBanners: source.hideTopBanners === true,
       xSingleColumnWidth: X_SINGLE_COLUMN_WIDTHS.includes(source.xSingleColumnWidth)
         ? source.xSingleColumnWidth
         : DEFAULT_SETTINGS.xSingleColumnWidth,
@@ -1199,6 +1201,7 @@
       appearance: normalized.appearance,
       xCompactLayout: normalized.xCompactLayout,
       xAutoExpandReplies: normalized.xAutoExpandReplies,
+      hideTopBanners: normalized.hideTopBanners,
       xSingleColumnWidth: normalized.xSingleColumnWidth,
       zhihuArticleLayout: normalized.zhihuArticleLayout,
       zhihuArticleWidth: normalized.zhihuArticleWidth,
@@ -1687,6 +1690,23 @@
         if (isOpaqueColor(fill) && colorsSharePaper(color, fill)) {
           continue;
         }
+        // Wide, background-colored borders can supply layout spacing (the
+        // Dot composer uses one). Preserve their paper instead of drawing a rule.
+        if (!isOpaqueColor(fill) && style === "solid" && parseFloat(width) >= 8) {
+          let paper = null;
+          for (let parent = composedParent(element); parent; parent = composedParent(parent)) {
+            const record = surfaceRecords.get(parent);
+            if (!record) continue;
+            if (colorsSharePaper(color, record.original) || colorsSharePaper(color, parseColor(record.fill))) {
+              paper = record.fill;
+            }
+            break; // A different nearer surface makes this a visible border.
+          }
+          if (paper) {
+            setStyle(element, property, paper);
+            continue;
+          }
+        }
         // A theme's own muted stroke keeps its token identity on rescan.
         const native = color?.alpha === 1 && hexColor(color) === palette.muted.toLowerCase();
         const accent = native ? null : chromaticTextFor(color, palette, textBackgroundFor(element, palette));
@@ -1780,6 +1800,13 @@
     }
 
     function isPageChromeElement(element) {
+      // Dot's full-width composer fade sits inside main. It belongs to the
+      // page canvas; flattening it to a card surface leaves a visible stripe.
+      if (element.classList.contains("pointer-events-none")
+        && element.classList.contains("from-surface")
+        && element.closest(".conversation-footer")?.closest(".messaging-root")) {
+        return true;
+      }
       return isPageChromeCandidate({
         tagName: element.tagName,
         role: element.getAttribute("role"),

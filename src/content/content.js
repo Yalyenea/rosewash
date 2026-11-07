@@ -3,6 +3,7 @@
 
   const core = globalThis.RosewashCore;
   const engine = core.createEngine({ document, window });
+  const banners = globalThis.RosewashBanners.createController({ document, window });
   const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
   const X_COMPACT_ATTRIBUTE = "data-rosewash-x-compact";
   const X_COMPACT_EVENT = "rosewash:x-compact-change";
@@ -65,6 +66,7 @@
       document.dispatchEvent(new CustomEvent(ZHIHU_LAYOUT_EVENT));
     }
     engine.disconnect();
+    banners.disconnect();
   }
 
   function syncSiteLayout() {
@@ -119,6 +121,8 @@
 
     syncSiteLayout();
     engine.apply(settingsCache);
+    // Cleanup follows the global switch independently of theme and font rules.
+    banners.setEnabled(window.top === window && settingsCache.enabled && settingsCache.hideTopBanners);
   }
 
   async function readStorageSettings() {

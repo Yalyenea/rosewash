@@ -75,10 +75,18 @@ function iconStateForTab(tab, settings) {
 
 async function updateIcons(tabs) {
   const settings = core.plainSettings(await chrome.storage.sync.get(null));
-  await Promise.all(tabs.filter((tab) => tab.id).map((tab) =>
-    chrome.action.setIcon({ tabId: tab.id, path: ICONS[iconStateForTab(tab, settings)] })
-      .catch(() => undefined) // The tab may close before its icon updates.
-  ));
+  await Promise.all(tabs.filter((tab) => tab.id).map((tab) => new Promise((resolve, reject) => {
+    chrome.action.setIcon({ tabId: tab.id, path: ICONS[iconStateForTab(tab, settings)] }, () => {
+      // setIcon loads paths asynchronously. Chromium can report a closed tab
+      // through lastError even when its Promise form has a rejection handler.
+      const error = chrome.runtime.lastError;
+      if (error && !/^No tab with id: \d+\.?$/.test(error.message)) {
+        reject(new Error(error.message));
+        return;
+      }
+      resolve();
+    });
+  })));
 }
 
 function refreshIcons(tabs) {

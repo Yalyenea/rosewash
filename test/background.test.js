@@ -14,7 +14,7 @@ function deferred() {
 }
 
 function background({ url = "https://x.com/home", messageError = false, beforeSet, notify,
-  firefox = false, theme = firefox, prefersDark = false } = {}) {
+  firefox = false, theme = firefox, prefersDark = false, beforeIcon, iconError } = {}) {
   const writes = [];
   const messages = [];
   const errors = [];
@@ -44,7 +44,26 @@ function background({ url = "https://x.com/home", messageError = false, beforeSe
       onStartup: { addListener() {} },
       onInstalled: { addListener() {} }
     },
-    action: { setIcon: async (details) => { icons.push(structuredClone(details)); } },
+    action: { setIcon(details, callback) {
+      icons.push(structuredClone(details));
+      const complete = Promise.resolve(beforeIcon?.()).then(() => {
+        const message = typeof iconError === "function" ? iconError(details) : iconError;
+        let checked = false;
+        Object.defineProperty(context.chrome.runtime, "lastError", {
+          configurable: true,
+          get() { checked = true; return message ? { message } : undefined; }
+        });
+        try {
+          callback?.();
+          if (message && !checked) errors.push([`Unchecked runtime.lastError: ${message}`]);
+        } finally {
+          delete context.chrome.runtime.lastError;
+        }
+      });
+      // Chromium's path-loading binding can fulfill the Promise while leaving
+      // the native lastError unchecked. Model that boundary, not just rejection.
+      return callback ? undefined : complete;
+    } },
     commands: { onCommand: { addListener: (fn) => { commandListener = fn; } } },
     tabs: {
       onUpdated: { addListener: (fn) => { tabUpdated = fn; } },
@@ -303,4 +322,32 @@ test("site policy saves update the toolbar icon while custom fonts stay enabled"
         [size, `/icons/icon${expected === "off" ? "-off" : ""}-${size}.png`]))
     });
   }
+});
+
+test("a tab closing while its icon loads consumes lastError and other tabs still update", async () => {
+  const iconReady = deferred();
+  const closed = new Set();
+  const runtime = background({
+    beforeIcon: () => iconReady.promise,
+    iconError: ({ tabId }) => closed.has(tabId) ? `No tab with id: ${tabId}.` : undefined
+  });
+  runtime.tabUpdated({ id: 7, url: "https://example.com/" }, { status: "loading" });
+  await flush();
+  assert.equal(runtime.icons.length, 1);
+  closed.add(7);
+  iconReady.resolve();
+  await flush();
+  runtime.tabUpdated({ id: 8, url: "https://x.com/" }, { status: "loading" });
+  await flush();
+  assert.equal(runtime.icons.at(-1).tabId, 8);
+  assert.deepEqual(runtime.errors, []);
+});
+
+test("unexpected icon failures remain visible without an unchecked callback error", async () => {
+  const runtime = background({ iconError: "Failed to decode icon" });
+  runtime.tabUpdated({ id: 7, url: "https://example.com/" }, { status: "loading" });
+  await flush();
+  assert.equal(runtime.errors.length, 1);
+  assert.equal(runtime.errors[0][0], "Could not update Rosewash icons:");
+  assert.equal(runtime.errors[0][1].message, "Failed to decode icon");
 });

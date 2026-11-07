@@ -116,8 +116,16 @@ html[data-rosewash-theme] [class*="threadFooterContentFade"]::after {
   background-image: none !important;
 }
 
+/* Dot copies resolved page colors into inline messaging tokens at mount.
+   Keep its background-colored composer spacing in sync on palette changes. */
+html[data-rosewash-theme] .messaging-root {
+  --color-background-primary: var(--rosewash-base) !important;
+}
+
 
 /* Image dimming: set only for dark palettes when the user turns it on. */
 html[data-rosewash-dim] :is(img, video, image):not([data-rosewash-ignored], [data-rosewash-ignored] *) {
   filter: brightness(var(--rosewash-image-brightness));
 }
+/* This switch is independent of the palette, including plain palettes. */
+[data-rosewash-banner-hidden] { display: none !important; }

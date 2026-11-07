@@ -31,6 +31,7 @@ src/settings/fonts.js     Automatic font picker (Chromium), font-name inputs (Fi
 src/background/            Background runtime (settings writes and commands)
 src/content/
   core.js                  Pure engine + host helpers (testable via vm)
+  banners.js               Top-frame announcement detection and reversible hiding
   content.js               Chrome wiring for content world
   picker.js                Element picker overlay (top frame only)
   theme.css                Immediate CSS cover when data-rosewash-theme is set
@@ -66,6 +67,7 @@ and apply the engine. Page responses do not hold up the write queue.
 | Manifest | `manifest.json` | Registers scripts, storage, `<all_urls>`, commands |
 | Engine | `src/content/core.js` → `globalThis.RosewashCore` | Color parse, cover, restore, host helpers |
 | Content bootstrap | `src/content/content.js` | Stored site policy, settings cache, listeners |
+| Banner cleanup | `src/content/banners.js` | Global top-banner detection and restoration |
 | CSS cover | `src/content/theme.css` | First-frame canvas / SPA roots / known shells |
 | Background | `src/background/background.js` | Settings write queue, commands, content notifications |
 | Popup | `src/popup/popup.js` | Daily controls + immediate edit requests to background |
@@ -118,6 +120,7 @@ Stored in **`chrome.storage.sync`**.
   "appearance": "auto",
   "xCompactLayout": false,
   "xAutoExpandReplies": false,
+  "hideTopBanners": false,
   "xSingleColumnWidth": 600,
   "zhihuArticleLayout": false,
   "zhihuArticleWidth": 960,
@@ -133,7 +136,7 @@ Stored in **`chrome.storage.sync`**.
 
 | Field | Values | Meaning |
 | --- | --- | --- |
-| `enabled` | boolean | Global off clears all tints and font overrides |
+| `enabled` | boolean | Global off clears tints, font overrides, and banner hiding |
 | `defaultEnabled` | boolean | Default state for sites without a matching rule; true for existing installs |
 | `colorOverridesEnabled` | boolean | Enables theme overrides; true for existing installs. Turning it off keeps palettes saved and custom fonts active. |
 | `customFontsEnabled` | boolean | Enables custom page fonts; off by default |
@@ -143,6 +146,7 @@ Stored in **`chrome.storage.sync`**.
 | `appearance` | `auto` \| `light` \| `dark` | `auto` follows `prefers-color-scheme` |
 | `xCompactLayout` | boolean | Enables Rosewash's compact single-column layout on X |
 | `xAutoExpandReplies` | boolean | Automatically expands truncated reply text on X post pages, independently of compact layout |
+| `hideTopBanners` | boolean | Hides recognized top banners in the top frame; off by default and independent of site theme/font rules |
 | `xSingleColumnWidth` | 520 / 600 / 680 / 760 | Centered X timeline width |
 | `zhihuArticleLayout` | boolean | Enables the centered Zhihu reading layout on home, questions, and articles |
 | `zhihuArticleWidth` | 720 / 840 / 960 / 1080 | Centered Zhihu column width |
@@ -394,6 +398,10 @@ For each non-skipped element:
    WordPress global styles turn an inline `border-*-color` into
    `border-style: solid`, which would frame every element.
 
+   On transparent elements, solid borders at least 8px wide that match the
+   nearest painted ancestor retain that ancestor's paper color. This preserves
+   spacing borders such as the one below Dot's composer.
+
 Skip list includes media, canvas, SVG, iframe, form controls, editor and
 rendered formula surfaces (CodeMirror, Monaco, hljs, KaTeX, MathJax), and
 `[data-rosewash-ignore]`.
@@ -586,6 +594,10 @@ font rules do not keep the icon active when Site is blocked. Icons refresh when
 a tab starts loading or changes URL, on every sync storage change, and on startup
 and install.
 
+Icon writes use the callback form and read `runtime.lastError` there. A tab
+that closed while its icon loaded needs no further update; other icon errors
+propagate to the existing error logger.
+
 The `toggle-current-site` command resolves the command tab (or active tab),
 skips protected pages, and calls `toggleHostEnabled` against current settings.
 After saving, it notifies that tab; UI saves notify all tabs, and the popup's
@@ -612,6 +624,8 @@ old snapshot. Notification responses never block the next save.
   Pending edits remain visible until saves finish, then current storage reloads.
 - Pick starts the top-frame element picker and closes the popup. It is disabled
   while globally paused, blocked on the site, or on a protected page.
+- Page cleanup starts collapsed. Its Hide top banners switch edits the same
+  global setting as Options; Escape collapses the section and focuses its summary.
 
 **Options**
 
@@ -638,14 +652,35 @@ old snapshot. Notification responses never block the next save.
   installed font names directly; blank fields preserve page fonts. Four
   independent previews use the same local FontFace definitions as pages.
   Enumeration and preview errors are shown.
-- Clean Layout groups X.com and 知乎 zhihu.com cards with a switch and column
-  width slider. Always on / Always off lists and ignored elements follow.
+- Clean Layout includes the global Hide top banners switch above the X.com
+  and 知乎 zhihu.com cards. Each site card has a switch and column width slider.
+  Always on / Always off lists and ignored elements follow.
 - Images use one row for the dimming switch, brightness slider, and percentage.
   The slider is disabled while dimming is off.
 - Shortcuts shows actual bindings or Not set. Change shortcuts opens Chromium
   shortcut settings or displays Firefox's manual instructions; bindings refresh
   on opening, focus, and return.
 - Removing an ignored-element rule saves immediately through the per-site merge.
+
+## Top banner cleanup
+
+`src/content/banners.js` runs in the top frame when Rosewash and
+`hideTopBanners` are enabled. Theme and font site rules do not gate it.
+Viewport hit tests collect at most about 100 candidate boxes near the top.
+Checks combine width, height, position, short text, names, links, and controls.
+Navigation containers and article content are excluded; an independently named
+banner inside navigation can qualify. Alert/status roles and recognized
+maintenance, security, account, and consent notices are preserved.
+
+DOM changes, scrolling, and resizing schedule checks at most once per 120ms.
+The outermost qualifying box receives `data-rosewash-banner-hidden`; the shared
+stylesheet removes it from layout. Switching off or disposing the controller
+removes its marks and stops observation. This is conservative detection rather
+than a site filter list, so unfamiliar structures may need additional rules.
+
+Dot's full-width composer fade uses the page canvas instead of a card surface.
+Its locally captured `--color-background-primary` token also follows the active
+palette, keeping both the fade and the bottom spacing on the page color.
 
 ## Element picker
 
@@ -806,6 +841,7 @@ just test       # node --test test/*.test.js
 just validate   # manifest + required files + --check scripts
 just check      # test + validate
 just dist       # copy manifest + html + src → dist/ (Load unpacked)
+just reload     # macOS Helium: stage dist/ and reload its installed extension
 just package    # check + dist + zip → release/rosewash-vX.Y.Z.zip
 just clean      # remove .tmp and local debug leftovers
 ```

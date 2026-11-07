@@ -9,6 +9,10 @@ test("startup waits for site policy and storage changes update site layouts", as
   vm.runInNewContext(await readFile(new URL("../src/content/core.js", import.meta.url), "utf8"), context);
   const core = context.RosewashCore;
   const applied = [];
+  const bannerStates = [];
+  context.RosewashBanners = { createController: () => ({
+    setEnabled: (enabled) => bannerStates.push(enabled), disconnect() {}
+  }) };
   const attributes = new Set();
   const properties = new Map();
   const root = {
@@ -40,7 +44,7 @@ test("startup waits for site policy and storage changes update site layouts", as
   let messageReceived;
   let pendingRead;
   const sent = [];
-  let raw = { defaultEnabled: false, xCompactLayout: true, xAutoExpandReplies: true };
+  let raw = { defaultEnabled: false, xCompactLayout: true, xAutoExpandReplies: true, hideTopBanners: true };
   const initialRead = new Promise((resolve) => { releaseStorage = resolve; });
   let loaded = false;
   context.chrome = {
@@ -64,6 +68,7 @@ test("startup waits for site policy and storage changes update site layouts", as
   await new Promise(setImmediate);
   assert.equal(applied.length, 1);
   assert.equal(applied[0].defaultEnabled, false);
+  assert.equal(bannerStates.at(-1), true);
   assert.equal(attributes.has("data-rosewash-x-compact"), false);
   assert.equal(attributes.has("data-rosewash-x-expand-replies"), false);
   raw = { ...raw, enabledHosts: ["x.com"], xSingleColumnWidth: 680 };
@@ -86,6 +91,12 @@ test("startup waits for site policy and storage changes update site layouts", as
   assert.equal(attributes.has("data-rosewash-x-compact"), false);
   assert.equal(attributes.has("data-rosewash-x-expand-replies"), false);
   assert.equal(properties.has("--rosewash-x-single"), false);
+  assert.equal(bannerStates.at(-1), true); // Global cleanup is independent of site theme rules.
+
+  raw = { ...raw, hideTopBanners: false };
+  storageChanged({ hideTopBanners: { newValue: false } }, "sync");
+  await new Promise(setImmediate);
+  assert.equal(bannerStates.at(-1), false);
 
   // A notification reads current storage, even if a delayed sender includes an old snapshot.
   let releaseOldRead;
@@ -125,6 +136,7 @@ test("startup waits for site policy and storage changes update site layouts", as
 
 test("Firefox top frames wake the background when the system scheme changes", async () => {
   const context = { URL, console };
+  context.RosewashBanners = { createController: () => ({ setEnabled() {}, disconnect() {} }) };
   context.globalThis = context;
   vm.runInNewContext(await readFile(new URL("../src/content/core.js", import.meta.url), "utf8"), context);
   const core = context.RosewashCore;

@@ -26,6 +26,12 @@ content pipeline, and change recipes, see
 The content scripts run in every frame. Embedded frames follow the tab's
 top-level site rule, and site layouts only apply to the top-level page.
 
+The top frame also hosts an optional banner cleanup controller in
+`src/content/banners.js`. It detects compact top announcements using bounded
+viewport hit tests, hides qualifying boxes reversibly, and restores them when
+disabled. One global setting controls it independently of theme and font site
+rules; both Settings and the popup's collapsed Page cleanup section edit it.
+
 An element picker in the top frame saves CSS selectors per site. The engine
 leaves matched elements and their contents untouched and marks the matched
 roots `data-rosewash-ignored`, so `theme.css` rules skip them too. With image dimming on,
@@ -64,6 +70,8 @@ painted surface becomes Rose Pine:
   `none` border is left alone: writing the
   color can make the site turn it into a solid frame. A stroke that matches
   its own fill stays untouched.
+  Wide, background-colored spacing borders on transparent elements follow
+  the nearest painted ancestor, keeping Dot's composer spacing on the canvas.
 - CSS gradients are flattened to solid palette fills. Gradients clipped to text
   become readable palette text without a surface fill. Backgrounds containing
   `url()` images retain all their layers, including any accompanying gradients.
@@ -97,6 +105,10 @@ Inverted icon/button tokens and brand accents are left alone. Root variable
 records retain the original value and priority plus the applied override.
 Restoration only changes declarations that still match the override, preserving
 later website writes. Re-applying captures those writes before tinting again.
+
+Dot's full-width composer fade is treated as page chrome even inside `main`.
+Its local background token follows the active palette, so the input area has
+the same canvas color across theme changes.
 
 Only properties changed by the engine are recorded and restored. A declaration
 updated later by the website remains in place; untouched properties such as

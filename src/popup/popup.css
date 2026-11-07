@@ -164,6 +164,31 @@ p {
   padding-left: 2px;
 }
 
+.cleanup summary {
+  align-items: center;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  list-style: none;
+  min-height: 38px;
+  padding: 0 2px;
+}
+.cleanup summary::-webkit-details-marker { display: none; }
+.cleanup .chevron {
+  border-right: 1.5px solid var(--muted);
+  border-bottom: 1.5px solid var(--muted);
+  height: 6px;
+  margin-right: 4px;
+  transform: rotate(45deg);
+  width: 6px;
+}
+.cleanup[open] .chevron { transform: rotate(225deg); }
+.cleanup .site-row {
+  border-top: 1px solid rgba(152, 147, 165, 0.18);
+  min-height: 46px;
+}
+.cleanup summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 .layout-row {
   border-top: 1px solid rgba(152, 147, 165, 0.18);
   min-height: 46px;

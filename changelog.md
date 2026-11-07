@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Add an optional global Hide top banners switch in Settings → Sites and
+  the popup's collapsed Page cleanup section. Detect independent top
+  announcements, including named bars inside navigation, and restore them
+  when switched off.
+- Keep ChatGPT Dot's composer background and bottom spacing on the page
+  color across palette changes, removing the gray strip behind the input.
+- Handle toolbar icon updates that finish after their tab closes without
+  logging an unchecked runtime error. Other icon failures remain visible.
+- Add `just reload` for macOS Helium to stage and reload the unpacked
+  extension, optionally refreshing an open test page.
 - Dim the toolbar icon when Site is blocked, even while custom fonts remain
   enabled. Re-enabling Site restores the active icon.
 

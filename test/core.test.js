@@ -236,6 +236,34 @@ test("treats nearby fills as one paper and ignores unpainted borders", async () 
   assert.equal(byId.get("rule").style.getPropertyValue("border-left-color"), dawn.muted);
 });
 
+test("background-colored spacing borders follow the nearest paper across themes and restore", async () => {
+  const core = await loadCore();
+  for (const appearance of ["light", "dark"]) {
+    const palette = core.PALETTES[`rose-pine-${appearance}`];
+    const { document, window, byId } = createMockDom({ tree: [{
+      id: "paper", backgroundColor: "#ffffff", children: [
+        { id: "composer", backgroundColor: "transparent", borderBottomColor: "#ffffff", borderBottomWidth: "12px", borderBottomStyle: "solid" },
+        { id: "token-composer", backgroundColor: "transparent", borderBottomColor: palette.base, borderBottomWidth: "12px", borderBottomStyle: "solid" },
+        { id: "visible-rule", backgroundColor: "transparent", borderBottomColor: "#666666", borderBottomWidth: "12px", borderBottomStyle: "solid" },
+        { id: "card", backgroundColor: "#eeeeee", children: [
+          { id: "card-spacing", backgroundColor: "transparent", borderBottomColor: "#eeeeee", borderBottomWidth: "12px", borderBottomStyle: "solid" }
+        ] }
+      ]
+    }] });
+    const engine = core.createEngine({ document, window });
+    engine.apply({ appearance });
+    assert.equal(byId.get("composer").style.getPropertyValue("border-bottom-color"), palette.base);
+    assert.equal(byId.get("token-composer").style.getPropertyValue("border-bottom-color"), palette.base);
+    assert.equal(byId.get("visible-rule").style.getPropertyValue("border-bottom-color"), palette.muted);
+    assert.equal(byId.get("card-spacing").style.getPropertyValue("border-bottom-color"), palette.surface);
+    engine.refresh();
+    window.flushFrames();
+    assert.equal(byId.get("composer").style.getPropertyValue("border-bottom-color"), palette.base);
+    engine.clear();
+    assert.equal(byId.get("composer").style.getPropertyValue("border-bottom-color"), "");
+  }
+});
+
 test("detects generated CSS gradients without treating image urls as safe backgrounds", async () => {
   const core = await loadCore();
   assert.equal(core.isGeneratedBackgroundImage("linear-gradient(rgb(8, 11, 10), transparent)"), true);
@@ -601,6 +629,7 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
     appearance: "dark",
     xCompactLayout: true,
     xAutoExpandReplies: true,
+    hideTopBanners: true,
     xSingleColumnWidth: 680,
     zhihuArticleLayout: true,
     zhihuArticleWidth: 1080,
@@ -625,6 +654,7 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
     appearance: "dark",
     xCompactLayout: true,
     xAutoExpandReplies: true,
+    hideTopBanners: true,
     xSingleColumnWidth: 680,
     zhihuArticleLayout: true,
     zhihuArticleWidth: 1080,
@@ -2079,6 +2109,36 @@ test("engine tints colored and near-white page chrome to base with forced text",
   assert.equal(byId.get("zhihu-header").style.getPropertyValue("background-color"), "");
 });
 
+test("Dot composer fades use the page canvas while other gradients retain their surface", async () => {
+  const core = await loadCore();
+  const gradient = "linear-gradient(to top, rgb(255, 255, 255), transparent)";
+  const { document, window, byId } = createMockDom({ tree: [{
+    className: "messaging-root", children: [{
+      tag: "main", children: [{
+        className: "conversation-footer", children: [
+          { id: "fade", className: "background-newhash pointer-events-none absolute from-surface", backgroundImage: gradient },
+          { id: "control", className: "from-surface", backgroundImage: gradient }
+        ]
+      }]
+    }]
+  }, { id: "content-gradient", className: "pointer-events-none from-surface", backgroundImage: gradient }] });
+  const engine = core.createEngine({ document, window });
+  for (const appearance of ["light", "dark", "light"]) {
+    engine.apply({ appearance });
+    const palette = core.PALETTES[`rose-pine-${appearance}`];
+    assert.equal(byId.get("fade").style.getPropertyValue("background-color"), palette.base);
+    assert.equal(byId.get("fade").style.getPropertyValue("background-image"), "none");
+    assert.equal(byId.get("control").style.getPropertyValue("background-color"), palette.surface);
+    assert.equal(byId.get("content-gradient").style.getPropertyValue("background-color"), palette.surface);
+    engine.refresh();
+    window.flushFrames();
+    assert.equal(byId.get("fade").style.getPropertyValue("background-color"), palette.base);
+  }
+  engine.clear();
+  assert.equal(byId.get("fade").style.getPropertyValue("background-color"), "");
+  assert.equal(byId.get("fade").style.getPropertyValue("background-image"), "");
+});
+
 test("engine covers sRGB mixed header surfaces across theme changes and restores them", async () => {
   const core = await loadCore();
   const { document, window, byId } = createMockDom({ tree: [{
@@ -2469,6 +2529,7 @@ test("normalizes settings and blocked hosts", async () => {
     appearance: "dark",
     xCompactLayout: false,
     xAutoExpandReplies: false,
+    hideTopBanners: false,
     xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
     zhihuArticleWidth: 960,
@@ -2502,6 +2563,7 @@ test("normalizes settings and blocked hosts", async () => {
     appearance: "light",
     xCompactLayout: false,
     xAutoExpandReplies: false,
+    hideTopBanners: false,
     xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
     zhihuArticleWidth: 960,
@@ -2533,6 +2595,7 @@ test("normalizes settings and blocked hosts", async () => {
     appearance: "auto",
     xCompactLayout: false,
     xAutoExpandReplies: false,
+    hideTopBanners: false,
     xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
     zhihuArticleWidth: 960,

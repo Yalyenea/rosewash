@@ -59,6 +59,7 @@
 - **Fonts:** searchable English, Chinese, math, and monospace font choices in Chrome and Edge; installed font names in Firefox. Toggle fonts for the current site from the popup.
 - **Control:** toggle theme and fonts independently by site, leave selected elements untouched with Pick (Esc to cancel), or pause everywhere.
 - **Reading:** adjustable layouts for X and Zhihu, plus automatic expansion of X reply text.
+- **Cleanup:** hide common top announcement and promotion bars with one global switch in Settings or the popup's collapsed Page cleanup section.
 
 Firefox's browser frame follows the palette. Matching Chrome and Edge frame themes are packaged separately. Reply expansion and frame themes are available in the current source; store releases may lag behind.
 
@@ -88,6 +89,12 @@ just package-all    # Package extensions and Chromium frame themes
 ```
 
 Load the staged folder as an unpacked extension; Firefox uses **Load Temporary Add-on** with its staged `manifest.json`. After changes, stage again, reload the extension, and refresh your tabs.
+
+For an unpacked `dist/` already loaded in Helium on macOS, `just reload` stages
+and reloads it through native AppleScript and Accessibility. To refresh an open
+test page as well, run `just reload https://example.com/`. The command requires
+`uv` and macOS Accessibility permission for the terminal; its Python dependency
+is managed by `uv run --with`.
 
 Open the [color mapping board](docs/color-mapping.html) locally to compare all
 30 theme families. The standalone HTML works offline and supports zoom,

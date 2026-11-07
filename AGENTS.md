@@ -45,12 +45,14 @@ Guidance for coding agents working in the Rosewash repository.
 - Use the `kimi-webbridge` skill to connect to the user's Helium browser for
   page inspection and visual verification. This is the preferred browser
   workflow for this project.
-- Run `just dist`, reload the unpacked Rosewash extension from `dist/`, then
-  refresh the test page so verification uses the current implementation.
-- Use Computer Use (`cua_repl`) for Helium's internal pages when WebBridge
-  cannot access them. Routine development actions, such as clicking Rosewash's
-  Reload button on `chrome://extensions/`, should be completed directly without
-  asking the user to repeat them. Verify the reload confirmation in the UI.
+- On macOS, use `just reload` to stage `dist/` and reload the installed unpacked
+  extension through native AppleScript and Accessibility. Pass an open test-page
+  URL, such as `just reload https://example.com/`, to refresh that page too.
+  The script checks Helium's reload confirmation and closes its temporary tab.
+- Use Computer Use (`cua_repl`) for internal-page tasks the script does not
+  cover. Routine reloads should use the fixed command rather than repeated
+  model-driven UI actions. When the user has verified a change, accept their
+  result without repeating browser checks.
 - Keep task tabs in one WebBridge session with a descriptive tab group. Leave
   the verified page visible for the user to test, and save screenshots under
   `.tmp/`.

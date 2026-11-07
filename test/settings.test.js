@@ -6,6 +6,20 @@ import vm from "node:vm";
 const source = (path) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 const settle = () => new Promise(setImmediate);
 const plain = (value) => JSON.parse(JSON.stringify(value));
+
+test("settings and popup share the global banner switch", async () => {
+  for (const page of ["options", "popup"]) {
+    const ui = await settingsUI(page);
+    assert.equal(ui.element("#hide-top-banners").checked, false);
+    ui.element("#hide-top-banners").checked = true;
+    await ui.change("#hide-top-banners");
+    await ui.done();
+    assert.equal(ui.raw().hideTopBanners, true);
+    await ui.storage.set({ hideTopBanners: false });
+    await settle();
+    assert.equal(ui.element("#hide-top-banners").checked, false);
+  }
+});
 function deferred() {
   let resolve;
   const promise = new Promise((done) => { resolve = done; });
@@ -139,7 +153,7 @@ async function settingsUI(page, initial = {}, browser = "chrome", fontList = [])
     chrome: {
       runtime, tabs: { ...tabs, onUpdated: { addListener() {} } },
       storage: { sync: storage, onChanged: { addListener() {} } },
-      action: { setIcon: async () => {} },
+      action: { setIcon: (_details, callback) => { callback(); } },
       commands: { onCommand: { addListener() {} } }
     }
   });

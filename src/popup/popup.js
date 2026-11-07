@@ -14,6 +14,7 @@
   const zhihuLayoutInput = document.querySelector("#zhihu-article-layout");
   const customFontsInput = document.querySelector("#custom-fonts-enabled");
   const pickButton = document.querySelector("#pick-element");
+  const hideBannersInput = document.querySelector("#hide-top-banners");
   let settings = core.plainSettings(core.DEFAULT_SETTINGS);
   let activeTab = null;
   let activeHost = "";
@@ -44,6 +45,7 @@
     darkSelect.value = settings.presetDark;
     xLayoutInput.checked = settings.xCompactLayout;
     zhihuLayoutInput.checked = settings.zhihuArticleLayout;
+    hideBannersInput.checked = settings.hideTopBanners;
     document.querySelector("#x-layout-row").hidden = activeHost !== "x.com";
     document.querySelector("#zhihu-layout-row").hidden = !core.isZhihuHost(activeHost);
     for (const button of appearanceButtons) {
@@ -111,7 +113,7 @@
 
   for (const [input, key] of [
     [enabledInput, "enabled"], [xLayoutInput, "xCompactLayout"],
-    [zhihuLayoutInput, "zhihuArticleLayout"]
+    [zhihuLayoutInput, "zhihuArticleLayout"], [hideBannersInput, "hideTopBanners"]
   ]) input.addEventListener("change", () => updateSettings({ ...settings, [key]: input.checked }));
   for (const [input, key] of [[lightSelect, "presetLight"], [darkSelect, "presetDark"]]) {
     input.addEventListener("change", () => updateSettings({ ...settings, [key]: input.value }));
@@ -150,6 +152,15 @@
     }
   });
   systemAppearance.addEventListener("change", render);
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    const cleanup = document.querySelector(".cleanup");
+    if (cleanup.open) {
+      event.preventDefault();
+      cleanup.open = false;
+      cleanup.querySelector("summary").focus();
+    }
+  });
   chrome.storage.onChanged.addListener((_changes, areaName) => {
     if (areaName === "sync") refreshSettings();
   });
