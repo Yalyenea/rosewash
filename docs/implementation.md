@@ -802,8 +802,12 @@ and the site theme rule allows it. The site script adds route markers for
 home, dynamic/popular feeds, videos, and read/opus articles. Native navigation
 events update the markers; disabling the layout removes them.
 
-- Home hides the hero banner, channel bars, carousel, live promotions, and
-  ad cards while preserving the navigation and video grid.
+- Home keeps category navigation above the video grid and hides the hero
+  banner, carousel, live promotions, and ad cards.
+- The top bar hides Game Center, Member Shop, Manga, Esports, client download,
+  and Premium entries. Other navigation and account controls remain available.
+  Link-based rules match each entry's own anchor, excluding links inside its
+  popovers; activity entries keep their native visibility.
 - Video pages hide recommendations and promotions and preserve UP information
   and episode selectors. Comments stay in their native parent and use a fixed,
   independently scrolling panel below the right column's modules. This avoids

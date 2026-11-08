@@ -13,8 +13,8 @@ html:is(
   );
 }
 
-/* Hide floating side widgets, app-download prompts, promotional popovers,
-   and top-bar ad/commercial tabs (Game Center, Mall, Manga, Esports, Event promos, App download, VIP upsell). */
+/* Hide selected top-bar service entries and promotional prompts. Match each
+   entry's own link so nested popover links cannot hide unrelated controls. */
 html:is(
   [data-rosewash-bilibili-dynamic],
   [data-rosewash-bilibili-home],
@@ -30,34 +30,22 @@ html:is(
   #app > .bg,
   #app > .bgc,
   .bili-header .vip-login-tip,
-  .bili-header .left-loc-entry,
-  .bili-header .game-download-notify-entry-wrap,
-  .bili-header .download-entry,
   .bili-header .vip-entry,
-  .bili-header :is(.left-entry__item, .left-entry > li):has(
-    a[href*="game.bilibili.com"],
-    a[href*="show.bilibili.com"],
-    a[href*="manga.bilibili.com"],
-    a[href*="/match/"],
-    a[href*="app.bilibili.com"],
-    .download-client-trigger,
-    .loc-entry
-  ),
-  .bili-header :is(.right-entry__item, .right-entry > li):has(
-    .vip-wrap,
-    a[href*="account.bilibili.com/big"]
-  )
+  .bili-header .game-download-notify-entry-wrap,
+  .bili-header .left-entry__item:has(> a:is(
+    [href*="show.bilibili.com"],
+    [href*="manga.bilibili.com"],
+    [href*="/match/"],
+    [href*="app.bilibili.com"]
+  ))
 ) {
   display: none !important;
 }
 
-/* Home: keep only the top bar and the pure video grid; hide the hero banner,
-   channel partition bars, carousel, live/floor promos, and ad or empty ad-shell cards. */
+/* Home: keep the top bar and category navigation above the video grid; hide
+   the hero banner, carousel, live/floor promos, and ad or empty ad-shell cards. */
 html[data-rosewash-bilibili-home] :is(
   .bili-header__banner,
-  .bili-header__channel,
-  .header-channel,
-  .fixed-channel-shim,
   .bili-header .taper-line,
   .recommended-swipe,
   .floor-single-card,
@@ -71,7 +59,7 @@ html[data-rosewash-bilibili-home] :is(
   display: none !important;
 }
 
-/* Without the hero banner and channel bar, the top bar sits cleanly above the video grid. */
+/* With the hero banner hidden, keep the top bar above category navigation. */
 html[data-rosewash-bilibili-home] .bili-header {
   min-height: 64px !important;
 }

@@ -242,7 +242,7 @@ test("notifies Bilibili's page loader when comments scroll and removes old liste
   assert.equal(runtime.scrollEvents, 2);
 });
 
-test("keeps UP info and collection selectors on Bilibili video pages while hiding recommendations and ads", async () => {
+test("preserves Bilibili categories and video selectors while hiding selected service entries and promotions", async () => {
   const css = await readFile(new URL("../src/sites/bilibili.css", import.meta.url), "utf8");
   const videoRule = css.match(/html\[data-rosewash-bilibili-video\] :is\(([\s\S]*?)\) \{\s*display:\s*none !important;/)?.[1];
   const homeRule = css.match(/html\[data-rosewash-bilibili-home\] :is\(([\s\S]*?)\) \{\s*display:\s*none !important;/)?.[1];
@@ -256,10 +256,16 @@ test("keeps UP info and collection selectors on Bilibili video pages while hidin
 
   assert.ok(homeRule);
   assert.match(homeRule, /\.bili-header__banner/);
-  assert.match(homeRule, /\.bili-header__channel/);
+  assert.doesNotMatch(homeRule, /\.bili-header__channel|\.header-channel|\.fixed-channel-shim/);
   assert.match(homeRule, /\.recommended-swipe/);
-  assert.match(css, /a\[href\*="game\.bilibili\.com"\]/);
+  for (const link of ["show.bilibili.com", "manga.bilibili.com", "/match/", "app.bilibili.com"]) {
+    assert.ok(css.includes(link));
+  }
+  assert.match(css, /\.left-entry__item:has\(> a:is\(/);
   assert.match(css, /\.bili-header \.vip-entry/);
+  assert.match(css, /\.bili-header \.game-download-notify-entry-wrap/);
+  assert.doesNotMatch(css, /\.bili-header \.left-loc-entry/);
+  assert.match(css, /\.bili-header \.vip-login-tip/);
 });
 
 test("exposes Bilibili layout controls in popup and settings", async () => {

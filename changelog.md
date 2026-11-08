@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Preserve Bilibili's home category navigation while hiding Game Center,
+  Member Shop, Manga, Esports, client download, and Premium in the top bar.
+  Match navigation entries directly so links inside popovers cannot hide
+  unrelated controls.
 - Add an optional YouTube home layout with a responsive video grid. Hide
   Shorts navigation, tabs, shelves, and cards while keeping ordinary watch
   pages in their native layout. The YouTube switch works independently of
