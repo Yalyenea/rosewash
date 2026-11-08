@@ -45,10 +45,12 @@ html[data-rosewash-theme] a:not([data-rosewash-ignore], [data-rosewash-ignored],
   color: var(--rosewash-link) !important;
 }
 
-/* Site shells that paint top bars via CSS-in-JS (e.g. Zhihu AppHeader). */
+/* Site shells that paint top bars via CSS-in-JS (e.g. Zhihu AppHeader, Bilibili header). */
 html[data-rosewash-theme] .AppHeader,
 html[data-rosewash-theme] .LeanAppHeaderBar,
-html[data-rosewash-theme] .MobileAppHeader {
+html[data-rosewash-theme] .MobileAppHeader,
+html[data-rosewash-theme] .bili-header__bar.slide-down,
+html[data-rosewash-theme] .bili-header .mini-header {
   background-color: var(--rosewash-base) !important;
   background-image: none !important;
   color: var(--rosewash-text) !important;
@@ -56,13 +58,17 @@ html[data-rosewash-theme] .MobileAppHeader {
 
 html[data-rosewash-theme] .AppHeader :is(div, span, p, a, h1, h2, h3, li, button, label, strong, em, i, b),
 html[data-rosewash-theme] .LeanAppHeaderBar :is(div, span, p, a, h1, h2, h3, li, button, label, strong, em, i, b),
-html[data-rosewash-theme] .MobileAppHeader :is(div, span, p, a, h1, h2, h3, li, button, label, strong, em, i, b) {
+html[data-rosewash-theme] .MobileAppHeader :is(div, span, p, a, h1, h2, h3, li, button, label, strong, em, i, b),
+html[data-rosewash-theme] .bili-header__bar.slide-down :is(div, span, p, a, h1, h2, h3, li, button, label, strong, em, i, b),
+html[data-rosewash-theme] .bili-header .mini-header :is(div, span, p, a, h1, h2, h3, li, button, label, strong, em, i, b) {
   color: var(--rosewash-text) !important;
 }
 
 html[data-rosewash-theme] .AppHeader a:not([data-rosewash-ignore]),
 html[data-rosewash-theme] .LeanAppHeaderBar a:not([data-rosewash-ignore]),
-html[data-rosewash-theme] .MobileAppHeader a:not([data-rosewash-ignore]) {
+html[data-rosewash-theme] .MobileAppHeader a:not([data-rosewash-ignore]),
+html[data-rosewash-theme] .bili-header__bar.slide-down a:not([data-rosewash-ignore]),
+html[data-rosewash-theme] .bili-header .mini-header a:not([data-rosewash-ignore]) {
   color: var(--rosewash-link) !important;
 }
 
@@ -106,6 +112,23 @@ html[data-rosewash-theme] [data-color-scheme="dark"] {
   --cover_print_primary: var(--rosewash-text) !important;
   --print_on_web_bg_color: var(--rosewash-text) !important;
   --fp-recirc-block-bg: var(--rosewash-surface) !important;
+  /* Bilibili design tokens (inherited across open shadow roots like <bili-comments>). */
+  --bg1: var(--rosewash-base) !important;
+  --bg1_float: var(--rosewash-surface) !important;
+  --bg2: var(--rosewash-surface) !important;
+  --bg3: var(--rosewash-overlay) !important;
+  --graph_bg_thin: var(--rosewash-surface) !important;
+  --graph_bg_regular: var(--rosewash-overlay) !important;
+  --graph_bg_thick: var(--rosewash-overlay) !important;
+  --text1: var(--rosewash-text) !important;
+  --text2: var(--rosewash-muted) !important;
+  --text3: var(--rosewash-muted) !important;
+  --text4: var(--rosewash-muted) !important;
+  --line_light: var(--rosewash-muted) !important;
+  --line_regular: var(--rosewash-muted) !important;
+  --line_bold: var(--rosewash-muted) !important;
+  --brand_blue: var(--rosewash-link) !important;
+  --text_link: var(--rosewash-link) !important;
 }
 
 html[data-rosewash-theme] [class*="thread-bottom-container"]::before,

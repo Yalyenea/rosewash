@@ -1,0 +1,232 @@
+/* Optional Bilibili clean layout. The content runtime owns the layout marker
+   so disabling Rosewash, blocking Bilibili, or turning the preset off restores
+   the native page. Page markers are added on home, video, dynamic, and read/opus routes. */
+html:is(
+  [data-rosewash-bilibili-dynamic],
+  [data-rosewash-bilibili-home],
+  [data-rosewash-bilibili-read],
+  [data-rosewash-bilibili-video]
+) {
+  --rosewash-bilibili-col: min(
+    var(--rosewash-bilibili-column, 960px),
+    calc(100vw - 48px)
+  );
+}
+
+/* Hide floating side widgets, app-download prompts, promotional popovers,
+   and top-bar ad/commercial tabs (Game Center, Mall, Manga, Esports, Event promos, App download, VIP upsell). */
+html:is(
+  [data-rosewash-bilibili-dynamic],
+  [data-rosewash-bilibili-home],
+  [data-rosewash-bilibili-read],
+  [data-rosewash-bilibili-video]
+) :is(
+  .browser-tip,
+  .palette-button-outer,
+  .palette-button-wrap,
+  .fixed-sidenav-storage,
+  .desktop-download-tip,
+  .bili-dyn-sidebar,
+  #app > .bg,
+  #app > .bgc,
+  .bili-header .vip-login-tip,
+  .bili-header .left-loc-entry,
+  .bili-header .game-download-notify-entry-wrap,
+  .bili-header .download-entry,
+  .bili-header .vip-entry,
+  .bili-header :is(.left-entry__item, .left-entry > li):has(
+    a[href*="game.bilibili.com"],
+    a[href*="show.bilibili.com"],
+    a[href*="manga.bilibili.com"],
+    a[href*="/match/"],
+    a[href*="app.bilibili.com"],
+    .download-client-trigger,
+    .loc-entry
+  ),
+  .bili-header :is(.right-entry__item, .right-entry > li):has(
+    .vip-wrap,
+    a[href*="account.bilibili.com/big"]
+  )
+) {
+  display: none !important;
+}
+
+/* Home: keep only the top bar and the pure video grid; hide the hero banner,
+   channel partition bars, carousel, live/floor promos, and ad or empty ad-shell cards. */
+html[data-rosewash-bilibili-home] :is(
+  .bili-header__banner,
+  .bili-header__channel,
+  .header-channel,
+  .fixed-channel-shim,
+  .bili-header .taper-line,
+  .recommended-swipe,
+  .floor-single-card,
+  .bili-live-card,
+  .feed-card:not(:has(.bili-video-card__wrap, .bili-video-card__skeleton)),
+  .bili-feed-card:not(:has(.bili-video-card__wrap, .bili-video-card__skeleton)),
+  .feed-card:has(.bili-video-card__info--ad, a[href*="cm.bilibili.com"]),
+  .bili-feed-card:has(.bili-video-card__info--ad, a[href*="cm.bilibili.com"]),
+  .bili-video-card:has(.bili-video-card__info--ad, a[href*="cm.bilibili.com"])
+) {
+  display: none !important;
+}
+
+/* Without the hero banner and channel bar, the top bar sits cleanly above the video grid. */
+html[data-rosewash-bilibili-home] .bili-header {
+  min-height: 64px !important;
+}
+
+html[data-rosewash-bilibili-home] .bili-header .bili-header__bar:not(.slide-down) {
+  position: relative !important;
+  background-color: var(--rosewash-base, var(--bg1, #ffffff)) !important;
+  box-shadow: 0 1px 0 var(--rosewash-muted, var(--line_regular, #e3e5e7)) !important;
+}
+
+html[data-rosewash-bilibili-home] .bili-header .bili-header__bar:not(.slide-down) :is(
+  .left-entry__title,
+  .default-entry,
+  .right-entry-text,
+  .right-entry-icon,
+  .left-entry svg
+) {
+  color: var(--rosewash-text, var(--text1, #18191c)) !important;
+}
+
+html[data-rosewash-bilibili-home] .bili-header .bili-header__bar:not(.slide-down) .left-entry svg path {
+  fill: currentColor !important;
+}
+
+html[data-rosewash-bilibili-home] .bili-feed4-layout {
+  padding-top: 24px !important;
+}
+
+/* Reset native top offsets that Bilibili applies to cards wrapping around the 2x2 carousel. */
+html[data-rosewash-bilibili-home] .recommended-container_floor-aside .container {
+  row-gap: 24px !important;
+}
+
+html[data-rosewash-bilibili-home] .recommended-container_floor-aside .container > * {
+  margin-top: 0 !important;
+}
+
+/* Video pages: keep UP info, episode/collection selectors, and relocated comments
+   in the right column while hiding related-video feeds, live popups, game cards, and ads. */
+html[data-rosewash-bilibili-video] {
+  --bili-comments-font-size-title: 18px !important;
+  --bili-comments-font-size-count: 13px !important;
+  --bili-comments-font-size-sort: 13px !important;
+  --bili-comments-font-size-name: 13px !important;
+  --bili-comments-font-size-content: 14px !important;
+  --bili-comments-line-height-content: 22px !important;
+  --bili-comments-avatar-size: scale(0.8) !important;
+}
+
+html[data-rosewash-bilibili-video] :is(
+  .recommend-list-v1,
+  .rec-list,
+  .recommend-list-container,
+  .pop-live-small-mode,
+  .video-card-ad-small,
+  .slide-ad-exp,
+  #slide_ad,
+  #right-bottom-banner,
+  #live_recommand_report,
+  #activity_vote,
+  .activity-m-v1,
+  .video-page-game-card-small,
+  .video-page-special-card-small,
+  .video-page-operator-card-small,
+  .ad-report,
+  .ad-floor-exp
+) {
+  display: none !important;
+}
+
+html[data-rosewash-bilibili-video] .bili-header :is(.bili-header__bar, .mini-header) {
+  position: relative !important;
+}
+
+html[data-rosewash-bilibili-video] .left-container {
+  align-self: flex-start !important;
+  height: fit-content !important;
+  position: sticky !important;
+  top: 16px !important;
+}
+
+html[data-rosewash-bilibili-video] .right-container {
+  width: min(420px, 32vw) !important;
+  margin-left: 20px !important;
+}
+
+html[data-rosewash-bilibili-video] .right-container-inner > #commentapp {
+  margin-top: 18px !important;
+  padding-right: 6px !important;
+}
+
+/* Dynamic feed (t.bilibili.com / popular): single centered column without shopping ad posts. */
+html[data-rosewash-bilibili-dynamic] :is(
+  .bili-dyn-home--member > .left,
+  .bili-dyn-home--member > .right,
+  .bili-dyn-home--member > aside,
+  .bili-dyn-item:has(.bili-dyn-card-goods, .goods-taobao, .goods-shop)
+) {
+  display: none !important;
+}
+
+html[data-rosewash-bilibili-dynamic] .bili-dyn-home--member {
+  display: block !important;
+  margin-block: 24px 48px !important;
+  margin-inline: auto !important;
+  max-width: var(--rosewash-bilibili-col) !important;
+  width: var(--rosewash-bilibili-col) !important;
+  padding-inline: 0 !important;
+}
+
+html[data-rosewash-bilibili-dynamic] .bili-dyn-home--member > main {
+  margin-inline: 0 !important;
+  max-width: none !important;
+  width: 100% !important;
+}
+
+html[data-rosewash-bilibili-dynamic] :is(
+  .bili-dyn-publishing,
+  .bili-dyn-up-list,
+  .bili-dyn-list-tabs,
+  .bili-dyn-item
+) {
+  border: 1px solid var(--rosewash-muted, var(--line_regular, #e3e5e7)) !important;
+}
+
+/* Articles & Opus (/read/cv*, /opus/*): distraction-free centered reading column. */
+html[data-rosewash-bilibili-read] :is(
+  .right-side-bar,
+  .right-sidebar-wrap,
+  .opus-toc,
+  .read-recommend-info,
+  .opus-module-side
+) {
+  display: none !important;
+}
+
+html[data-rosewash-bilibili-read] :is(
+  .article-container,
+  .article-detail,
+  .opus-detail
+) {
+  display: block !important;
+  margin-block: 24px 48px !important;
+  margin-inline: auto !important;
+  max-width: var(--rosewash-bilibili-col) !important;
+  width: var(--rosewash-bilibili-col) !important;
+}
+
+html[data-rosewash-bilibili-read] :is(
+  .article-container__content,
+  .article-holder,
+  .opus-module-content,
+  .opus-module-top__album__cover
+) {
+  box-sizing: border-box !important;
+  max-width: none !important;
+  width: 100% !important;
+}

@@ -74,6 +74,7 @@ and apply the engine. Page responses do not hold up the write queue.
 | Options | `src/options/options.js` | Palettes, appearance, site layouts, block list |
 | X layout | `src/sites/x.js`, `x.css` | Compact navigation rail and centered single-column streams |
 | Zhihu layout | `src/sites/zhihu.js`, `zhihu.css` | Centered reading columns; article-only header hiding |
+| Bilibili layout | `src/sites/bilibili.js`, `bilibili.css` | Clean home and feeds, video comments beside the player, centered articles |
 
 ## Browser frame themes
 
@@ -124,6 +125,8 @@ Stored in **`chrome.storage.sync`**.
   "xSingleColumnWidth": 600,
   "zhihuArticleLayout": false,
   "zhihuArticleWidth": 960,
+  "bilibiliLayout": false,
+  "bilibiliColumnWidth": 960,
   "dimImages": false,
   "imageBrightness": 80,
   "disabledHosts": [],
@@ -150,6 +153,8 @@ Stored in **`chrome.storage.sync`**.
 | `xSingleColumnWidth` | 520 / 600 / 680 / 760 | Centered X timeline width |
 | `zhihuArticleLayout` | boolean | Enables the centered Zhihu reading layout on home, questions, and articles |
 | `zhihuArticleWidth` | 720 / 840 / 960 / 1080 | Centered Zhihu column width |
+| `bilibiliLayout` | boolean | Enables Bilibili's clean home, dynamic, video, and article layouts |
+| `bilibiliColumnWidth` | 720 / 840 / 960 / 1080 | Centered Bilibili dynamic feed and article width |
 | `dimImages` | boolean | Dims images and videos while a tinted dark palette is active |
 | `imageBrightness` | 70 / 80 / 90 | Image brightness in percent when dimming applies |
 | `disabledHosts` | string[] | Hostnames (and parents) where theme and site layouts are blocked |
@@ -615,7 +620,7 @@ old snapshot. Notification responses never block the next save.
 - Pick sits immediately before Allowed / Blocked. The site button saves an
   explicit on/off rule. While Rosewash is paused globally it shows Paused and
   is disabled. Storage changes update the open popup.
-- X and Zhihu layout switches appear only on their matching hosts. Font
+- X, Zhihu, and Bilibili layout switches appear only on their matching hosts. Font
   choices, image dimming, widths, site lists, and shortcut bindings live in
   settings. The popup Fonts switch shares `customFontsEnabled` with settings.
 - Browser-protected pages show Unavailable with a reason and disable the site
@@ -652,8 +657,9 @@ old snapshot. Notification responses never block the next save.
   installed font names directly; blank fields preserve page fonts. Four
   independent previews use the same local FontFace definitions as pages.
   Enumeration and preview errors are shown.
-- Clean Layout includes the global Hide top banners switch above the X.com
-  and 知乎 zhihu.com cards. Each site card has a switch and column width slider.
+- Clean Layout includes the global Hide top banners switch above the X.com,
+  知乎 zhihu.com, and 哔哩哔哩 bilibili.com cards. Each site card has a switch
+  and column width slider.
   Always on / Always off lists and ignored elements follow.
 - Images use one row for the dimming switch, brightness slider, and percentage.
   The slider is disabled while dimming is off.
@@ -774,6 +780,30 @@ The observer only watches the layout attribute on `html`.
 
 Popup and options load `src/content/core.js` for `PRESETS` / `listPresets` /
 `normalizeSettings`. Engine + background also share `core.js`.
+
+## Bilibili clean layout
+
+`manifest.json` injects `src/sites/bilibili.css` and `bilibili.js` on Bilibili
+hosts at `document_start`. The content runtime sets
+`data-rosewash-bilibili-layout` when Rosewash and `bilibiliLayout` are enabled
+and the site theme rule allows it. The site script adds route markers for
+home, dynamic/popular feeds, videos, and read/opus articles. Native navigation
+events update the markers; disabling the layout removes them.
+
+- Home hides the hero banner, channel bars, carousel, live promotions, and
+  ad cards while preserving the navigation and video grid.
+- Video pages hide recommendations and promotions, preserve UP information
+  and episode selectors, and move comments into the right column after page
+  hydration. The player column stays visible while scrolling. Turning the
+  layout off restores comments to their original position.
+- Dynamic feeds and articles use `--rosewash-bilibili-column`, shrinking to
+  the viewport with 24px gutters. Video columns retain their separate sizing.
+- Shared theme rules cover Bilibili header and comment tokens, including
+  inherited tokens in open shadow roots. Player and thumbnail overlays keep
+  their native contrast.
+
+`test/bilibili-layout.test.js` checks route changes, comment restoration,
+cleanup selectors, and settings wiring.
 
 ## Messaging contract
 

@@ -633,6 +633,8 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
     xSingleColumnWidth: 680,
     zhihuArticleLayout: true,
     zhihuArticleWidth: 1080,
+    bilibiliLayout: true,
+    bilibiliColumnWidth: 840,
     disabledHosts: ["Example.COM"]
   })), {
     enabled: true,
@@ -658,14 +660,19 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
     xSingleColumnWidth: 680,
     zhihuArticleLayout: true,
     zhihuArticleWidth: 1080,
+    bilibiliLayout: true,
+    bilibiliColumnWidth: 840,
     disabledHosts: ["example.com"]
   });
   assert.equal(core.plainSettings({ xCompactLayout: "true" }).xCompactLayout, false);
   assert.equal(core.plainSettings({ xSingleColumnWidth: 700 }).xSingleColumnWidth, 600);
   assert.equal(core.plainSettings({ zhihuArticleLayout: "true" }).zhihuArticleLayout, false);
   assert.equal(core.plainSettings({ zhihuArticleWidth: 900 }).zhihuArticleWidth, 960);
+  assert.equal(core.plainSettings({ bilibiliLayout: "true" }).bilibiliLayout, false);
+  assert.equal(core.plainSettings({ bilibiliColumnWidth: 900 }).bilibiliColumnWidth, 960);
   assert.deepEqual(plain(core.X_SINGLE_COLUMN_WIDTHS), [520, 600, 680, 760]);
   assert.deepEqual(plain(core.ZHIHU_ARTICLE_WIDTHS), [720, 840, 960, 1080]);
+  assert.deepEqual(plain(core.BILIBILI_COLUMN_WIDTHS), [720, 840, 960, 1080]);
   const media = core.plainSettings({
     dimImages: "true", imageBrightness: 75,
     ignoredElements: { " Docs.Example.com ": ["#nav", " #nav ", "", "x".repeat(301)], "empty.com": [], bad: "#x" }
@@ -2533,6 +2540,8 @@ test("normalizes settings and blocked hosts", async () => {
     xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
     zhihuArticleWidth: 960,
+    bilibiliLayout: false,
+    bilibiliColumnWidth: 960,
     disabledHosts: ["docs.example.com", "example.com"],
     fontDisabledHosts: ["docs.example.com", "example.com"],
     fontEnabledHosts: []
@@ -2567,6 +2576,8 @@ test("normalizes settings and blocked hosts", async () => {
     xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
     zhihuArticleWidth: 960,
+    bilibiliLayout: false,
+    bilibiliColumnWidth: 960,
     disabledHosts: []
   });
 
@@ -2599,6 +2610,8 @@ test("normalizes settings and blocked hosts", async () => {
     xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
     zhihuArticleWidth: 960,
+    bilibiliLayout: false,
+    bilibiliColumnWidth: 960,
     disabledHosts: []
   });
 
@@ -2608,6 +2621,10 @@ test("normalizes settings and blocked hosts", async () => {
   assert.equal(core.isZhihuHost("m.zhihu.com"), false);
   assert.equal(core.isZhihuArticlePath("/p/38902833"), true);
   assert.equal(core.isZhihuArticlePath("/question/123"), false);
+  assert.equal(core.isBilibiliHost("bilibili.com"), true);
+  assert.equal(core.isBilibiliHost("www.bilibili.com"), true);
+  assert.equal(core.isBilibiliHost("t.bilibili.com"), true);
+  assert.equal(core.isBilibiliHost("example.com"), false);
 
   assert.equal(core.isHostDisabled("news.example.com", ["example.com"]), true);
   assert.equal(core.isHostDisabled("example.org", ["example.com"]), false);

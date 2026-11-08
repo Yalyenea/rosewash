@@ -249,6 +249,7 @@
 
   const X_SINGLE_COLUMN_WIDTHS = Object.freeze([520, 600, 680, 760]);
   const ZHIHU_ARTICLE_WIDTHS = Object.freeze([720, 840, 960, 1080]);
+  const BILIBILI_COLUMN_WIDTHS = Object.freeze([720, 840, 960, 1080]);
   const IMAGE_BRIGHTNESS_LEVELS = Object.freeze([70, 80, 90]);
   const MAX_IGNORED_SELECTOR_LENGTH = 300;
 
@@ -270,6 +271,8 @@
     xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
     zhihuArticleWidth: 960,
+    bilibiliLayout: false,
+    bilibiliColumnWidth: 960,
     dimImages: false,
     imageBrightness: 80,
     disabledHosts: [],
@@ -318,7 +321,10 @@
     ".monaco-editor",
     ".hljs",
     ".katex",
-    ".MathJax"
+    ".MathJax",
+    ".bpx-player-video-area",
+    ".bili-video-card__image",
+    ".pic-box"
   ].join(",");
   const FONT_SKIP_SELECTOR = "[data-rosewash-ignore], [role='img'], svg, .katex, .MathJax, mjx-container, .CodeMirror, .cm-editor, .monaco-editor, [contenteditable]";
 
@@ -1015,6 +1021,10 @@
       zhihuArticleWidth: ZHIHU_ARTICLE_WIDTHS.includes(source.zhihuArticleWidth)
         ? source.zhihuArticleWidth
         : DEFAULT_SETTINGS.zhihuArticleWidth,
+      bilibiliLayout: source.bilibiliLayout === true,
+      bilibiliColumnWidth: BILIBILI_COLUMN_WIDTHS.includes(source.bilibiliColumnWidth)
+        ? source.bilibiliColumnWidth
+        : DEFAULT_SETTINGS.bilibiliColumnWidth,
       dimImages: source.dimImages === true,
       imageBrightness: IMAGE_BRIGHTNESS_LEVELS.includes(source.imageBrightness)
         ? source.imageBrightness
@@ -1111,6 +1121,12 @@
     return /^\/p\/\d+/.test(String(pathname || ""));
   }
 
+  function isBilibiliHost(host) {
+    const normalizedHost = normalizeHost(host);
+    return normalizedHost === "bilibili.com"
+      || normalizedHost.endsWith(".bilibili.com");
+  }
+
   function presetIdForVariant(value, legacyPreset, variant) {
     if (PRESETS[value] && PRESETS[value][variant]) {
       return value;
@@ -1205,6 +1221,8 @@
       xSingleColumnWidth: normalized.xSingleColumnWidth,
       zhihuArticleLayout: normalized.zhihuArticleLayout,
       zhihuArticleWidth: normalized.zhihuArticleWidth,
+      bilibiliLayout: normalized.bilibiliLayout,
+      bilibiliColumnWidth: normalized.bilibiliColumnWidth,
       dimImages: normalized.dimImages,
       imageBrightness: normalized.imageBrightness,
       disabledHosts: normalized.disabledHosts.slice(),
@@ -1260,7 +1278,10 @@
   const PAGE_CHROME_CLASSES = new Set([
     "AppHeader",
     "LeanAppHeaderBar",
-    "MobileAppHeader"
+    "MobileAppHeader",
+    "bili-header__bar",
+    "bili-header__channel",
+    "mini-header"
   ]);
 
   function hasPageChromeClass(className) {
@@ -1292,9 +1313,9 @@
   // cannot reach pseudo-elements, so root custom properties must move too.
   // Exclude utility-contrast (on-accent labels), not Substack background_contrast_*.
   const SURFACE_VAR_EXCLUDE = /text|icon|label|inverted|border|outline|ring|divider|btn-text|msg-text|on-primary|utility-contrast|shadow-color|submit-btn-text|ink|print_on/;
-  const SURFACE_VAR_INCLUDE = /main-surface|composer-surface|sidebar-surface|component-sidebar-bg|bg-primary|bg-secondary|bg-elevated|bg-secondary-surface|surface-primary|surface-secondary|surface-tertiary|page-bg|canvas|background-primary|background-secondary|background_contrast|cover_bg|fp-recirc-block-bg|ground|web_bg|theme_bg|color_theme_bg|color-bg|^--bg$|^--background$|^--background-color$/;
+  const SURFACE_VAR_INCLUDE = /main-surface|composer-surface|sidebar-surface|component-sidebar-bg|bg-primary|bg-secondary|bg-elevated|bg-secondary-surface|surface-primary|surface-secondary|surface-tertiary|page-bg|canvas|background-primary|background-secondary|background_contrast|cover_bg|fp-recirc-block-bg|ground|web_bg|theme_bg|color_theme_bg|color-bg|^--bg[123]?(?:_float)?$|^--graph_bg_(?:thin|regular|thick)$|^--background$|^--background-color$/;
   const TEXT_VAR_EXCLUDE = /inverted|on-primary|btn|button|link|brand|accent|success|warning|error|danger|shadow|utility-contrast/;
-  const TEXT_VAR_INCLUDE = /(?:^|-)(ink|title-ink|text-primary|text-secondary|text-color|foreground|body-color|color-text|print_on_web|fg-primary|fg-secondary|cover_print_primary)(?:-|$)/;
+  const TEXT_VAR_INCLUDE = /(?:^|-)(ink|title-ink|text-primary|text-secondary|text-color|text[1-4]|foreground|body-color|color-text|print_on_web|fg-primary|fg-secondary|cover_print_primary)(?:-|$)/;
 
   // Always force these when present or when any surface token is active.
   // ChatGPT dark may expose unparseable values (display-p3) or re-declare
@@ -1352,7 +1373,10 @@
       return null;
     }
 
-    if (/(secondary|elevated|composer|tertiary|overlay|contrast|recirc)/.test(normalized)) {
+    if (/^--(?:bg3|graph_bg_(?:regular|thick))$/.test(normalized)) {
+      return "overlay";
+    }
+    if (/(secondary|elevated|composer|tertiary|overlay|contrast|recirc|^--bg1_float$|^--bg2$|^--graph_bg_thin$)/.test(normalized)) {
       return "surface";
     }
     return "base";
@@ -2487,6 +2511,7 @@
     PALETTES,
     X_SINGLE_COLUMN_WIDTHS,
     ZHIHU_ARTICLE_WIDTHS,
+    BILIBILI_COLUMN_WIDTHS,
     IMAGE_BRIGHTNESS_LEVELS,
     listPresets,
     createEngine,
@@ -2507,6 +2532,7 @@
     hostPolicyForHost,
     isZhihuHost,
     isZhihuArticlePath,
+    isBilibiliHost,
     toggleHostEnabled,
     setHostPolicy,
     isGeneratedBackgroundImage,

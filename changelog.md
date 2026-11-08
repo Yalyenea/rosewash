@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add an optional Bilibili clean layout for home, dynamic feeds, videos, and
+  articles. Hide promotional and recommendation blocks, keep video comments
+  beside the player, and offer adjustable feed and article widths.
+- Cover Bilibili headers and comment colors while preserving player and
+  thumbnail overlays.
 - Add an optional global Hide top banners switch in Settings → Sites and
   the popup's collapsed Page cleanup section. Detect independent top
   announcements, including named bars inside navigation, and restore them

@@ -89,6 +89,19 @@
         "src/sites/zhihu.js"
       ],
       "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://bilibili.com/*",
+        "https://*.bilibili.com/*"
+      ],
+      "css": [
+        "src/sites/bilibili.css"
+      ],
+      "js": [
+        "src/sites/bilibili.js"
+      ],
+      "run_at": "document_start"
     }
   ]
 }

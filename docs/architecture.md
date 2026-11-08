@@ -211,7 +211,7 @@ restores its parent rule if present, otherwise the global
 default. The most specific hostname wins; a blocked rule wins a tie, and the
 global enable switch pauses every site; while paused, the site button is
 disabled. Pick sits beside the site button;
-X and Zhihu layout switches appear only on their matching site.
+X, Zhihu, and Bilibili layout switches appear only on their matching site.
 The popup's single Fonts switch sits below Site and edits only the current
 host's font rule. Site clicks and the site shortcut leave font rules unchanged.
 The global `customFontsEnabled` setting remains in Settings. Existing host rules
@@ -268,6 +268,14 @@ shrinks with the viewport, and controls wrap on narrow screens. Fixed answer act
 Other Zhihu routes keep the native layout. The isolated content script listens
 to `navigation.currententrychange` for page-world `pushState`, `replaceState`,
 and back/forward navigation, then updates the page marker.
+
+The optional Bilibili layout uses the same root and route marker pattern.
+It cleans home promotions and video recommendations, centers dynamic feeds
+and articles, and places comments beside a sticky video column. Episode
+selectors and UP information remain available. Disabling the layout restores
+the comments to their original parent and clears the page markers. Shared
+theme tokens cover Bilibili headers and comments while media overlays retain
+their native contrast.
 
 ## Performance Boundary
 

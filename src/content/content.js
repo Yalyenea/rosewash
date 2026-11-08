@@ -17,6 +17,15 @@
     "data-rosewash-zhihu-home",
     "data-rosewash-zhihu-question"
   ];
+  const BILIBILI_LAYOUT_ATTRIBUTE = "data-rosewash-bilibili-layout";
+  const BILIBILI_LAYOUT_EVENT = "rosewash:bilibili-layout-change";
+  const BILIBILI_WIDTH_PROPERTY = "--rosewash-bilibili-column";
+  const BILIBILI_PAGE_ATTRIBUTES = [
+    "data-rosewash-bilibili-dynamic",
+    "data-rosewash-bilibili-home",
+    "data-rosewash-bilibili-read",
+    "data-rosewash-bilibili-video"
+  ];
   let settingsCache = core.plainSettings(core.DEFAULT_SETTINGS);
   let settingsLoaded = false;
   let disposed = false;
@@ -65,6 +74,15 @@
       zhihuRoot.style.removeProperty(ZHIHU_WIDTH_PROPERTY);
       document.dispatchEvent(new CustomEvent(ZHIHU_LAYOUT_EVENT));
     }
+    if (zhihuRoot?.hasAttribute(BILIBILI_LAYOUT_ATTRIBUTE)
+      || BILIBILI_PAGE_ATTRIBUTES.some((attribute) => zhihuRoot?.hasAttribute(attribute))) {
+      zhihuRoot.removeAttribute(BILIBILI_LAYOUT_ATTRIBUTE);
+      for (const attribute of BILIBILI_PAGE_ATTRIBUTES) {
+        zhihuRoot.removeAttribute(attribute);
+      }
+      zhihuRoot.style.removeProperty(BILIBILI_WIDTH_PROPERTY);
+      document.dispatchEvent(new CustomEvent(BILIBILI_LAYOUT_EVENT));
+    }
     engine.disconnect();
     banners.disconnect();
   }
@@ -111,6 +129,20 @@
     if (document.documentElement.hasAttribute(ZHIHU_LAYOUT_ATTRIBUTE) !== zhihuActive) {
       document.documentElement.toggleAttribute(ZHIHU_LAYOUT_ATTRIBUTE, zhihuActive);
       document.dispatchEvent(new CustomEvent(ZHIHU_LAYOUT_EVENT));
+    }
+
+    const bilibiliActive = allowed && core.isBilibiliHost(host) && settings.bilibiliLayout;
+    if (bilibiliActive) {
+      document.documentElement.style.setProperty(
+        BILIBILI_WIDTH_PROPERTY,
+        `${settings.bilibiliColumnWidth}px`
+      );
+    } else {
+      document.documentElement.style.removeProperty(BILIBILI_WIDTH_PROPERTY);
+    }
+    if (document.documentElement.hasAttribute(BILIBILI_LAYOUT_ATTRIBUTE) !== bilibiliActive) {
+      document.documentElement.toggleAttribute(BILIBILI_LAYOUT_ATTRIBUTE, bilibiliActive);
+      document.dispatchEvent(new CustomEvent(BILIBILI_LAYOUT_EVENT));
     }
   }
 

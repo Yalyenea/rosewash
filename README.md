@@ -58,7 +58,7 @@
 - **Theme:** separate light and dark palettes, system appearance, and optional image dimming. Toggle theme overrides independently of fonts.
 - **Fonts:** searchable English, Chinese, math, and monospace font choices in Chrome and Edge; installed font names in Firefox. Toggle fonts for the current site from the popup.
 - **Control:** toggle theme and fonts independently by site, leave selected elements untouched with Pick (Esc to cancel), or pause everywhere.
-- **Reading:** adjustable layouts for X and Zhihu, plus automatic expansion of X reply text.
+- **Reading:** adjustable layouts for X, Zhihu, and Bilibili, plus automatic expansion of X reply text. Bilibili video pages keep comments beside the player and hide recommendations.
 - **Cleanup:** hide common top announcement and promotion bars with one global switch in Settings or the popup's collapsed Page cleanup section.
 
 Firefox's browser frame follows the palette. Matching Chrome and Edge frame themes are packaged separately. Reply expansion and frame themes are available in the current source; store releases may lag behind.
