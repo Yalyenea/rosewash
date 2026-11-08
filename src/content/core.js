@@ -250,6 +250,7 @@
   const X_SINGLE_COLUMN_WIDTHS = Object.freeze([520, 600, 680, 760]);
   const ZHIHU_ARTICLE_WIDTHS = Object.freeze([720, 840, 960, 1080]);
   const BILIBILI_COLUMN_WIDTHS = Object.freeze([720, 840, 960, 1080]);
+  const ARXIV_COLUMN_WIDTHS = Object.freeze([640, 720, 840, 960]);
   const IMAGE_BRIGHTNESS_LEVELS = Object.freeze([70, 80, 90]);
   const MAX_IGNORED_SELECTOR_LENGTH = 300;
 
@@ -273,6 +274,8 @@
     zhihuArticleWidth: 960,
     bilibiliLayout: false,
     bilibiliColumnWidth: 960,
+    arxivLayout: false,
+    arxivColumnWidth: 840,
     dimImages: false,
     imageBrightness: 80,
     disabledHosts: [],
@@ -1025,6 +1028,10 @@
       bilibiliColumnWidth: BILIBILI_COLUMN_WIDTHS.includes(source.bilibiliColumnWidth)
         ? source.bilibiliColumnWidth
         : DEFAULT_SETTINGS.bilibiliColumnWidth,
+      arxivLayout: source.arxivLayout === true,
+      arxivColumnWidth: ARXIV_COLUMN_WIDTHS.includes(source.arxivColumnWidth)
+        ? source.arxivColumnWidth
+        : DEFAULT_SETTINGS.arxivColumnWidth,
       dimImages: source.dimImages === true,
       imageBrightness: IMAGE_BRIGHTNESS_LEVELS.includes(source.imageBrightness)
         ? source.imageBrightness
@@ -1127,6 +1134,10 @@
       || normalizedHost.endsWith(".bilibili.com");
   }
 
+  function isArxivHost(host) {
+    return ["arxiv.org", "www.arxiv.org"].includes(normalizeHost(host));
+  }
+
   function presetIdForVariant(value, legacyPreset, variant) {
     if (PRESETS[value] && PRESETS[value][variant]) {
       return value;
@@ -1223,6 +1234,8 @@
       zhihuArticleWidth: normalized.zhihuArticleWidth,
       bilibiliLayout: normalized.bilibiliLayout,
       bilibiliColumnWidth: normalized.bilibiliColumnWidth,
+      arxivLayout: normalized.arxivLayout,
+      arxivColumnWidth: normalized.arxivColumnWidth,
       dimImages: normalized.dimImages,
       imageBrightness: normalized.imageBrightness,
       disabledHosts: normalized.disabledHosts.slice(),
@@ -2512,6 +2525,7 @@
     X_SINGLE_COLUMN_WIDTHS,
     ZHIHU_ARTICLE_WIDTHS,
     BILIBILI_COLUMN_WIDTHS,
+    ARXIV_COLUMN_WIDTHS,
     IMAGE_BRIGHTNESS_LEVELS,
     listPresets,
     createEngine,
@@ -2533,6 +2547,7 @@
     isZhihuHost,
     isZhihuArticlePath,
     isBilibiliHost,
+    isArxivHost,
     toggleHostEnabled,
     setHostPolicy,
     isGeneratedBackgroundImage,

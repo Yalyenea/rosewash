@@ -37,6 +37,9 @@
   const bilibiliLayoutInput = document.querySelector("#bilibili-layout");
   const bilibiliWidthInput = document.querySelector("#bilibili-column-width");
   const bilibiliWidthValue = document.querySelector("#bilibili-column-width-value");
+  const arxivLayoutInput = document.querySelector("#arxiv-layout");
+  const arxivWidthInput = document.querySelector("#arxiv-column-width");
+  const arxivWidthValue = document.querySelector("#arxiv-column-width-value");
   const lightList = document.querySelector("#preset-light-list");
   const darkList = document.querySelector("#preset-dark-list");
   const hostTextarea = document.querySelector("#disabled-hosts");
@@ -172,6 +175,15 @@
     const index = core.BILIBILI_COLUMN_WIDTHS.indexOf(width);
     bilibiliWidthInput.value = String(index);
     bilibiliWidthValue.value = `${width} px`;
+  }
+
+  function selectedArxivColumnWidth() {
+    return core.ARXIV_COLUMN_WIDTHS[Number(arxivWidthInput.value)];
+  }
+
+  function renderArxivColumnWidth(width) {
+    arxivWidthInput.value = String(core.ARXIV_COLUMN_WIDTHS.indexOf(width));
+    arxivWidthValue.value = `${width} px`;
   }
 
   function selectedImageBrightness() {
@@ -330,6 +342,9 @@
     bilibiliLayoutInput.checked = normalized.bilibiliLayout;
     bilibiliWidthInput.disabled = !normalized.bilibiliLayout;
     renderBilibiliColumnWidth(normalized.bilibiliColumnWidth);
+    arxivLayoutInput.checked = normalized.arxivLayout;
+    arxivWidthInput.disabled = !normalized.arxivLayout;
+    renderArxivColumnWidth(normalized.arxivColumnWidth);
     dimInput.checked = normalized.dimImages;
     renderImageBrightness(normalized.imageBrightness);
     renderImageDimming();
@@ -377,6 +392,8 @@
       zhihuArticleWidth: selectedZhihuArticleWidth(),
       bilibiliLayout: bilibiliLayoutInput.checked,
       bilibiliColumnWidth: selectedBilibiliColumnWidth(),
+      arxivLayout: arxivLayoutInput.checked,
+      arxivColumnWidth: selectedArxivColumnWidth(),
       dimImages: dimInput.checked,
       imageBrightness: selectedImageBrightness(),
       disabledHosts: hostsFromTextarea(hostTextarea),
@@ -427,10 +444,10 @@
     input.addEventListener("change", saveSettings);
   }
   for (const { input } of fontFields) input.addEventListener("input", scheduleSave);
-  for (const input of [xSingleWidthInput, zhihuWidthInput, bilibiliWidthInput, brightnessInput]) {
+  for (const input of [xSingleWidthInput, zhihuWidthInput, bilibiliWidthInput, arxivWidthInput, brightnessInput]) {
     input.addEventListener("change", saveSettings);
   }
-  for (const input of [enabledInput, defaultInput, colorsInput, customFontsInput, xCompactInput, xAutoExpandInput, hideBannersInput, zhihuLayoutInput, bilibiliLayoutInput, dimInput, ...fontFields.map(field => field.input)]) {
+  for (const input of [enabledInput, defaultInput, colorsInput, customFontsInput, xCompactInput, xAutoExpandInput, hideBannersInput, zhihuLayoutInput, bilibiliLayoutInput, arxivLayoutInput, dimInput, ...fontFields.map(field => field.input)]) {
     input.addEventListener("change", saveSettings);
   }
   function flushSave() {
@@ -444,6 +461,7 @@
   xCompactInput.addEventListener("change", () => { xSingleWidthInput.disabled = !xCompactInput.checked; });
   zhihuLayoutInput.addEventListener("change", () => { zhihuWidthInput.disabled = !zhihuLayoutInput.checked; });
   bilibiliLayoutInput.addEventListener("change", () => { bilibiliWidthInput.disabled = !bilibiliLayoutInput.checked; });
+  arxivLayoutInput.addEventListener("change", () => { arxivWidthInput.disabled = !arxivLayoutInput.checked; });
 
   xSingleWidthInput.addEventListener("input", () => {
     renderXSingleColumnWidth(selectedXSingleColumnWidth());
@@ -457,6 +475,11 @@
 
   bilibiliWidthInput.addEventListener("input", () => {
     renderBilibiliColumnWidth(selectedBilibiliColumnWidth());
+    scheduleSave();
+  });
+
+  arxivWidthInput.addEventListener("input", () => {
+    renderArxivColumnWidth(selectedArxivColumnWidth());
     scheduleSave();
   });
 

@@ -13,10 +13,10 @@ check: test validate
 dist browser="chrome":
     node scripts/dist.mjs "{{browser}}"
 
-# Stage and reload the unpacked extension in Helium on macOS.
+# Stage and reload the unpacked extension in Ardia or Helium on macOS.
 [positional-arguments]
 reload url="": dist
-    uv run --with pyobjc-framework-ApplicationServices python scripts/reload-helium.py "$1"
+    uv run --with pyobjc-framework-ApplicationServices python scripts/reload-browser.py "$1"
 
 # Check and package for one store: just package [chrome|edge|firefox]
 package browser="chrome": check

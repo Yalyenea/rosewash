@@ -13,6 +13,7 @@
   const xLayoutInput = document.querySelector("#x-compact-layout");
   const zhihuLayoutInput = document.querySelector("#zhihu-article-layout");
   const bilibiliLayoutInput = document.querySelector("#bilibili-layout");
+  const arxivLayoutInput = document.querySelector("#arxiv-layout");
   const customFontsInput = document.querySelector("#custom-fonts-enabled");
   const pickButton = document.querySelector("#pick-element");
   const hideBannersInput = document.querySelector("#hide-top-banners");
@@ -47,10 +48,12 @@
     xLayoutInput.checked = settings.xCompactLayout;
     zhihuLayoutInput.checked = settings.zhihuArticleLayout;
     bilibiliLayoutInput.checked = settings.bilibiliLayout;
+    arxivLayoutInput.checked = settings.arxivLayout;
     hideBannersInput.checked = settings.hideTopBanners;
     document.querySelector("#x-layout-row").hidden = activeHost !== "x.com";
     document.querySelector("#zhihu-layout-row").hidden = !core.isZhihuHost(activeHost);
     document.querySelector("#bilibili-layout-row").hidden = !core.isBilibiliHost(activeHost);
+    document.querySelector("#arxiv-layout-row").hidden = !core.isArxivHost(activeHost);
     for (const button of appearanceButtons) {
       button.setAttribute("aria-pressed", String(button.dataset.appearance === settings.appearance));
     }
@@ -117,7 +120,7 @@
   for (const [input, key] of [
     [enabledInput, "enabled"], [xLayoutInput, "xCompactLayout"],
     [zhihuLayoutInput, "zhihuArticleLayout"], [bilibiliLayoutInput, "bilibiliLayout"],
-    [hideBannersInput, "hideTopBanners"]
+    [arxivLayoutInput, "arxivLayout"], [hideBannersInput, "hideTopBanners"]
   ]) input.addEventListener("change", () => updateSettings({ ...settings, [key]: input.checked }));
   for (const [input, key] of [[lightSelect, "presetLight"], [darkSelect, "presetDark"]]) {
     input.addEventListener("change", () => updateSettings({ ...settings, [key]: input.value }));

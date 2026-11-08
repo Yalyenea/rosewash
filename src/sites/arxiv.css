@@ -1,0 +1,407 @@
+/* Optional arXiv layout. Route markers keep search, lists, account pages,
+   and PDF navigation outside this overlay. No palette or font is imposed. */
+html[data-rosewash-arxiv-page] {
+  --rosewash-arxiv-width: min(var(--rosewash-arxiv-column, 840px), calc(100% - 40px));
+}
+
+html[data-rosewash-arxiv-page] :is(
+  #ds-announcement,
+  #announcement-banner,
+  .ds-site-footer
+) {
+  display: none !important;
+}
+
+html[data-rosewash-arxiv-page] :is(.ds-site-header, .arxiv-html-header) {
+  box-sizing: border-box !important;
+  position: static !important;
+  width: var(--rosewash-arxiv-width) !important;
+  min-height: 40px !important;
+  height: auto !important;
+  margin: 0 auto !important;
+  padding: 6px 0 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+html[data-rosewash-arxiv-page] :is(.ds-site-header-logo img, .arxiv-html-header img) {
+  max-height: 24px !important;
+  width: auto !important;
+}
+
+html[data-rosewash-arxiv-page] :is(#ds-site-header-nav, #ds-nav-toggle) {
+  display: none !important;
+}
+
+html[data-rosewash-arxiv-page] main,
+html[data-rosewash-arxiv-page] #content {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+html[data-rosewash-arxiv-page] .rosewash-arxiv-fold {
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--rosewash-muted, #8a8a8a) !important;
+}
+
+html[data-rosewash-arxiv-page] .rosewash-arxiv-fold > summary {
+  padding: 10px 0 !important;
+  cursor: pointer;
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+}
+
+html[data-rosewash-arxiv-page] .rosewash-arxiv-fold > summary:focus-visible {
+  outline: 2px solid var(--rosewash-link, currentColor);
+  outline-offset: 3px;
+}
+
+/* Home: keep every subject visible and provide direct jumps to each group. */
+html[data-rosewash-arxiv-page="home"] #content {
+  width: var(--rosewash-arxiv-width) !important;
+  margin: 8px auto 32px !important;
+}
+
+html[data-rosewash-arxiv-page="home"] :is(
+  .tagline,
+  #content > .columns > :not(.intro-and-news),
+  #content > hr,
+  #content > hr ~ h2,
+  #content > hr ~ ul
+) {
+  display: none !important;
+}
+
+html[data-rosewash-arxiv-page="home"] :is(.columns, .intro-and-news) {
+  display: block !important;
+  width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+html[data-rosewash-arxiv-page="home"] .home-search {
+  margin: 0 0 16px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  line-height: 1.6 !important;
+}
+
+html[data-rosewash-arxiv-page="home"] .home-search :is(select, input) {
+  max-width: 100% !important;
+  margin: 4px 4px 4px 0 !important;
+}
+
+html[data-rosewash-arxiv-page="home"] .rosewash-arxiv-subject-nav {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px 16px !important;
+  margin-bottom: 20px !important;
+  font-size: 13px !important;
+  line-height: 1.5 !important;
+}
+
+html[data-rosewash-arxiv-page="home"] .rosewash-arxiv-subject {
+  margin: 0 0 24px !important;
+  scroll-margin-top: 12px;
+}
+
+html[data-rosewash-arxiv-page="home"] .rosewash-arxiv-subject h2 {
+  margin: 0 0 8px !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  line-height: 1.4 !important;
+}
+
+html[data-rosewash-arxiv-page="home"] .rosewash-arxiv-subject > ul {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)) !important;
+  gap: 8px 6px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+
+/* Native separators and "includes" text are redundant once links form a grid. */
+html[data-rosewash-arxiv-page="home"] .rosewash-arxiv-subject li {
+  margin: 0 0 12px !important;
+  font-size: 0 !important;
+  line-height: 1.5 !important;
+}
+
+html[data-rosewash-arxiv-page="home"] .rosewash-arxiv-subject li:has(.rosewash-arxiv-topics) {
+  grid-column: 1 / -1;
+  margin-bottom: 6px !important;
+}
+
+html[data-rosewash-arxiv-page="home"] .rosewash-arxiv-subject li > :is(a, strong) {
+  display: inline-block !important;
+  margin-right: 10px !important;
+  font-size: 12px !important;
+}
+
+html[data-rosewash-arxiv-page="home"] .rosewash-arxiv-subject li > a:first-child {
+  font-size: 14px !important;
+  font-weight: 500 !important;
+}
+
+html[data-rosewash-arxiv-page="home"] .rosewash-arxiv-subject li > br {
+  display: none !important;
+}
+
+html[data-rosewash-arxiv-page="home"] .rosewash-arxiv-topics {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 180px), 1fr)) !important;
+  gap: 6px !important;
+  margin-top: 6px !important;
+}
+
+html[data-rosewash-arxiv-page="home"] :is(
+  .rosewash-arxiv-topics > a,
+  .rosewash-arxiv-subject li:not(:has(.rosewash-arxiv-topics))
+) {
+  box-sizing: border-box !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 6px 8px !important;
+  border: 1px solid color-mix(in srgb, var(--rosewash-muted, currentColor) 25%, transparent) !important;
+  border-radius: 3px !important;
+}
+
+html[data-rosewash-arxiv-page="home"] .rosewash-arxiv-topics > a {
+  display: flex !important;
+  align-items: center !important;
+  min-height: 34px !important;
+  font-size: 14px !important;
+  line-height: 1.4 !important;
+  text-decoration: none !important;
+  overflow-wrap: anywhere;
+}
+
+html[data-rosewash-arxiv-page="home"] .rosewash-arxiv-subject li:not(:has(.rosewash-arxiv-topics)) > a:first-child {
+  display: block !important;
+  margin: 0 0 4px !important;
+  font-weight: 400 !important;
+}
+
+html[data-rosewash-arxiv-page="home"] .rosewash-arxiv-subject li:not(:has(.rosewash-arxiv-topics)) > :is(a, strong) {
+  margin-right: 6px !important;
+}
+
+html[data-rosewash-arxiv-page="home"] .rosewash-arxiv-topics > a:is(:hover, :focus-visible) {
+  outline: 1px solid var(--rosewash-link, currentColor);
+  outline-offset: -1px;
+}
+
+/* Abstract: paper actions sit below the authors; research tools stay below
+   the reading column and the citation modal retains its native behavior. */
+html[data-rosewash-arxiv-page="abs"] #abs-outer {
+  display: block !important;
+  width: var(--rosewash-arxiv-width) !important;
+  margin: 8px auto 32px !important;
+}
+
+html[data-rosewash-arxiv-page="abs"] :is(.leftcolumn, #content-inner, #abs, .extra-services) {
+  float: none !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+html[data-rosewash-arxiv-page="abs"] :is(
+  .subheader,
+  .header-breadcrumbs-mobile,
+  .mobile-submission-download,
+  .full-text > h2,
+  .full-text > .descriptor,
+  .full-text .abs-license,
+  .extra-services > :not(:has(#bib-cite-trigger), #bib-cite-modal),
+  #labstabs,
+  .endorsers
+) {
+  display: none !important;
+}
+
+html[data-rosewash-arxiv-page="abs"] h1.title {
+  margin: 6px 0 10px !important;
+  font-size: clamp(26px, 3.2vw, 34px) !important;
+  line-height: 1.25 !important;
+}
+
+html[data-rosewash-arxiv-page="abs"] .authors {
+  margin: 0 0 10px !important;
+  font-size: 16px !important;
+  line-height: 1.55 !important;
+}
+
+html[data-rosewash-arxiv-page="abs"] .full-text {
+  margin: 0 0 16px !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+html[data-rosewash-arxiv-page="abs"] .full-text ul {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px 20px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+
+html[data-rosewash-arxiv-page="abs"] .abstract {
+  margin: 0 0 16px !important;
+  padding: 0 !important;
+  font-size: 18px !important;
+  line-height: 1.65 !important;
+  text-align: left !important;
+}
+
+html[data-rosewash-arxiv-page="abs"] :is(.dateline, .metatable, .submission-history) {
+  font-size: 14px !important;
+  line-height: 1.65 !important;
+  overflow-wrap: anywhere;
+}
+
+html[data-rosewash-arxiv-page="abs"] .metatable {
+  margin-bottom: 16px !important;
+}
+
+html[data-rosewash-arxiv-page="abs"] .dateline {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+html[data-rosewash-arxiv-page="abs"] .submission-history {
+  padding-bottom: 16px !important;
+}
+
+html[data-rosewash-arxiv-page="abs"] .submission-history h2 {
+  display: none !important;
+}
+
+html[data-rosewash-arxiv-page="abs"] .extra-services > :has(#bib-cite-trigger) {
+  margin-top: 16px !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+/* HTML: use the native TOC inside a disclosure in normal flow. Formula and
+   table structure stays native; only wide blocks scroll inside the column. */
+html[data-rosewash-arxiv-page="html"] body {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+html[data-rosewash-arxiv-page="html"] :is(
+  .html-header-nav > :not([href^="/abs/"], [href^="/pdf/"]),
+  .arxiv-html-footer,
+  #fixed-buttons-container
+) {
+  display: none !important;
+}
+
+html[data-rosewash-arxiv-page="html"] .ltx_page_main {
+  box-sizing: border-box !important;
+  width: var(--rosewash-arxiv-width) !important;
+  max-width: none !important;
+  margin: 8px auto 32px !important;
+  padding: 0 !important;
+}
+
+html[data-rosewash-arxiv-page="html"] :is(.ltx_page_content, .ltx_document) {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+html[data-rosewash-arxiv-page="html"] #infobox {
+  margin: 0 0 8px !important;
+  padding: 0 !important;
+  font-size: 12px !important;
+}
+
+html[data-rosewash-arxiv-page="html"] .ltx_page_navbar {
+  box-sizing: border-box !important;
+  display: block !important;
+  position: static !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: auto !important;
+  max-height: none !important;
+  margin: 0 0 16px !important;
+  padding: 0 !important;
+  transform: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+html[data-rosewash-arxiv-page="html"] .rosewash-arxiv-fold {
+  margin-bottom: 16px !important;
+}
+
+html[data-rosewash-arxiv-page="html"] .ltx_document {
+  font-size: 18px !important;
+  line-height: 1.75 !important;
+}
+
+html[data-rosewash-arxiv-page="html"] .ltx_p {
+  line-height: inherit !important;
+  text-align: left !important;
+  overflow-wrap: anywhere;
+}
+
+html[data-rosewash-arxiv-page="html"] :is(.ltx_equation, .ltx_equationgroup, .ltx_table) {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+}
+
+/* A CSS table ignores overflow on itself. A block box lets the native rows
+   keep their alignment while long equations scroll within the reading width. */
+html[data-rosewash-arxiv-page="html"] :is(table.ltx_equation, table.ltx_equationgroup) {
+  display: block !important;
+  width: 100% !important;
+}
+
+/* Native portrait images have a 320px minimum even inside narrower panels. */
+html[data-rosewash-arxiv-page="html"] .ltx_document img.ltx_graphics {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+html[data-rosewash-arxiv-page="html"] :is(.ltx_flex_figure, .ltx_flex_cell, .ltx_authors) {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+
+html[data-rosewash-arxiv-page="html"] .ltx_authors {
+  overflow-x: auto !important;
+  overflow-wrap: anywhere;
+}
+
+html[data-rosewash-arxiv-page="html"] :is(section, .ltx_bibitem) {
+  scroll-margin-top: 24px;
+}
+
+@media (max-width: 600px) {
+  html[data-rosewash-arxiv-page] {
+    --rosewash-arxiv-width: calc(100% - 32px);
+  }
+
+  html[data-rosewash-arxiv-page="html"] .arxiv-html-header {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+}

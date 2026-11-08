@@ -635,6 +635,8 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
     zhihuArticleWidth: 1080,
     bilibiliLayout: true,
     bilibiliColumnWidth: 840,
+    arxivLayout: true,
+    arxivColumnWidth: 720,
     disabledHosts: ["Example.COM"]
   })), {
     enabled: true,
@@ -662,6 +664,8 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
     zhihuArticleWidth: 1080,
     bilibiliLayout: true,
     bilibiliColumnWidth: 840,
+    arxivLayout: true,
+    arxivColumnWidth: 720,
     disabledHosts: ["example.com"]
   });
   assert.equal(core.plainSettings({ xCompactLayout: "true" }).xCompactLayout, false);
@@ -670,9 +674,14 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
   assert.equal(core.plainSettings({ zhihuArticleWidth: 900 }).zhihuArticleWidth, 960);
   assert.equal(core.plainSettings({ bilibiliLayout: "true" }).bilibiliLayout, false);
   assert.equal(core.plainSettings({ bilibiliColumnWidth: 900 }).bilibiliColumnWidth, 960);
+  assert.equal(core.plainSettings({ arxivLayout: "true" }).arxivLayout, false);
+  assert.equal(core.plainSettings({ arxivColumnWidth: 900 }).arxivColumnWidth, 840);
+  assert.equal(core.isSettingsStorageKey("arxivLayout"), true);
+  assert.equal(core.isSettingsStorageKey("arxivColumnWidth"), true);
   assert.deepEqual(plain(core.X_SINGLE_COLUMN_WIDTHS), [520, 600, 680, 760]);
   assert.deepEqual(plain(core.ZHIHU_ARTICLE_WIDTHS), [720, 840, 960, 1080]);
   assert.deepEqual(plain(core.BILIBILI_COLUMN_WIDTHS), [720, 840, 960, 1080]);
+  assert.deepEqual(plain(core.ARXIV_COLUMN_WIDTHS), [640, 720, 840, 960]);
   const media = core.plainSettings({
     dimImages: "true", imageBrightness: 75,
     ignoredElements: { " Docs.Example.com ": ["#nav", " #nav ", "", "x".repeat(301)], "empty.com": [], bad: "#x" }
@@ -2542,6 +2551,8 @@ test("normalizes settings and blocked hosts", async () => {
     zhihuArticleWidth: 960,
     bilibiliLayout: false,
     bilibiliColumnWidth: 960,
+    arxivLayout: false,
+    arxivColumnWidth: 840,
     disabledHosts: ["docs.example.com", "example.com"],
     fontDisabledHosts: ["docs.example.com", "example.com"],
     fontEnabledHosts: []
@@ -2578,6 +2589,8 @@ test("normalizes settings and blocked hosts", async () => {
     zhihuArticleWidth: 960,
     bilibiliLayout: false,
     bilibiliColumnWidth: 960,
+    arxivLayout: false,
+    arxivColumnWidth: 840,
     disabledHosts: []
   });
 
@@ -2612,6 +2625,8 @@ test("normalizes settings and blocked hosts", async () => {
     zhihuArticleWidth: 960,
     bilibiliLayout: false,
     bilibiliColumnWidth: 960,
+    arxivLayout: false,
+    arxivColumnWidth: 840,
     disabledHosts: []
   });
 
@@ -2625,6 +2640,10 @@ test("normalizes settings and blocked hosts", async () => {
   assert.equal(core.isBilibiliHost("www.bilibili.com"), true);
   assert.equal(core.isBilibiliHost("t.bilibili.com"), true);
   assert.equal(core.isBilibiliHost("example.com"), false);
+  assert.equal(core.isArxivHost("arxiv.org"), true);
+  assert.equal(core.isArxivHost("WWW.ARXIV.ORG"), true);
+  assert.equal(core.isArxivHost("info.arxiv.org"), false);
+  assert.equal(core.isArxivHost("arxiv.org.example.com"), false);
 
   assert.equal(core.isHostDisabled("news.example.com", ["example.com"]), true);
   assert.equal(core.isHostDisabled("example.org", ["example.com"]), false);

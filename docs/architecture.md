@@ -211,7 +211,7 @@ restores its parent rule if present, otherwise the global
 default. The most specific hostname wins; a blocked rule wins a tie, and the
 global enable switch pauses every site; while paused, the site button is
 disabled. Pick sits beside the site button;
-X, Zhihu, and Bilibili layout switches appear only on their matching site.
+X, Zhihu, Bilibili, and arXiv layout switches appear only on their matching site.
 The popup's single Fonts switch sits below Site and edits only the current
 host's font rule. Site clicks and the site shortcut leave font rules unchanged.
 The global `customFontsEnabled` setting remains in Settings. Existing host rules
@@ -276,6 +276,14 @@ selectors and UP information remain available. Disabling the layout restores
 the comments to their original parent and clears the page markers. Shared
 theme tokens cover Bilibili headers and comments while media overlays retain
 their native contrast.
+
+The optional arXiv overlay covers the home page, abstracts, and HTML papers.
+Home shows subject links in responsive grids with direct group navigation.
+Abstracts use compact spacing and fold submission history; HTML papers center
+the reading column and fold contents and author details. The overlay moves
+original nodes after parsing and records their positions with comment markers,
+so disabling it restores the native structure. Formula blocks scroll within
+the column and figures shrink to fit their panels.
 
 ## Performance Boundary
 

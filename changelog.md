@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Add an optional arXiv layout for the home page, abstracts, and HTML papers.
+  Show subject links in compact grids with direct subject navigation, including
+  consistent tiles for physics categories without subcategories.
+- Tighten arXiv abstract spacing, place paper links below the authors, and
+  fold submission history. Center HTML papers at an adjustable width with
+  collapsible contents and author details; wide equations scroll within the
+  column and figures fit narrow screens.
 - Add an optional Bilibili clean layout for home, dynamic feeds, videos, and
   articles. Hide promotional and recommendation blocks, keep video comments
   beside the player, and offer adjustable feed and article widths.
@@ -15,8 +22,9 @@
   color across palette changes, removing the gray strip behind the input.
 - Handle toolbar icon updates that finish after their tab closes without
   logging an unchecked runtime error. Other icon failures remain visible.
-- Add `just reload` for macOS Helium to stage and reload the unpacked
-  extension, optionally refreshing an open test page.
+- Add `just reload` for macOS Ardia and Helium to stage and reload the unpacked
+  extension, optionally refreshing an open test page. Verify the active tab and
+  browser focus before clicking Reload, then close the temporary management tab.
 - Dim the toolbar icon when Site is blocked, even while custom fonts remain
   enabled. Re-enabling Site restores the active icon.
 

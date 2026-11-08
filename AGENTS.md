@@ -42,13 +42,15 @@ Guidance for coding agents working in the Rosewash repository.
 
 ## Browser verification
 
-- Use the `kimi-webbridge` skill to connect to the user's Helium browser for
+- Use the `kimi-webbridge` skill to connect to the user's Ardia or Helium browser for
   page inspection and visual verification. This is the preferred browser
   workflow for this project.
 - On macOS, use `just reload` to stage `dist/` and reload the installed unpacked
   extension through native AppleScript and Accessibility. Pass an open test-page
   URL, such as `just reload https://example.com/`, to refresh that page too.
-  The script checks Helium's reload confirmation and closes its temporary tab.
+  Use its exact URL, including any fragment. `scripts/reload-browser.py`
+  selects the foreground supported browser or the only running one, checks
+  focus and reload confirmation, and closes its temporary management tab.
 - Use Computer Use (`cua_repl`) for internal-page tasks the script does not
   cover. Routine reloads should use the fixed command rather than repeated
   model-driven UI actions. When the user has verified a change, accept their
@@ -78,7 +80,7 @@ just clean
 | --- | --- |
 | Tint / color / DOM cover | `src/content/core.js`, `src/content/theme.css`, `test/core.test.js` |
 | Storage / lifecycle / FOUC | `src/content/content.js` |
-| Site layouts (X, Zhihu) | `src/sites/`, `src/content/content.js`, popup / options |
+| Site layouts (X, Zhihu, Bilibili, arXiv) | `src/sites/`, `src/content/content.js`, popup / options |
 | Keyboard shortcuts | `manifest.json`, `src/background/background.js` |
 | Popup / site toggle UI | `popup.html`, `src/popup/popup.js` |
 | Block list page | `options.html`, `src/options/options.js` |

@@ -120,6 +120,29 @@ test("startup waits for site policy and storage changes update site layouts", as
   assert.equal(attributes.has("data-rosewash-x-compact"), true);
   assert.equal(applied.at(-1).disabledHosts.length, 0);
 
+  // The arXiv overlay follows site/global policy independently of color tinting.
+  context.window.location.hostname = "arxiv.org";
+  raw = { ...raw, defaultEnabled: true, arxivLayout: true, arxivColumnWidth: 720, colorOverridesEnabled: false };
+  pendingRead = Promise.resolve(raw);
+  storageChanged({ arxivLayout: { newValue: true } }, "sync");
+  await new Promise(setImmediate);
+  assert.equal(attributes.has("data-rosewash-arxiv-layout"), true);
+  assert.equal(properties.get("--rosewash-arxiv-column"), "720px");
+  for (const change of [
+    { arxivLayout: false },
+    { arxivLayout: true, disabledHosts: ["arxiv.org"] },
+    { disabledHosts: [], enabled: false }
+  ]) {
+    raw = { ...raw, ...change };
+    pendingRead = Promise.resolve(raw);
+    storageChanged(Object.fromEntries(Object.entries(change).map(([key, newValue]) => [key, { newValue }])), "sync");
+    await new Promise(setImmediate);
+    assert.equal(attributes.has("data-rosewash-arxiv-layout"), false);
+    assert.equal(properties.has("--rosewash-arxiv-column"), false);
+  }
+  context.window.location.hostname = "x.com";
+  raw = latest;
+
   // Overlapping storage reads must also finish in change order, not read order.
   pendingRead = new Promise((resolve) => { releaseOldRead = resolve; });
   storageChanged({ enabledHosts: { newValue: [] } }, "sync");

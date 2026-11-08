@@ -102,6 +102,12 @@
         "src/sites/bilibili.js"
       ],
       "run_at": "document_start"
+    },
+    {
+      "matches": ["https://arxiv.org/*", "https://www.arxiv.org/*"],
+      "css": ["src/sites/arxiv.css"],
+      "js": ["src/sites/arxiv.js"],
+      "run_at": "document_start"
     }
   ]
 }

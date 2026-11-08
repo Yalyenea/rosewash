@@ -216,6 +216,28 @@ test("options saves the independent reply expansion switch", async () => {
   assert.equal(ui.raw().xAutoExpandReplies, false);
 });
 
+test("arXiv width and layout persist through the shared settings queue", async () => {
+  const options = await settingsUI("options");
+  assert.equal(options.element("#arxiv-column-width").disabled, true);
+  options.element("#arxiv-layout").checked = true;
+  await options.change("#arxiv-layout");
+  assert.equal(options.element("#arxiv-column-width").disabled, false);
+  options.element("#arxiv-column-width").value = "1";
+  await options.change("#arxiv-column-width");
+  await options.done();
+  assert.equal(options.raw().arxivColumnWidth, 720);
+  const popup = await settingsUI("popup", options.raw());
+  assert.equal(popup.element("#arxiv-layout").checked, true);
+  popup.element("#arxiv-layout").checked = false;
+  await popup.change("#arxiv-layout");
+  await popup.done();
+  assert.equal(popup.raw().arxivLayout, false);
+  assert.equal(popup.raw().arxivColumnWidth, 720);
+  await options.storage.set({ arxivLayout: false });
+  await settle();
+  assert.equal(options.element("#arxiv-column-width").disabled, true);
+});
+
 test("options follows storage changes made outside the page", async () => {
   const ui = await settingsUI("options", { enabled: true });
   await ui.storage.set({ enabled: false, disabledHosts: ["example.com"] });

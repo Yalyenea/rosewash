@@ -26,6 +26,10 @@
     "data-rosewash-bilibili-read",
     "data-rosewash-bilibili-video"
   ];
+  const ARXIV_LAYOUT_ATTRIBUTE = "data-rosewash-arxiv-layout";
+  const ARXIV_PAGE_ATTRIBUTE = "data-rosewash-arxiv-page";
+  const ARXIV_LAYOUT_EVENT = "rosewash:arxiv-layout-change";
+  const ARXIV_WIDTH_PROPERTY = "--rosewash-arxiv-column";
   let settingsCache = core.plainSettings(core.DEFAULT_SETTINGS);
   let settingsLoaded = false;
   let disposed = false;
@@ -82,6 +86,13 @@
       }
       zhihuRoot.style.removeProperty(BILIBILI_WIDTH_PROPERTY);
       document.dispatchEvent(new CustomEvent(BILIBILI_LAYOUT_EVENT));
+    }
+    if (zhihuRoot?.hasAttribute(ARXIV_LAYOUT_ATTRIBUTE)
+      || zhihuRoot?.hasAttribute(ARXIV_PAGE_ATTRIBUTE)) {
+      zhihuRoot.removeAttribute(ARXIV_LAYOUT_ATTRIBUTE);
+      zhihuRoot.removeAttribute(ARXIV_PAGE_ATTRIBUTE);
+      zhihuRoot.style.removeProperty(ARXIV_WIDTH_PROPERTY);
+      document.dispatchEvent(new CustomEvent(ARXIV_LAYOUT_EVENT));
     }
     engine.disconnect();
     banners.disconnect();
@@ -143,6 +154,17 @@
     if (document.documentElement.hasAttribute(BILIBILI_LAYOUT_ATTRIBUTE) !== bilibiliActive) {
       document.documentElement.toggleAttribute(BILIBILI_LAYOUT_ATTRIBUTE, bilibiliActive);
       document.dispatchEvent(new CustomEvent(BILIBILI_LAYOUT_EVENT));
+    }
+
+    const arxivActive = allowed && core.isArxivHost(host) && settings.arxivLayout;
+    if (arxivActive) {
+      document.documentElement.style.setProperty(ARXIV_WIDTH_PROPERTY, `${settings.arxivColumnWidth}px`);
+    } else {
+      document.documentElement.style.removeProperty(ARXIV_WIDTH_PROPERTY);
+    }
+    if (document.documentElement.hasAttribute(ARXIV_LAYOUT_ATTRIBUTE) !== arxivActive) {
+      document.documentElement.toggleAttribute(ARXIV_LAYOUT_ATTRIBUTE, arxivActive);
+      document.dispatchEvent(new CustomEvent(ARXIV_LAYOUT_EVENT));
     }
   }
 

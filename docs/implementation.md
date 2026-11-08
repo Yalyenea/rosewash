@@ -75,6 +75,7 @@ and apply the engine. Page responses do not hold up the write queue.
 | X layout | `src/sites/x.js`, `x.css` | Compact navigation rail and centered single-column streams |
 | Zhihu layout | `src/sites/zhihu.js`, `zhihu.css` | Centered reading columns; article-only header hiding |
 | Bilibili layout | `src/sites/bilibili.js`, `bilibili.css` | Clean home and feeds, video comments beside the player, centered articles |
+| arXiv layout | `src/sites/arxiv.js`, `arxiv.css` | Subject grids, compact abstracts, centered HTML papers |
 
 ## Browser frame themes
 
@@ -127,6 +128,8 @@ Stored in **`chrome.storage.sync`**.
   "zhihuArticleWidth": 960,
   "bilibiliLayout": false,
   "bilibiliColumnWidth": 960,
+  "arxivLayout": false,
+  "arxivColumnWidth": 840,
   "dimImages": false,
   "imageBrightness": 80,
   "disabledHosts": [],
@@ -155,6 +158,8 @@ Stored in **`chrome.storage.sync`**.
 | `zhihuArticleWidth` | 720 / 840 / 960 / 1080 | Centered Zhihu column width |
 | `bilibiliLayout` | boolean | Enables Bilibili's clean home, dynamic, video, and article layouts |
 | `bilibiliColumnWidth` | 720 / 840 / 960 / 1080 | Centered Bilibili dynamic feed and article width |
+| `arxivLayout` | boolean | Enables the arXiv home, abstract, and HTML reading layouts |
+| `arxivColumnWidth` | 640 / 720 / 840 / 960 | arXiv content width; defaults to 840 and shrinks to the viewport |
 | `dimImages` | boolean | Dims images and videos while a tinted dark palette is active |
 | `imageBrightness` | 70 / 80 / 90 | Image brightness in percent when dimming applies |
 | `disabledHosts` | string[] | Hostnames (and parents) where theme and site layouts are blocked |
@@ -620,7 +625,7 @@ old snapshot. Notification responses never block the next save.
 - Pick sits immediately before Allowed / Blocked. The site button saves an
   explicit on/off rule. While Rosewash is paused globally it shows Paused and
   is disabled. Storage changes update the open popup.
-- X, Zhihu, and Bilibili layout switches appear only on their matching hosts. Font
+- X, Zhihu, Bilibili, and arXiv layout switches appear only on their matching hosts. Font
   choices, image dimming, widths, site lists, and shortcut bindings live in
   settings. The popup Fonts switch shares `customFontsEnabled` with settings.
 - Browser-protected pages show Unavailable with a reason and disable the site
@@ -658,7 +663,7 @@ old snapshot. Notification responses never block the next save.
   independent previews use the same local FontFace definitions as pages.
   Enumeration and preview errors are shown.
 - Clean Layout includes the global Hide top banners switch above the X.com,
-  知乎 zhihu.com, and 哔哩哔哩 bilibili.com cards. Each site card has a switch
+  知乎 zhihu.com, 哔哩哔哩 bilibili.com, and arXiv arxiv.org cards. Each site card has a switch
   and column width slider.
   Always on / Always off lists and ignored elements follow.
 - Images use one row for the dimming switch, brightness slider, and percentage.
@@ -805,6 +810,37 @@ events update the markers; disabling the layout removes them.
 `test/bilibili-layout.test.js` checks route changes, comment restoration,
 cleanup selectors, and settings wiring.
 
+## arXiv immersive layout
+
+`manifest.json` injects `src/sites/arxiv.css` and `arxiv.js` on `arxiv.org`
+and `www.arxiv.org` at `document_start`. The content runtime sets
+`data-rosewash-arxiv-layout` when Rosewash and `arxivLayout` are enabled and
+the site's theme rule allows it. Palette tinting is independent of the layout.
+The site script sets `data-rosewash-arxiv-page` to `home`, `abs`, or `html`.
+Search, list, account, and PDF routes keep their native layout.
+
+- Home keeps search and all eight subject groups visible. Native subcategory
+  links form responsive grids; physics categories without children use matching
+  tiles with their original browse actions. The subject navigation jumps
+  directly to each group. Math and CS links are grouped individually even
+  though each subject occupies one native list item.
+- Abstracts use a compact header and reading column. Original paper links move
+  below the authors, submission history folds into a disclosure, and peripheral
+  tools are hidden. The native BibTeX button and modal remain available.
+- HTML papers use the selected width. The original contents and author details
+  sit in disclosures that Escape closes. Equations scroll inside the column;
+  portrait images can shrink within their panels without changing figure order.
+- The width is stored in `arxivColumnWidth` and applied through
+  `--rosewash-arxiv-column`, with 20px side gutters (16px on narrow screens).
+- CSS marks the shell immediately. DOM moves wait for parsing to finish and
+  preserve the original nodes, IDs, and listeners. Comment markers record their
+  positions. Turning the layout off restores them and removes added wrappers.
+  The script watches only the layout attribute and listens for page lifecycle
+  events and `rosewash:arxiv-layout-change`.
+
+Core, content, and settings tests cover normalization, policy gating, and
+shared persistence of the layout and width settings.
+
 ## Messaging contract
 
 | Message type | Direction | Purpose |
@@ -871,7 +907,7 @@ just test       # node --test test/*.test.js
 just validate   # manifest + required files + --check scripts
 just check      # test + validate
 just dist       # copy manifest + html + src → dist/ (Load unpacked)
-just reload     # macOS Helium: stage dist/ and reload its installed extension
+just reload     # macOS Ardia / Helium: stage dist/ and reload its installed extension
 just package    # check + dist + zip → release/rosewash-vX.Y.Z.zip
 just clean      # remove .tmp and local debug leftovers
 ```
@@ -888,6 +924,13 @@ just clean      # remove .tmp and local debug leftovers
 
 No commit/push automation unless the user asks. Feature work should land on a
 branch other than `main`.
+
+`scripts/reload-browser.py` selects the foreground supported browser or the
+only running one. Ardia focuses tabs by identity; Helium uses its active-tab
+index. Before the native Reload click, the script verifies the management tab
+and the browser's `AXFrontmost` state. It waits for Reloaded confirmation and
+closes the temporary tab. An optional test-page argument must match the open
+tab's full URL, including its fragment.
 
 ## Invariants / design rules
 
