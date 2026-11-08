@@ -146,11 +146,30 @@ html[data-rosewash-bilibili-video] .bili-header :is(.bili-header__bar, .mini-hea
   position: relative !important;
 }
 
+html[data-rosewash-bilibili-video] :is(
+  #app,
+  .video-container-v1,
+  .left-container,
+  .bili-header--mini,
+  .bili-header__bar
+) {
+  min-width: 0 !important;
+}
+
 html[data-rosewash-bilibili-video] .left-container {
   align-self: flex-start !important;
   height: fit-content !important;
+  position: relative !important;
+}
+
+html[data-rosewash-bilibili-video] #playerWrap {
   position: sticky !important;
   top: 16px !important;
+  z-index: 2 !important;
+}
+
+html[data-rosewash-bilibili-video] body.webscreen-fix #playerWrap {
+  z-index: 100000 !important;
 }
 
 html[data-rosewash-bilibili-video] .right-container {
@@ -158,9 +177,39 @@ html[data-rosewash-bilibili-video] .right-container {
   margin-left: 20px !important;
 }
 
-html[data-rosewash-bilibili-video] .right-container-inner > #commentapp {
-  margin-top: 18px !important;
+html[data-rosewash-bilibili-video] .right-container-inner {
+  position: static !important;
+  padding-bottom: 0 !important;
+}
+
+html[data-rosewash-bilibili-video] #bgm-entry {
+  left: calc(100% + 20px) !important;
+  right: auto !important;
+  width: min(420px, 32vw) !important;
+}
+
+/* Keep the comment's native parent to preserve component state. Its own scroll
+   area lets comments move without scrolling the player column. */
+html[data-rosewash-bilibili-video] .left-container #commentapp {
+  position: fixed !important;
+  left: var(--rosewash-bilibili-comment-x, 0px) !important;
+  top: var(--rosewash-bilibili-comment-top, 0px) !important;
+  width: var(--rosewash-bilibili-comment-width, 100%) !important;
+  height: var(--rosewash-bilibili-comment-height, 0px) !important;
+  margin: 0 !important;
+  overflow-y: auto !important;
+  overscroll-behavior-y: contain !important;
+  box-sizing: border-box !important;
+  scrollbar-width: thin;
   padding-right: 6px !important;
+}
+
+/* Bilibili mounts its floating composer beside the comment container. */
+html[data-rosewash-bilibili-video] .left-container > .bili-comments-bottom-fixed-wrapper {
+  position: fixed !important;
+  left: var(--rosewash-bilibili-comment-x, 0px) !important;
+  bottom: 16px !important;
+  width: calc(var(--rosewash-bilibili-comment-width, 100%) - 6px) !important;
 }
 
 /* Dynamic feed (t.bilibili.com / popular): single centered column without shopping ad posts. */

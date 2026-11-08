@@ -271,11 +271,19 @@ and back/forward navigation, then updates the page marker.
 
 The optional Bilibili layout uses the same root and route marker pattern.
 It cleans home promotions and video recommendations, centers dynamic feeds
-and articles, and places comments beside a sticky video column. Episode
-selectors and UP information remain available. Disabling the layout restores
-the comments to their original parent and clears the page markers. Shared
-theme tokens cover Bilibili headers and comments while media overlays retain
-their native contrast.
+and articles, and gives comments their own scroll area beside the player.
+Episode selectors and UP information remain available. Comments stay in their
+native parent so toggling the layout preserves loaded threads. ResizeObserver
+keeps the comment panel aligned with the right column; disabling the layout
+clears its positioning and page markers. Shared theme tokens cover Bilibili
+headers and comments while media overlays retain their native contrast.
+
+The optional YouTube layout uses CSS on the native home feed to arrange video
+cards in a responsive grid. It hides Shorts entries, shelves, and cards across
+YouTube while ordinary watch pages retain their layout. The YouTube switch
+follows Rosewash's global enable setting independently of theme host rules.
+Native DOM attributes scope the home grid, so client-side navigation needs no
+additional runtime or node moves.
 
 The optional arXiv overlay covers the home page, abstracts, and HTML papers.
 Home shows subject links in responsive grids with direct group navigation.

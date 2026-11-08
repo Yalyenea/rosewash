@@ -1,0 +1,43 @@
+/* Home cards share one native container. Let the grid pack surviving videos
+   after Shorts disappear, instead of keeping YouTube's fixed three-card widths. */
+html[data-rosewash-youtube-layout] ytd-browse[page-subtype="home"] ytd-rich-grid-renderer > #contents {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)) !important;
+  gap: 28px 20px !important;
+  align-items: start !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 24px 24px 40px !important;
+}
+
+html[data-rosewash-youtube-layout] ytd-browse[page-subtype="home"] ytd-rich-grid-renderer > #contents > ytd-rich-item-renderer {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+}
+
+/* Shelves and the loading sentinel span the grid without occupying a card slot. */
+html[data-rosewash-youtube-layout] ytd-browse[page-subtype="home"] ytd-rich-grid-renderer > #contents > :not(ytd-rich-item-renderer) {
+  grid-column: 1 / -1 !important;
+  min-width: 0 !important;
+}
+
+/* Hide the shelf/card boundary too, so Shorts never leave an empty slot. */
+html[data-rosewash-youtube-layout] :is(
+  ytd-guide-entry-renderer:has(a:is([href="/shorts"], [href="/shorts/"])),
+  ytd-mini-guide-entry-renderer:has(a:is([href="/shorts"], [href="/shorts/"])),
+  yt-tab-shape[tab-title="Shorts"],
+  ytd-rich-section-renderer:has(ytd-rich-shelf-renderer[is-shorts]),
+  ytd-rich-shelf-renderer[is-shorts],
+  ytd-reel-shelf-renderer,
+  grid-shelf-view-model:has(ytm-shorts-lockup-view-model),
+  ytd-rich-item-renderer:has(a[href^="/shorts/"]),
+  ytd-video-renderer:has(a#thumbnail[href^="/shorts/"]),
+  ytd-grid-video-renderer:has(a#thumbnail[href^="/shorts/"]),
+  yt-lockup-view-model:has(a[href^="/shorts/"])
+) {
+  display: none !important;
+}

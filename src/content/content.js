@@ -27,6 +27,7 @@
     "data-rosewash-bilibili-video"
   ];
   const ARXIV_LAYOUT_ATTRIBUTE = "data-rosewash-arxiv-layout";
+  const YOUTUBE_LAYOUT_ATTRIBUTE = "data-rosewash-youtube-layout";
   const ARXIV_PAGE_ATTRIBUTE = "data-rosewash-arxiv-page";
   const ARXIV_LAYOUT_EVENT = "rosewash:arxiv-layout-change";
   const ARXIV_WIDTH_PROPERTY = "--rosewash-arxiv-column";
@@ -94,6 +95,7 @@
       zhihuRoot.style.removeProperty(ARXIV_WIDTH_PROPERTY);
       document.dispatchEvent(new CustomEvent(ARXIV_LAYOUT_EVENT));
     }
+    zhihuRoot?.removeAttribute(YOUTUBE_LAYOUT_ATTRIBUTE);
     engine.disconnect();
     banners.disconnect();
   }
@@ -154,6 +156,13 @@
     if (document.documentElement.hasAttribute(BILIBILI_LAYOUT_ATTRIBUTE) !== bilibiliActive) {
       document.documentElement.toggleAttribute(BILIBILI_LAYOUT_ATTRIBUTE, bilibiliActive);
       document.dispatchEvent(new CustomEvent(BILIBILI_LAYOUT_EVENT));
+    }
+
+    // YouTube's grid and content cleanup do not require palette tinting.
+    const youtubeActive = window.top === window && settings.enabled
+      && core.isYouTubeHost(host) && settings.youtubeLayout;
+    if (document.documentElement.hasAttribute(YOUTUBE_LAYOUT_ATTRIBUTE) !== youtubeActive) {
+      document.documentElement.toggleAttribute(YOUTUBE_LAYOUT_ATTRIBUTE, youtubeActive);
     }
 
     const arxivActive = allowed && core.isArxivHost(host) && settings.arxivLayout;

@@ -274,6 +274,7 @@
     zhihuArticleWidth: 960,
     bilibiliLayout: false,
     bilibiliColumnWidth: 960,
+    youtubeLayout: false,
     arxivLayout: false,
     arxivColumnWidth: 840,
     dimImages: false,
@@ -1028,6 +1029,7 @@
       bilibiliColumnWidth: BILIBILI_COLUMN_WIDTHS.includes(source.bilibiliColumnWidth)
         ? source.bilibiliColumnWidth
         : DEFAULT_SETTINGS.bilibiliColumnWidth,
+      youtubeLayout: source.youtubeLayout === true,
       arxivLayout: source.arxivLayout === true,
       arxivColumnWidth: ARXIV_COLUMN_WIDTHS.includes(source.arxivColumnWidth)
         ? source.arxivColumnWidth
@@ -1138,6 +1140,10 @@
     return ["arxiv.org", "www.arxiv.org"].includes(normalizeHost(host));
   }
 
+  function isYouTubeHost(host) {
+    return ["youtube.com", "www.youtube.com"].includes(normalizeHost(host));
+  }
+
   function presetIdForVariant(value, legacyPreset, variant) {
     if (PRESETS[value] && PRESETS[value][variant]) {
       return value;
@@ -1234,6 +1240,7 @@
       zhihuArticleWidth: normalized.zhihuArticleWidth,
       bilibiliLayout: normalized.bilibiliLayout,
       bilibiliColumnWidth: normalized.bilibiliColumnWidth,
+      youtubeLayout: normalized.youtubeLayout,
       arxivLayout: normalized.arxivLayout,
       arxivColumnWidth: normalized.arxivColumnWidth,
       dimImages: normalized.dimImages,
@@ -2547,6 +2554,7 @@
     isZhihuHost,
     isZhihuArticlePath,
     isBilibiliHost,
+    isYouTubeHost,
     isArxivHost,
     toggleHostEnabled,
     setHostPolicy,

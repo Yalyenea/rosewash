@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Add an optional YouTube home layout with a responsive video grid. Hide
+  Shorts navigation, tabs, shelves, and cards while keeping ordinary watch
+  pages in their native layout. The YouTube switch works independently of
+  site theme rules.
+- Let Bilibili comments scroll independently beside the player without
+  reconnecting the comment component. Preserve loaded threads when toggling
+  the layout, align floating comment inputs with the sidebar, and keep web
+  fullscreen above page navigation.
 - Add an optional arXiv layout for the home page, abstracts, and HTML papers.
   Show subject links in compact grids with direct subject navigation, including
   consistent tiles for physics categories without subcategories.

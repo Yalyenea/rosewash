@@ -108,6 +108,11 @@
       "css": ["src/sites/arxiv.css"],
       "js": ["src/sites/arxiv.js"],
       "run_at": "document_start"
+    },
+    {
+      "matches": ["https://youtube.com/*", "https://www.youtube.com/*"],
+      "css": ["src/sites/youtube.css"],
+      "run_at": "document_start"
     }
   ]
 }

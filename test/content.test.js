@@ -140,6 +140,23 @@ test("startup waits for site policy and storage changes update site layouts", as
     assert.equal(attributes.has("data-rosewash-arxiv-layout"), false);
     assert.equal(properties.has("--rosewash-arxiv-column"), false);
   }
+  context.window.location.hostname = "www.youtube.com";
+  // The YouTube grid stays available when its palette tinting is blocked.
+  raw = { ...raw, enabled: true, disabledHosts: ["youtube.com"], youtubeLayout: true };
+  pendingRead = Promise.resolve(raw);
+  storageChanged({ youtubeLayout: { newValue: true } }, "sync");
+  await new Promise(setImmediate);
+  assert.equal(attributes.has("data-rosewash-youtube-layout"), true);
+  for (const change of [
+    { youtubeLayout: false },
+    { youtubeLayout: true, enabled: false }
+  ]) {
+    raw = { ...raw, ...change };
+    pendingRead = Promise.resolve(raw);
+    storageChanged(Object.fromEntries(Object.entries(change).map(([key, newValue]) => [key, { newValue }])), "sync");
+    await new Promise(setImmediate);
+    assert.equal(attributes.has("data-rosewash-youtube-layout"), false);
+  }
   context.window.location.hostname = "x.com";
   raw = latest;
 

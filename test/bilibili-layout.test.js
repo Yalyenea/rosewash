@@ -12,12 +12,18 @@ const pageAttributes = [
   "data-rosewash-bilibili-video"
 ];
 
-function layoutRuntime({ host = "www.bilibili.com", path = "/", enabled = true } = {}) {
+function layoutRuntime({ host = "www.bilibili.com", path = "/", enabled = true, ready = true } = {}) {
   const attributes = new Set(enabled ? [layoutAttribute] : []);
+  const properties = new Map();
   const document = new EventTarget();
   const root = {
     hasAttribute: (name) => attributes.has(name),
-    toggleAttribute: (name, active) => active ? attributes.add(name) : attributes.delete(name)
+    toggleAttribute: (name, active) => active ? attributes.add(name) : attributes.delete(name),
+    style: {
+      getPropertyValue: (name) => properties.get(name) || "",
+      setProperty: (name, value) => properties.set(name, value),
+      removeProperty: (name) => properties.delete(name)
+    }
   };
   document.documentElement = root;
   const location = { hostname: host, pathname: path };
@@ -43,52 +49,50 @@ function layoutRuntime({ host = "www.bilibili.com", path = "/", enabled = true }
   const timers = new Map();
   let timerId = 0;
   let rootChanged;
+  let videoChanged;
+  let resized;
+  const contentBounds = { left: 804, bottom: 400, width: 390 };
+  const rightContent = { getBoundingClientRect: () => contentBounds };
   const leftColumn = {
     children: [],
+    getBoundingClientRect: () => ({ left: 24, top: 80 }),
     appendChild(node) {
       node.parentNode?.children?.splice(node.parentNode.children.indexOf(node), 1);
       node.parentNode = leftColumn;
       node.nextSibling = null;
       leftColumn.children.push(node);
-    },
-    insertBefore(node, reference) {
-      node.parentNode?.children?.splice(node.parentNode.children.indexOf(node), 1);
-      const refIndex = leftColumn.children.indexOf(reference);
-      node.parentNode = leftColumn;
-      node.nextSibling = reference;
-      leftColumn.children.splice(refIndex >= 0 ? refIndex : leftColumn.children.length, 0, node);
     }
   };
-  const rightColumn = {
-    children: [],
-    appendChild(node) {
-      node.parentNode?.children?.splice(node.parentNode.children.indexOf(node), 1);
-      node.parentNode = rightColumn;
-      node.nextSibling = null;
-      rightColumn.children.push(node);
-    }
-  };
-  const commentNode = { id: "commentapp", parentNode: null, nextSibling: null };
+  function createComment() {
+    return Object.assign(new EventTarget(), {
+      id: "commentapp", parentNode: null, nextSibling: null
+    });
+  }
+  let commentNode = createComment();
   const tagNode = { id: "tags", parentNode: null, nextSibling: null };
   leftColumn.appendChild(commentNode);
   leftColumn.appendChild(tagNode);
   commentNode.nextSibling = tagNode;
   document.querySelector = (selector) => {
+    if (!ready) return null;
     if (selector === "#commentapp") return commentNode;
-    if (selector === ".right-container-inner") return rightColumn;
+    if (selector === ".left-container") return leftColumn;
+    if (selector === ".right-container-inner") return rightContent;
     return null;
   };
-  const window = {
-    location, navigation, history: { ...pageHistory },
-    addEventListener() {},
+  const window = Object.assign(new EventTarget(), {
+    location, navigation, history: { ...pageHistory }, innerHeight: 900,
     setTimeout(callback) { timers.set(++timerId, callback); return timerId; },
     clearTimeout(id) { timers.delete(id); }
-  };
+  });
+  let scrollEvents = 0;
+  window.addEventListener("scroll", () => scrollEvents++);
   vm.runInNewContext(runtimeSource, {
-    document, window,
+    document, window, Event,
     MutationObserver: class {
       constructor(callback) {
         if (!rootChanged) rootChanged = callback;
+        else videoChanged = callback;
       }
       observe(target, options) {
         assert.equal(target, root);
@@ -97,14 +101,38 @@ function layoutRuntime({ host = "www.bilibili.com", path = "/", enabled = true }
         }
       }
       disconnect() {}
+    },
+    ResizeObserver: class {
+      constructor(callback) { resized = callback; }
+      observe() {}
+      disconnect() {}
     }
   });
   return {
     location,
     pageHistory,
     leftColumn,
-    rightColumn,
-    commentNode,
+    get commentNode() { return commentNode; },
+    get scrollEvents() { return scrollEvents; },
+    properties,
+    resizeRightContent(bounds) {
+      Object.assign(contentBounds, bounds);
+      resized();
+    },
+    replaceComment() {
+      const previous = commentNode;
+      const index = leftColumn.children.indexOf(previous);
+      previous.parentNode = null;
+      commentNode = createComment();
+      commentNode.parentNode = leftColumn;
+      leftColumn.children[index] = commentNode;
+      videoChanged();
+      return previous;
+    },
+    setReady(value) {
+      ready = value;
+      videoChanged();
+    },
     flush() {
       for (const [id, callback] of timers) {
         timers.delete(id);
@@ -129,7 +157,7 @@ test("updates Bilibili route markers across home, video, read, and dynamic pages
   runtime.pageHistory.pushState(null, "", "/video/BV1xx411c7mD");
   runtime.flush();
   runtime.assertKind("video");
-  assert.equal(runtime.commentNode.parentNode, runtime.rightColumn);
+  assert.equal(runtime.commentNode.parentNode, runtime.leftColumn);
   runtime.pageHistory.replaceState(null, "", "/read/cv123456");
   runtime.flush();
   runtime.assertKind("read");
@@ -151,6 +179,67 @@ test("updates Bilibili route markers across home, video, read, and dynamic pages
   dynamicHost.assertKind("");
   dynamicHost.setEnabled(true, true);
   dynamicHost.assertKind("dynamic");
+});
+
+test("positions comments beside the player without reconnecting them and clears offsets when disabled", () => {
+  const runtime = layoutRuntime({ path: "/video/BV1xx411c7mD" });
+  const comment = runtime.commentNode;
+  const top = "--rosewash-bilibili-comment-top";
+  assert.equal(runtime.properties.get(top), "418px");
+  assert.equal(runtime.properties.get("--rosewash-bilibili-comment-x"), "804px");
+  assert.equal(runtime.properties.get("--rosewash-bilibili-comment-width"), "390px");
+  assert.equal(runtime.properties.get("--rosewash-bilibili-comment-height"), "466px");
+  assert.equal(comment.parentNode, runtime.leftColumn);
+
+  runtime.resizeRightContent({ bottom: 600, width: 320 });
+  runtime.flush();
+  assert.equal(runtime.properties.get(top), "618px");
+  assert.equal(runtime.properties.get("--rosewash-bilibili-comment-height"), "266px");
+  assert.equal(runtime.properties.get("--rosewash-bilibili-comment-width"), "320px");
+  // Repeated notifications keep the viewport's independent comment area stable.
+  runtime.resizeRightContent({});
+  runtime.flush();
+  assert.equal(runtime.properties.get(top), "618px");
+  runtime.setEnabled(false);
+  assert.equal(runtime.properties.size, 0);
+  assert.equal(comment.parentNode, runtime.leftColumn);
+  runtime.setEnabled(true);
+  assert.equal(runtime.commentNode, comment);
+  assert.equal(comment.parentNode, runtime.leftColumn);
+  assert.equal(runtime.properties.get(top), "618px");
+});
+
+test("handles delayed video containers and comments replaced by the site", () => {
+  const runtime = layoutRuntime({ path: "/video/BV1xx411c7mD", ready: false });
+  assert.equal(runtime.properties.size, 0);
+  runtime.setReady(true);
+  runtime.flush();
+  assert.equal(runtime.properties.get("--rosewash-bilibili-comment-top"), "418px");
+
+  const previous = runtime.replaceComment();
+  runtime.flush();
+  assert.notEqual(runtime.commentNode, previous);
+  assert.equal(previous.parentNode, null);
+  assert.equal(runtime.commentNode.parentNode, runtime.leftColumn);
+  assert.equal(runtime.properties.get("--rosewash-bilibili-comment-top"), "418px");
+});
+
+test("notifies Bilibili's page loader when comments scroll and removes old listeners", () => {
+  const runtime = layoutRuntime({ path: "/video/BV1xx411c7mD" });
+  runtime.commentNode.dispatchEvent(new Event("scroll"));
+  assert.equal(runtime.scrollEvents, 1);
+  runtime.flush();
+
+  const previous = runtime.replaceComment();
+  runtime.flush();
+  previous.dispatchEvent(new Event("scroll"));
+  assert.equal(runtime.scrollEvents, 1);
+  runtime.commentNode.dispatchEvent(new Event("scroll"));
+  assert.equal(runtime.scrollEvents, 2);
+
+  runtime.setEnabled(false);
+  runtime.commentNode.dispatchEvent(new Event("scroll"));
+  assert.equal(runtime.scrollEvents, 2);
 });
 
 test("keeps UP info and collection selectors on Bilibili video pages while hiding recommendations and ads", async () => {

@@ -35,6 +35,7 @@
   const zhihuWidthInput = document.querySelector("#zhihu-article-width");
   const zhihuWidthValue = document.querySelector("#zhihu-article-width-value");
   const bilibiliLayoutInput = document.querySelector("#bilibili-layout");
+  const youtubeLayoutInput = document.querySelector("#youtube-layout");
   const bilibiliWidthInput = document.querySelector("#bilibili-column-width");
   const bilibiliWidthValue = document.querySelector("#bilibili-column-width-value");
   const arxivLayoutInput = document.querySelector("#arxiv-layout");
@@ -340,6 +341,7 @@
     zhihuWidthInput.disabled = !normalized.zhihuArticleLayout;
     renderZhihuArticleWidth(normalized.zhihuArticleWidth);
     bilibiliLayoutInput.checked = normalized.bilibiliLayout;
+    youtubeLayoutInput.checked = normalized.youtubeLayout;
     bilibiliWidthInput.disabled = !normalized.bilibiliLayout;
     renderBilibiliColumnWidth(normalized.bilibiliColumnWidth);
     arxivLayoutInput.checked = normalized.arxivLayout;
@@ -391,6 +393,7 @@
       zhihuArticleLayout: zhihuLayoutInput.checked,
       zhihuArticleWidth: selectedZhihuArticleWidth(),
       bilibiliLayout: bilibiliLayoutInput.checked,
+      youtubeLayout: youtubeLayoutInput.checked,
       bilibiliColumnWidth: selectedBilibiliColumnWidth(),
       arxivLayout: arxivLayoutInput.checked,
       arxivColumnWidth: selectedArxivColumnWidth(),
@@ -447,7 +450,7 @@
   for (const input of [xSingleWidthInput, zhihuWidthInput, bilibiliWidthInput, arxivWidthInput, brightnessInput]) {
     input.addEventListener("change", saveSettings);
   }
-  for (const input of [enabledInput, defaultInput, colorsInput, customFontsInput, xCompactInput, xAutoExpandInput, hideBannersInput, zhihuLayoutInput, bilibiliLayoutInput, arxivLayoutInput, dimInput, ...fontFields.map(field => field.input)]) {
+  for (const input of [enabledInput, defaultInput, colorsInput, customFontsInput, xCompactInput, xAutoExpandInput, hideBannersInput, zhihuLayoutInput, bilibiliLayoutInput, youtubeLayoutInput, arxivLayoutInput, dimInput, ...fontFields.map(field => field.input)]) {
     input.addEventListener("change", saveSettings);
   }
   function flushSave() {

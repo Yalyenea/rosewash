@@ -635,6 +635,7 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
     zhihuArticleWidth: 1080,
     bilibiliLayout: true,
     bilibiliColumnWidth: 840,
+    youtubeLayout: true,
     arxivLayout: true,
     arxivColumnWidth: 720,
     disabledHosts: ["Example.COM"]
@@ -664,6 +665,7 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
     zhihuArticleWidth: 1080,
     bilibiliLayout: true,
     bilibiliColumnWidth: 840,
+    youtubeLayout: true,
     arxivLayout: true,
     arxivColumnWidth: 720,
     disabledHosts: ["example.com"]
@@ -674,6 +676,8 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
   assert.equal(core.plainSettings({ zhihuArticleWidth: 900 }).zhihuArticleWidth, 960);
   assert.equal(core.plainSettings({ bilibiliLayout: "true" }).bilibiliLayout, false);
   assert.equal(core.plainSettings({ bilibiliColumnWidth: 900 }).bilibiliColumnWidth, 960);
+  assert.equal(core.plainSettings({ youtubeLayout: "true" }).youtubeLayout, false);
+  assert.equal(core.isSettingsStorageKey("youtubeLayout"), true);
   assert.equal(core.plainSettings({ arxivLayout: "true" }).arxivLayout, false);
   assert.equal(core.plainSettings({ arxivColumnWidth: 900 }).arxivColumnWidth, 840);
   assert.equal(core.isSettingsStorageKey("arxivLayout"), true);
@@ -2551,6 +2555,7 @@ test("normalizes settings and blocked hosts", async () => {
     zhihuArticleWidth: 960,
     bilibiliLayout: false,
     bilibiliColumnWidth: 960,
+    youtubeLayout: false,
     arxivLayout: false,
     arxivColumnWidth: 840,
     disabledHosts: ["docs.example.com", "example.com"],
@@ -2589,6 +2594,7 @@ test("normalizes settings and blocked hosts", async () => {
     zhihuArticleWidth: 960,
     bilibiliLayout: false,
     bilibiliColumnWidth: 960,
+    youtubeLayout: false,
     arxivLayout: false,
     arxivColumnWidth: 840,
     disabledHosts: []
@@ -2625,6 +2631,7 @@ test("normalizes settings and blocked hosts", async () => {
     zhihuArticleWidth: 960,
     bilibiliLayout: false,
     bilibiliColumnWidth: 960,
+    youtubeLayout: false,
     arxivLayout: false,
     arxivColumnWidth: 840,
     disabledHosts: []
@@ -2640,6 +2647,11 @@ test("normalizes settings and blocked hosts", async () => {
   assert.equal(core.isBilibiliHost("www.bilibili.com"), true);
   assert.equal(core.isBilibiliHost("t.bilibili.com"), true);
   assert.equal(core.isBilibiliHost("example.com"), false);
+  assert.equal(core.isYouTubeHost("youtube.com"), true);
+  assert.equal(core.isYouTubeHost("WWW.YOUTUBE.COM"), true);
+  assert.equal(core.isYouTubeHost("m.youtube.com"), false);
+  assert.equal(core.isYouTubeHost("studio.youtube.com"), false);
+  assert.equal(core.isYouTubeHost("youtube.com.example.com"), false);
   assert.equal(core.isArxivHost("arxiv.org"), true);
   assert.equal(core.isArxivHost("WWW.ARXIV.ORG"), true);
   assert.equal(core.isArxivHost("info.arxiv.org"), false);

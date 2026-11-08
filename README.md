@@ -58,7 +58,10 @@
 - **Theme:** separate light and dark palettes, system appearance, and optional image dimming. Toggle theme overrides independently of fonts.
 - **Fonts:** searchable English, Chinese, math, and monospace font choices in Chrome and Edge; installed font names in Firefox. Toggle fonts for the current site from the popup.
 - **Control:** toggle theme and fonts independently by site, leave selected elements untouched with Pick (Esc to cancel), or pause everywhere.
-- **Reading:** adjustable layouts for X, Zhihu, Bilibili, and arXiv, plus automatic expansion of X reply text. Bilibili keeps comments beside the player. arXiv has visible subject grids, compact abstracts, and centered HTML papers with collapsible contents and author details.
+- **Reading:** adjustable layouts for X, Zhihu, Bilibili, and arXiv, plus automatic expansion of X reply text. Bilibili comments scroll independently beside the player. arXiv has visible subject grids, compact abstracts, and centered HTML papers with collapsible contents and author details.
+- **YouTube:** a responsive home video grid with Shorts hidden from navigation,
+  shelves, and cards. Enable it from the YouTube switch in the popup or Settings,
+  independently of theme overrides.
 - **Cleanup:** hide common top announcement and promotion bars with one global switch in Settings or the popup's collapsed Page cleanup section.
 
 Firefox's browser frame follows the palette. Matching Chrome and Edge frame themes are packaged separately. Reply expansion and frame themes are available in the current source; store releases may lag behind.

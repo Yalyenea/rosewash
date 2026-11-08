@@ -9,13 +9,20 @@
     read: "data-rosewash-bilibili-read",
     video: "data-rosewash-bilibili-video"
   };
+  const VIDEO_PROPERTIES = {
+    x: "--rosewash-bilibili-comment-x",
+    top: "--rosewash-bilibili-comment-top",
+    width: "--rosewash-bilibili-comment-width",
+    height: "--rosewash-bilibili-comment-height"
+  };
 
   let timer = 0;
   let videoObserving = false;
-  let commentOriginParent = null;
-  let commentOriginNextSibling = null;
+  let videoElements = [];
+  let commentScrollTarget = null;
   const rootObserver = new MutationObserver(handleRootChange);
   const videoObserver = new MutationObserver(schedule);
+  const videoResizeObserver = new ResizeObserver(schedule);
 
   function pageKind() {
     const host = String(window.location.hostname || "").toLowerCase();
@@ -36,49 +43,16 @@
     return "";
   }
 
-  function disconnectVideoObserver() {
-    if (!videoObserving) {
-      return;
-    }
-    videoObserver.disconnect?.();
-    videoObserving = false;
-  }
-
-  function isVideoHydrated() {
-    const headerHost = document.querySelector?.("#biliMainHeader");
-    if (!headerHost) {
-      return true;
-    }
-    return Boolean(
-      document.querySelector?.("#biliMainHeader .bili-header, .bili-header__bar, .mini-header")
-    );
-  }
-
   function syncVideoComments(active) {
-    const comment = document.querySelector?.("#commentapp");
     if (!active) {
-      disconnectVideoObserver();
-      if (comment && commentOriginParent && comment.parentNode !== commentOriginParent) {
-        if (commentOriginNextSibling && commentOriginNextSibling.parentNode === commentOriginParent) {
-          commentOriginParent.insertBefore(comment, commentOriginNextSibling);
-        } else {
-          commentOriginParent.appendChild(comment);
-        }
+      syncCommentScroll(null);
+      videoObserver.disconnect();
+      videoResizeObserver.disconnect();
+      videoObserving = false;
+      videoElements = [];
+      for (const property of Object.values(VIDEO_PROPERTIES)) {
+        document.documentElement.style.removeProperty(property);
       }
-      commentOriginParent = null;
-      commentOriginNextSibling = null;
-      return;
-    }
-
-    const rightColumn = document.querySelector?.(".right-container-inner");
-    if (comment && rightColumn && isVideoHydrated()) {
-      if (comment.parentNode !== rightColumn) {
-        commentOriginParent = comment.parentNode;
-        commentOriginNextSibling = comment.nextSibling;
-        rightColumn.appendChild(comment);
-        window.dispatchEvent?.(new Event("scroll"));
-      }
-      disconnectVideoObserver();
       return;
     }
 
@@ -89,6 +63,51 @@
       });
       videoObserving = true;
     }
+
+    const comment = document.querySelector("#commentapp");
+    syncCommentScroll(comment);
+    const leftColumn = document.querySelector(".left-container");
+    const rightContent = document.querySelector(".right-container-inner");
+    const elements = [comment, leftColumn, rightContent];
+    if (elements.some((element, index) => element !== videoElements[index])) {
+      videoResizeObserver.disconnect();
+      videoElements = elements;
+      for (const element of elements) {
+        if (element) videoResizeObserver.observe(element);
+      }
+    }
+    if (!comment || !leftColumn || !rightContent) return;
+
+    // Moving <bili-comments> (even through an ancestor) runs its unload/init
+    // callbacks. Keep the native DOM intact and position its box beside the player.
+    const rightContentRect = rightContent.getBoundingClientRect();
+    const top = Math.max(16, rightContentRect.bottom + 18);
+    const values = {
+      x: rightContentRect.left,
+      top,
+      width: rightContentRect.width,
+      height: Math.max(0, window.innerHeight - top - 16)
+    };
+    for (const [key, value] of Object.entries(values)) {
+      const property = VIDEO_PROPERTIES[key];
+      const next = `${value}px`;
+      if (document.documentElement.style.getPropertyValue(property) !== next) {
+        document.documentElement.style.setProperty(property, next);
+      }
+    }
+  }
+
+  function relayCommentScroll() {
+    // Bilibili's next-page loader listens on window, even when the comments
+    // themselves scroll in a separate panel.
+    window.dispatchEvent(new Event("scroll"));
+  }
+
+  function syncCommentScroll(comment) {
+    if (comment === commentScrollTarget) return;
+    commentScrollTarget?.removeEventListener("scroll", relayCommentScroll);
+    commentScrollTarget = comment;
+    commentScrollTarget?.addEventListener("scroll", relayCommentScroll, { passive: true });
   }
 
   function sync() {
@@ -125,6 +144,8 @@
   window.navigation.addEventListener("currententrychange", schedule);
   window.addEventListener("DOMContentLoaded", schedule);
   window.addEventListener("load", schedule);
+  window.addEventListener("resize", schedule);
+  window.addEventListener("scroll", schedule);
   document.addEventListener(LAYOUT_EVENT, handleRootChange);
   rootObserver.observe(document.documentElement, {
     attributes: true,

@@ -75,6 +75,7 @@ and apply the engine. Page responses do not hold up the write queue.
 | X layout | `src/sites/x.js`, `x.css` | Compact navigation rail and centered single-column streams |
 | Zhihu layout | `src/sites/zhihu.js`, `zhihu.css` | Centered reading columns; article-only header hiding |
 | Bilibili layout | `src/sites/bilibili.js`, `bilibili.css` | Clean home and feeds, video comments beside the player, centered articles |
+| YouTube layout | `src/sites/youtube.css` | Responsive home video grid and Shorts cleanup |
 | arXiv layout | `src/sites/arxiv.js`, `arxiv.css` | Subject grids, compact abstracts, centered HTML papers |
 
 ## Browser frame themes
@@ -128,6 +129,7 @@ Stored in **`chrome.storage.sync`**.
   "zhihuArticleWidth": 960,
   "bilibiliLayout": false,
   "bilibiliColumnWidth": 960,
+  "youtubeLayout": false,
   "arxivLayout": false,
   "arxivColumnWidth": 840,
   "dimImages": false,
@@ -158,15 +160,19 @@ Stored in **`chrome.storage.sync`**.
 | `zhihuArticleWidth` | 720 / 840 / 960 / 1080 | Centered Zhihu column width |
 | `bilibiliLayout` | boolean | Enables Bilibili's clean home, dynamic, video, and article layouts |
 | `bilibiliColumnWidth` | 720 / 840 / 960 / 1080 | Centered Bilibili dynamic feed and article width |
+| `youtubeLayout` | boolean | Enables the YouTube home grid and hides Shorts; independent of theme host rules |
 | `arxivLayout` | boolean | Enables the arXiv home, abstract, and HTML reading layouts |
 | `arxivColumnWidth` | 640 / 720 / 840 / 960 | arXiv content width; defaults to 840 and shrinks to the viewport |
 | `dimImages` | boolean | Dims images and videos while a tinted dark palette is active |
 | `imageBrightness` | 70 / 80 / 90 | Image brightness in percent when dimming applies |
-| `disabledHosts` | string[] | Hostnames (and parents) where theme and site layouts are blocked |
-| `enabledHosts` | string[] | Hostnames (and parents) where theme and site layouts are explicitly enabled |
+| `disabledHosts` | string[] | Hostnames (and parents) where theme overrides are blocked |
+| `enabledHosts` | string[] | Hostnames (and parents) where theme overrides are explicitly enabled |
 | `fontDisabledHosts` | string[] | Hostnames (and parents) where custom fonts are blocked |
 | `fontEnabledHosts` | string[] | Hostnames (and parents) where custom fonts are explicitly allowed; the global font setting must also be enabled |
 | `ignoredElements` | `{ host: selector[] }` | Picker rules; matched elements and their contents stay untouched on that exact host |
+
+X, Zhihu, Bilibili, and arXiv layouts follow the theme host rule. The YouTube
+layout follows its own switch and the global `enabled` setting.
 
 Normalization lives in `RosewashCore.normalizeSettings()`:
 
@@ -625,7 +631,7 @@ old snapshot. Notification responses never block the next save.
 - Pick sits immediately before Allowed / Blocked. The site button saves an
   explicit on/off rule. While Rosewash is paused globally it shows Paused and
   is disabled. Storage changes update the open popup.
-- X, Zhihu, Bilibili, and arXiv layout switches appear only on their matching hosts. Font
+- X, Zhihu, Bilibili, YouTube, and arXiv layout switches appear only on their matching hosts. Font
   choices, image dimming, widths, site lists, and shortcut bindings live in
   settings. The popup Fonts switch shares `customFontsEnabled` with settings.
 - Browser-protected pages show Unavailable with a reason and disable the site
@@ -663,8 +669,9 @@ old snapshot. Notification responses never block the next save.
   independent previews use the same local FontFace definitions as pages.
   Enumeration and preview errors are shown.
 - Clean Layout includes the global Hide top banners switch above the X.com,
-  知乎 zhihu.com, 哔哩哔哩 bilibili.com, and arXiv arxiv.org cards. Each site card has a switch
-  and column width slider.
+  知乎 zhihu.com, 哔哩哔哩 bilibili.com, YouTube youtube.com, and arXiv arxiv.org
+  cards. Each card has a switch; X, Zhihu, Bilibili, and arXiv also have column
+  width sliders.
   Always on / Always off lists and ignored elements follow.
 - Images use one row for the dimming switch, brightness slider, and percentage.
   The slider is disabled while dimming is off.
@@ -797,18 +804,50 @@ events update the markers; disabling the layout removes them.
 
 - Home hides the hero banner, channel bars, carousel, live promotions, and
   ad cards while preserving the navigation and video grid.
-- Video pages hide recommendations and promotions, preserve UP information
-  and episode selectors, and move comments into the right column after page
-  hydration. The player column stays visible while scrolling. Turning the
-  layout off restores comments to their original position.
+- Video pages hide recommendations and promotions and preserve UP information
+  and episode selectors. Comments stay in their native parent and use a fixed,
+  independently scrolling panel below the right column's modules. This avoids
+  the comment component's unload/init callbacks and preserves loaded threads
+  when toggling the layout. ResizeObserver updates the panel's viewport position,
+  width, and available height as the page changes.
+- Comment scrolling notifies Bilibili's window scroll listeners so subsequent
+  pages keep loading. The runtime removes the listener when comments are
+  replaced or the layout is disabled. The player stays visible while comments
+  scroll, floating comment inputs align with the panel, and web fullscreen
+  covers page navigation.
 - Dynamic feeds and articles use `--rosewash-bilibili-column`, shrinking to
   the viewport with 24px gutters. Video columns retain their separate sizing.
 - Shared theme rules cover Bilibili header and comment tokens, including
   inherited tokens in open shadow roots. Player and thumbnail overlays keep
   their native contrast.
 
-`test/bilibili-layout.test.js` checks route changes, comment restoration,
-cleanup selectors, and settings wiring.
+`test/bilibili-layout.test.js` checks route changes, panel geometry, delayed and
+replaced comment containers, scroll listener cleanup, selectors, and settings
+wiring.
+
+## YouTube home grid
+
+`manifest.json` injects `src/sites/youtube.css` on `youtube.com` and
+`www.youtube.com`. The top-frame content runtime sets
+`data-rosewash-youtube-layout` when Rosewash and `youtubeLayout` are enabled,
+independently of the site's theme rule. The option is off by default and has
+one switch in the matching popup and the Settings YouTube card.
+
+- The home feed's native `ytd-rich-grid-renderer > #contents` becomes a grid
+  scoped to `ytd-browse[page-subtype="home"]`. Cards have a 220px minimum width
+  that shrinks to fit narrower containers, with 20px column and 28px row gaps.
+  Native per-card widths and margins are cleared; shelves and continuation
+  elements span the grid.
+- Shorts navigation entries, channel tabs, shelves, and individual cards hide
+  at their outer container so they leave no empty slots. CSS also applies to
+  items loaded later.
+- Ordinary watch pages keep their native layout. No nodes move and no extra
+  YouTube script is injected; native page attributes handle client-side route
+  changes. Turning the option or Rosewash off restores native styles.
+
+Core, content, and settings tests cover normalization, theme-independent
+activation, global pause, and saves through both interfaces. Browser checks
+cover responsive columns, continued feed loading, and watch-page navigation.
 
 ## arXiv immersive layout
 

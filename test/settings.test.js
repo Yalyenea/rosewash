@@ -216,6 +216,21 @@ test("options saves the independent reply expansion switch", async () => {
   assert.equal(ui.raw().xAutoExpandReplies, false);
 });
 
+test("YouTube grid layout persists through options and the popup", async () => {
+  const options = await settingsUI("options");
+  assert.equal(options.element("#youtube-layout").checked, false);
+  options.element("#youtube-layout").checked = true;
+  await options.change("#youtube-layout");
+  await options.done();
+  assert.equal(options.raw().youtubeLayout, true);
+  const popup = await settingsUI("popup", options.raw());
+  assert.equal(popup.element("#youtube-layout").checked, true);
+  popup.element("#youtube-layout").checked = false;
+  await popup.change("#youtube-layout");
+  await popup.done();
+  assert.equal(popup.raw().youtubeLayout, false);
+});
+
 test("arXiv width and layout persist through the shared settings queue", async () => {
   const options = await settingsUI("options");
   assert.equal(options.element("#arxiv-column-width").disabled, true);
