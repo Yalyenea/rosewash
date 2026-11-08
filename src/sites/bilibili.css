@@ -42,9 +42,11 @@ html:is(
   display: none !important;
 }
 
-/* Home: keep the top bar and category navigation above the video grid; hide
-   the hero banner, carousel, live/floor promos, and ad or empty ad-shell cards. */
+/* Keep the original header categories in flow. The feed's fixed duplicate
+   and its spacer must disappear so scrolling cards stay unobstructed. */
 html[data-rosewash-bilibili-home] :is(
+  .bili-feed4 > .header-channel,
+  .fixed-channel-shim,
   .bili-header__banner,
   .bili-header .taper-line,
   .recommended-swipe,

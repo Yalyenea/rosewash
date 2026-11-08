@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Hide Bilibili's floating category-bar copy and its spacer so scrolling
+  video cards remain unobstructed. Keep the original categories at the top.
 - Preserve Bilibili's home category navigation while hiding Game Center,
   Member Shop, Manga, Esports, client download, and Premium in the top bar.
   Match navigation entries directly so links inside popovers cannot hide

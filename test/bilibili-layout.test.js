@@ -256,7 +256,9 @@ test("preserves Bilibili categories and video selectors while hiding selected se
 
   assert.ok(homeRule);
   assert.match(homeRule, /\.bili-header__banner/);
-  assert.doesNotMatch(homeRule, /\.bili-header__channel|\.header-channel|\.fixed-channel-shim/);
+  assert.doesNotMatch(homeRule, /\.bili-header__channel/);
+  assert.match(homeRule, /\.bili-feed4 > \.header-channel/);
+  assert.match(homeRule, /\.fixed-channel-shim/);
   assert.match(homeRule, /\.recommended-swipe/);
   for (const link of ["show.bilibili.com", "manga.bilibili.com", "/match/", "app.bilibili.com"]) {
     assert.ok(css.includes(link));
