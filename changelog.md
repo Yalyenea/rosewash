@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix the site shortcut and popup controls on local file pages. All `file://`
+  pages share one site rule, which persists across refreshes.
 - Hide Bilibili's floating category-bar copy and its spacer so scrolling
   video cards remain unobstructed. Keep the original categories at the top.
 - Preserve Bilibili's home category navigation while hiding Game Center,

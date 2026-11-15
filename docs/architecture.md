@@ -205,6 +205,7 @@ The independent theme switch uses the plain palette path while retaining both
 selected palettes. Fonts remain active, and image dimming stops.
 
 The popup exposes an Allowed / Blocked button for the current hostname's theme.
+Local file pages share the `file://` rule key across the popup and shortcut.
 Remove a hostname from the settings site lists to clear its override. Explicit
 choices persist when `defaultEnabled` changes. Clearing a hostname's rule
 restores its parent rule if present, otherwise the global

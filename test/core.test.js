@@ -49,6 +49,39 @@ test("embedded frames follow the top-level site rule", async () => {
   assert.equal(core.policyHostForLocation({ href: "https://top.example.org/", ancestorOrigins: [] }), "top.example.org");
 });
 
+test("local file URLs share a site rule without storing file paths", async () => {
+  const core = await loadCore();
+  for (const url of ["file:///Users/reader/first.html", "file:///tmp/second.html#section", "file://server/share/page.html"]) {
+    assert.equal(core.hostFromUrl(url), "file://");
+    assert.equal(core.policyHostForLocation({ href: url, ancestorOrigins: [] }), "file://");
+  }
+  assert.equal(core.policyHostForLocation({ href: "about:blank", ancestorOrigins: ["file://"] }), "file://");
+  assert.equal(core.hostFromUrl("http://localhost:8000/page.html"), "localhost");
+});
+
+test("local file site toggles restore page styles and persist across files", async () => {
+  const core = await loadCore();
+  const { document, window, byId } = createMockDom({ tree: [{ id: "paper", backgroundColor: "#ffffff" }] });
+  document.location = { href: "file:///tmp/first.html", ancestorOrigins: [] };
+  const engine = core.createEngine({ document, window });
+  const settings = core.plainSettings({ appearance: "light" });
+  const host = core.hostFromUrl(document.location.href);
+  const paper = byId.get("paper");
+  engine.apply(settings);
+  assert.equal(paper.style.getPropertyValue("background-color"), core.PALETTES.dawn.base);
+  const off = core.toggleHostEnabled(host, settings);
+  engine.apply(off);
+  assert.equal(document.documentElement.hasAttribute("data-rosewash-theme"), false);
+  assert.equal(paper.style.getPropertyValue("background-color"), "");
+  document.location.href = "file:///tmp/second.html";
+  engine.apply(core.plainSettings(off));
+  assert.equal(document.documentElement.hasAttribute("data-rosewash-theme"), false);
+  assert.equal(core.isHostEnabled("example.com", off), true);
+  engine.apply(core.toggleHostEnabled(core.hostFromUrl(document.location.href), off));
+  assert.equal(document.documentElement.getAttribute("data-rosewash-theme"), "rose-pine-light");
+  assert.equal(paper.style.getPropertyValue("background-color"), core.PALETTES.dawn.base);
+});
+
 test("store and account restrictions match the target browser", async () => {
   const core = await loadCore();
   assert.equal(core.pageRestrictionForUrl("https://addons.mozilla.org/en-US/firefox/", "firefox"), "restricted");

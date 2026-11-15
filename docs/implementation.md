@@ -204,6 +204,10 @@ on `documentElement`.
 Host matching (`isHostDisabled`): exact match or subdomain of a listed host
 (`news.example.com` matches entry `example.com`).
 
+`hostFromUrl` maps all local file URLs to the shared `file://` rule key.
+The shortcut, popup, toolbar icon, and content engine use this key; local
+file paths are never stored in site rules.
+
 `isHostEnabled` uses the most specific matching rule in `enabledHosts` or
 `disabledHosts`, otherwise `defaultEnabled`. Passing `"fonts"` as the feature
 uses `fontEnabledHosts` and `fontDisabledHosts` with the same matching rules.

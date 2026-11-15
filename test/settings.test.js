@@ -26,7 +26,7 @@ function deferred() {
   return { promise, resolve };
 }
 
-async function settingsUI(page, initial = {}, browser = "chrome", fontList = []) {
+async function settingsUI(page, initial = {}, browser = "chrome", fontList = [], url = "https://example.com/") {
   const elements = new Map();
   const radios = [];
   class Element {
@@ -137,7 +137,7 @@ async function settingsUI(page, initial = {}, browser = "chrome", fontList = [])
         nextBroadcast = null;
         await hold.promise;
       }
-      return [{ id: 1, url: "https://example.com/" }];
+      return [{ id: 1, url }];
     },
     async sendMessage(_id, message) { messages.push(plain(message)); }
   };
@@ -367,6 +367,23 @@ test("classic popup site button toggles explicit policy without changing other s
   assert.deepEqual(ui.raw().enabledHosts, []);
   assert.deepEqual(ui.raw().disabledHosts, ["example.com", "other.com"]);
   assert.equal(ui.element("#site-toggle").textContent, "Blocked");
+});
+
+test("popup can toggle local file rules and retains them when reopened", async () => {
+  const ui = await settingsUI("popup", {}, "chrome", [], "file:///tmp/page.html");
+  assert.equal(ui.element("#host").textContent, "file://");
+  assert.equal(ui.element("#site-toggle").disabled, false);
+  assert.equal(ui.element("#site-toggle").textContent, "Allowed");
+  await ui.element("#site-toggle").emit("click");
+  await ui.done();
+  await settle();
+  assert.deepEqual(ui.raw().disabledHosts, ["file://"]);
+  const reopened = await settingsUI("popup", ui.raw(), "chrome", [], "file:///tmp/other.html");
+  assert.equal(reopened.element("#site-toggle").textContent, "Blocked");
+  await reopened.element("#site-toggle").emit("click");
+  await reopened.done();
+  assert.deepEqual(reopened.raw().disabledHosts, []);
+  assert.deepEqual(reopened.raw().enabledHosts, ["file://"]);
 });
 
 test("classic popup reports global pause and disables site toggling and picking", async () => {

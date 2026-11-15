@@ -146,6 +146,25 @@ test("shortcut ignores protected pages", async () => {
   assert.equal(runtime.messages.length, 0);
 });
 
+test("shortcut toggles local files and updates the toolbar icon", async () => {
+  const url = "file:///tmp/page.html";
+  const runtime = background({ url });
+  runtime.store({ disabledHosts: ["other.com"], fontDisabledHosts: [] });
+  for (const [expected, icon] of [[true, "-off"], [false, ""]]) {
+    runtime.command();
+    await runtime.done();
+    assert.equal(runtime.writes.at(-1).disabledHosts.includes("file://"), expected);
+    assert.equal(runtime.writes.at(-1).disabledHosts.includes("other.com"), true);
+    assert.deepEqual(runtime.writes.at(-1).fontDisabledHosts, []);
+    runtime.storageChanged();
+    await flush();
+    await flush();
+    assert.equal(runtime.icons.at(-1).path[16], `/icons/icon${icon}-16.png`);
+  }
+  assert.deepEqual(runtime.writes.at(-1).enabledHosts, ["file://"]);
+  assert.equal(runtime.messages.length, 2);
+});
+
 test("a tab without a content script still retains its shortcut preference", async () => {
   const runtime = background({ messageError: true });
   runtime.command();

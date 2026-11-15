@@ -820,7 +820,9 @@
 
   function hostFromUrl(value) {
     try {
-      return normalizeHost(new URL(value).hostname);
+      const url = new URL(value);
+      // Local files have no hostname; share one rule without syncing private paths.
+      return url.protocol === "file:" ? "file://" : normalizeHost(url.hostname);
     } catch {
       return "";
     }
