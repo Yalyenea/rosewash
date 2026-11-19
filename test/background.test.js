@@ -14,7 +14,7 @@ function deferred() {
 }
 
 function background({ url = "https://x.com/home", messageError = false, beforeSet, notify,
-  firefox = false, theme = firefox, prefersDark = false, beforeIcon, iconError } = {}) {
+  firefox = false, commands = true, theme = firefox, prefersDark = false, beforeIcon, iconError } = {}) {
   const writes = [];
   const messages = [];
   const errors = [];
@@ -64,7 +64,7 @@ function background({ url = "https://x.com/home", messageError = false, beforeSe
       // the native lastError unchecked. Model that boundary, not just rejection.
       return callback ? undefined : complete;
     } },
-    commands: { onCommand: { addListener: (fn) => { commandListener = fn; } } },
+    ...(commands && { commands: { onCommand: { addListener: (fn) => { commandListener = fn; } } } }),
     tabs: {
       onUpdated: { addListener: (fn) => { tabUpdated = fn; } },
       query: async () => [{ id: 1, url }],
@@ -136,6 +136,15 @@ test("Firefox event pages load without importScripts and accept settings from mo
   runtime.command({ id: 7, url: "https://www.zhihu.com/question/123" });
   await runtime.done();
   assert.deepEqual(runtime.writes.at(-1).disabledHosts, ["www.zhihu.com"]);
+});
+
+test("Firefox Android saves settings without commands or theme APIs", async () => {
+  const runtime = background({ firefox: true, commands: false, theme: false });
+  const response = await runtime.send(edit({ appearance: "dark" }));
+  assert.equal(response.ok, true);
+  assert.equal(runtime.writes.at(-1).appearance, "dark");
+  await flush();
+  assert.deepEqual(runtime.messages, [{ tabId: 1, message: { type: "rosewash:settings-updated" } }]);
 });
 
 test("shortcut ignores protected pages", async () => {

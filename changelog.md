@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.2.10 - 2026-11-19
+
+- Support Firefox for Android 148 or newer with a touch-friendly popup.
+  Tap an element to preview it, then choose Ignore or Cancel.
+  Android saves settings on the device. Keyboard shortcuts and browser-frame
+  colors are available on desktop Firefox.
 
 - Fix the site shortcut and popup controls on local file pages. All `file://`
   pages share one site rule, which persists across refreshes.

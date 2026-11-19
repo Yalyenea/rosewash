@@ -6,8 +6,8 @@ For product roadmap, see [PLAN.md](../PLAN.md).
 
 ## What it is
 
-Rosewash is a **zero-build Manifest V3** extension for Chromium and desktop
-Firefox 148 or newer. It covers page
+Rosewash is a **zero-build Manifest V3** extension for Chromium and for
+Firefox 148 or newer on desktop and Android. It covers page
 surfaces, text, and neutral borders with the selected palette, defaulting to
 Rose Pine Dawn / Moon. There is
 no bundler, no runtime npm dependency, and no TypeScript compile step.
@@ -62,6 +62,11 @@ Content scripts learn about saves through `storage.onChanged` and background
 notifications. Both paths read current storage, replace the in-page cache,
 and apply the engine. Page responses do not hold up the write queue.
 
+Firefox for Android uses the same package, with `gecko_android` set in the
+generated manifest. The background skips shortcut registration when the API is
+absent, and Settings hides its shortcut tab. Firefox for Android stores
+extension settings on the device.
+
 | Layer | File(s) | Role |
 | --- | --- | --- |
 | Manifest | `manifest.json` | Registers scripts, storage, `<all_urls>`, commands |
@@ -80,7 +85,7 @@ and apply the engine. Page responses do not hold up the write queue.
 
 ## Browser frame themes
 
-Firefox's generated manifest adds the `theme` permission. The background
+Firefox's generated manifest adds the `theme` permission for desktop. The background
 runtime resolves the active palette from the existing appearance settings,
 then applies its colors to the browser frame, toolbar, tabs, sidebar, and new
 tab page. The frame and toolbar share the page's base color. Pausing Rosewash
@@ -644,13 +649,15 @@ old snapshot. Notification responses never block the next save.
   Pending edits remain visible until saves finish, then current storage reloads.
 - Pick starts the top-frame element picker and closes the popup. It is disabled
   while globally paused, blocked on the site, or on a protected page.
+  On touch screens, a tap previews the element and Ignore saves it. Cancel
+  closes the picker without saving.
 - Page cleanup starts collapsed. Its Hide top banners switch edits the same
   global setting as Options; Escape collapses the section and focuses its summary.
 
 **Options**
 
-- Four tabs: Theme, Fonts, Sites, and Shortcuts. The tab label identifies
-  its panel; there is no repeated panel heading.
+- Theme, Fonts, and Sites each have a tab. Browsers with the commands API
+  also have a Shortcuts tab.
 - Light and dark palettes remain expanded in equal-width button grids.
   Settings chrome follows the selected palette and system appearance, and
   turns plain when Override theme is off, matching the popup.

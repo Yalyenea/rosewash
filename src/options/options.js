@@ -60,6 +60,7 @@
   let ignoredElements = {};
 
   async function refreshShortcut() {
+    if (!chrome.commands) return;
     try {
       const commands = await chrome.commands.getAll();
       for (const [name, binding] of shortcutBindings) {
@@ -105,13 +106,17 @@
 
   const panels = Array.from(document.querySelectorAll(".tab-panel"));
   const tabs = Array.from(document.querySelectorAll("[data-panel]"));
-  for (const tab of tabs) tab.addEventListener("click", () => {
-    for (const panel of panels) panel.hidden = panel.id !== tab.dataset.panel;
-    for (const button of tabs) {
-      if (button === tab) button.setAttribute("aria-current", "page");
-      else button.removeAttribute("aria-current");
-    }
-  });
+  for (const tab of tabs) {
+    // The shortcut panel would have no usable controls on Firefox for Android.
+    if (tab.dataset.panel === "shortcuts" && !chrome.commands) tab.hidden = true;
+    tab.addEventListener("click", () => {
+      for (const panel of panels) panel.hidden = panel.id !== tab.dataset.panel;
+      for (const button of tabs) {
+        if (button === tab) button.setAttribute("aria-current", "page");
+        else button.removeAttribute("aria-current");
+      }
+    });
+  }
 
   function normalizeHost(host) {
     return String(host || "").trim().toLowerCase().replace(/^\.+/, "");

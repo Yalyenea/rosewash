@@ -1,6 +1,6 @@
 {
   "name": "rosewash",
-  "version": "0.2.9",
+  "version": "0.2.10",
   "description": "A lightweight Rose Pine page tint extension for harsh white web pages.",
   "type": "module",
   "scripts": {

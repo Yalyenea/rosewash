@@ -262,4 +262,13 @@ button:not(:disabled):hover { filter: brightness(0.96); }
 .preset select { min-width: 0; }
 .switch { position: relative; flex: none; cursor: pointer; }
 .switch input { width: 1px; height: 1px; }
+/* Firefox Android opens the action popup in a full tab. */
+@media (hover: none) and (pointer: coarse) {
+  body { width: auto; }
+  .shell { max-width: 440px; margin-inline: auto; }
+  .modes button, .preset select, .site-actions button, #site-toggle,
+  .site-row, .cleanup summary, footer button { min-height: 44px; }
+  .preset { min-height: 50px; }
+  .topline .switch { display: grid; align-items: center; min-height: 44px; min-width: 44px; }
+}
 @media (prefers-reduced-motion: reduce) { .switch span::after { transition: none; } }

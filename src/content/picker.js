@@ -16,7 +16,7 @@
     return (selector) => element.getRootNode().querySelectorAll(selector).length;
   }
 
-  function createOverlay(palette) {
+  function createOverlay(palette, touch) {
     const host = document.createElement("div");
     host.setAttribute("data-rosewash-ignore", "");
     host.tabIndex = -1;
@@ -38,17 +38,53 @@
         }
         .selector { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--link); word-break: break-all; }
         .hint { color: var(--muted); }
+        .touch {
+          bottom: max(8px, env(safe-area-inset-bottom)); left: 8px; right: 8px;
+          margin-inline: auto; width: max-content; max-width: calc(100vw - 16px);
+          padding: 8px 12px; pointer-events: auto;
+        }
+        .actions { display: flex; gap: 8px; justify-content: flex-end; }
+        .actions[hidden] { display: none; }
+        button {
+          background: transparent; border: 0; border-radius: 6px; color: var(--link);
+          cursor: pointer; font: inherit; min-height: 44px; padding: 0 12px;
+        }
+        button:disabled { opacity: 0.55; cursor: default; }
       </style>
       <div class="box"></div>
-      <div class="tip"><div class="selector"></div><div class="hint">Click to ignore · ↑ parent · ↓ child · Esc cancel</div></div>
+      <div class="tip">
+        <div class="selector"></div>
+        <div class="hint" role="status">Click to ignore · ↑ parent · ↓ child · Esc cancel</div>
+        <div class="actions" hidden>
+          <button type="button" class="cancel">Cancel</button>
+          <button type="button" class="ignore" disabled>Ignore</button>
+        </div>
+      </div>
     `;
+    const tip = shadow.querySelector(".tip");
+    const hint = shadow.querySelector(".hint");
+    const ignore = touch ? shadow.querySelector(".ignore") : null;
+    if (touch) {
+      tip.classList.add("touch");
+      hint.textContent = "Tap an element to preview";
+      shadow.querySelector(".actions").hidden = false;
+      shadow.querySelector(".cancel").addEventListener("click", (event) => {
+        block(event);
+        stop();
+      });
+      ignore.addEventListener("click", (event) => {
+        block(event);
+        saveSelection();
+      });
+    }
     document.documentElement.append(host);
     return {
       host,
+      ignore,
       box: shadow.querySelector(".box"),
-      tip: shadow.querySelector(".tip"),
+      tip,
       selector: shadow.querySelector(".selector"),
-      hint: shadow.querySelector(".hint")
+      hint
     };
   }
 
@@ -60,6 +96,7 @@
       left: `${rect.left}px`, top: `${rect.top}px`, width: `${rect.width}px`, height: `${rect.height}px`
     });
     overlay.selector.textContent = core.selectorForElement(target, countMatches(target));
+    if (session.touch) return;
     const tipTop = rect.top > 64 ? rect.top - overlay.tip.offsetHeight - 6 : Math.min(rect.bottom + 6, window.innerHeight - overlay.tip.offsetHeight - 8);
     Object.assign(overlay.tip.style, {
       left: `${Math.max(8, Math.min(rect.left, window.innerWidth - overlay.tip.offsetWidth - 8))}px`,
@@ -68,13 +105,23 @@
   }
 
   function select(element) {
-    if (!element || element === session.overlay.host || element === document.documentElement) return;
+    const { overlay } = session;
+    if (!element || element === overlay.host || element === document.documentElement) return;
     session.target = element;
+    if (overlay.ignore) {
+      overlay.ignore.disabled = session.saving;
+      overlay.hint.textContent = "";
+    }
     paint();
   }
 
+  function eventElement(event) {
+    return event.composedPath().find((node) => node.nodeType === 1);
+  }
+
   function handlePointerMove(event) {
-    const element = event.composedPath().find((node) => node.nodeType === 1);
+    if (session.touch) return;
+    const element = eventElement(event);
     if (element && element !== session.target && element !== session.overlay.host) {
       session.trail = [];
       select(element);
@@ -86,12 +133,28 @@
     event.stopImmediatePropagation();
   }
 
-  async function handleClick(event) {
+  // Outside its closed shadow root, controls are retargeted to the overlay host.
+  function blockPagePointer(event) {
+    if (event.target !== session.overlay.host) block(event);
+  }
+
+  function handleClick(event) {
+    if (event.target === session.overlay.host) return;
     block(event);
+    // A touch drag scrolls the page. Only a click previews an element.
+    if (session.touch) {
+      if (!session.saving) select(eventElement(event));
+      return;
+    }
+    return saveSelection();
+  }
+
+  async function saveSelection() {
     const current = session;
     const { target, overlay } = current;
-    if (!target || session.saving) return;
-    session.saving = true;
+    if (!target || current.saving) return;
+    current.saving = true;
+    if (overlay.ignore) overlay.ignore.disabled = true;
     const selector = core.selectorForElement(target, countMatches(target));
     try {
       const response = await chrome.runtime.sendMessage({ type: "rosewash:ignore-element", selector });
@@ -101,6 +164,7 @@
       if (session !== current) return;
       overlay.hint.textContent = `Could not save: ${error.message}`;
       current.saving = false;
+      if (overlay.ignore) overlay.ignore.disabled = false;
     }
   }
 
@@ -123,14 +187,16 @@
 
   const listeners = [
     ["pointermove", handlePointerMove],
-    ["pointerdown", block], ["mousedown", block], ["mouseup", block], ["pointerup", block],
-    ["click", handleClick], ["auxclick", block], ["contextmenu", block],
+    ["pointerdown", blockPagePointer], ["mousedown", blockPagePointer],
+    ["mouseup", blockPagePointer], ["pointerup", blockPagePointer],
+    ["click", handleClick], ["auxclick", blockPagePointer], ["contextmenu", blockPagePointer],
     ["keydown", handleKeyDown]
   ];
 
   async function start() {
     if (session) return;
-    const current = { overlay: null, target: null, trail: [], saving: false, previousFocus: document.activeElement };
+    const touch = window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+    const current = { touch, overlay: null, target: null, trail: [], saving: false, previousFocus: document.activeElement };
     session = current;
     // Install cancellation before reading storage so Esc also works during startup.
     window.addEventListener("keydown", handleKeyDown, true);
@@ -139,7 +205,7 @@
       const settings = core.plainSettings(await chrome.storage.sync.get(null));
       if (session !== current) return;
       const dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      current.overlay = createOverlay(core.PALETTES[core.resolveSettingsThemeKey(settings, dark)]);
+      current.overlay = createOverlay(core.PALETTES[core.resolveSettingsThemeKey(settings, dark)], touch);
       for (const [type, listener] of listeners) window.addEventListener(type, listener, true);
       window.addEventListener("scroll", paint, true);
       window.addEventListener("resize", paint);

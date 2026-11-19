@@ -95,7 +95,7 @@ function refreshIcons(tabs) {
     .catch((error) => console.error("Could not update Rosewash icons:", error));
 }
 
-// Firefox-only dynamic frame theme; chrome.theme is absent on Chromium.
+// Dynamic frame themes are available on desktop Firefox.
 // In-memory key: an event page wake re-applies the theme once, which is fine.
 let browserThemeKey;
 
@@ -163,7 +163,8 @@ function refreshBrowserTheme() {
   syncBrowserTheme().catch((error) => console.error("Could not update the browser theme:", error));
 }
 
-chrome.commands.onCommand.addListener((command, tab) => {
+// Firefox for Android has no commands API. Register settings listeners there too.
+chrome.commands?.onCommand.addListener((command, tab) => {
   if (command === TOGGLE_SITE_COMMAND) enqueueSettings(() => toggleCurrentSite(tab));
   if (command === TOGGLE_ENABLED_COMMAND) enqueueSettings(toggleEnabled);
 });

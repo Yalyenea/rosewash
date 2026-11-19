@@ -39,6 +39,8 @@ a tinted dark palette also lowers image and video brightness through
 `theme.css`.
 The picker takes keyboard focus so Esc can cancel it after an embedded frame
 had focus. Exit restores the previous focus and releases event interception.
+On touch screens, tapping an element previews it. Ignore saves the selector,
+and Cancel exits without saving.
 
 At `document_start` the content runtime reads stored settings before applying
 colors, fonts, or layouts. Disabled sites stay untouched while storage loads.
@@ -155,7 +157,7 @@ Users can rebind shortcuts under `chrome://extensions/shortcuts`,
 
 ## Browser Frame
 
-Firefox's background runtime uses the `theme` permission to apply the active
+Desktop Firefox's background runtime uses the `theme` permission to apply the active
 palette to the browser frame and toolbar. Startup, installation, settings
 changes, and system-appearance messages from top-level content scripts trigger
 updates. Global pause and plain palettes reset the theme; per-site rules leave

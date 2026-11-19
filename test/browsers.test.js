@@ -18,6 +18,7 @@ test("browser manifests retain shared content while using the correct background
       assert.deepEqual(target.background.scripts, ["src/content/core.js", "src/background/background.js"]);
       assert.deepEqual(target.permissions, ["storage", "theme"]);
       assert.equal(target.browser_specific_settings.gecko.strict_min_version, "148.0");
+      assert.equal(target.browser_specific_settings.gecko_android.strict_min_version, "148.0");
       assert.ok(target.browser_specific_settings.gecko.id);
     } else assert.deepEqual(target, manifest);
   }

@@ -20,13 +20,15 @@ export function manifestForBrowser(source, browser) {
     manifest.permissions = manifest.permissions
       .filter((permission) => permission !== "fontSettings")
       .concat("theme");
+    // Both Gecko targets need ancestorOrigins (148) and the Navigation API (147).
+    const minimumGeckoVersion = "148.0";
     manifest.browser_specific_settings = {
       gecko: {
         id: "rosewash@rosewash",
-        // ancestorOrigins arrived in 148; Navigation API arrived in 147.
-        strict_min_version: "148.0",
+        strict_min_version: minimumGeckoVersion,
         data_collection_permissions: { required: ["none"] }
-      }
+      },
+      gecko_android: { strict_min_version: minimumGeckoVersion }
     };
   }
   return manifest;

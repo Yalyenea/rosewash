@@ -5,26 +5,32 @@ import vm from "node:vm";
 
 const source = readFileSync(new URL("../src/content/picker.js", import.meta.url), "utf8");
 
-function picker({ holdRead = false, failRead = false } = {}) {
+function picker({ holdRead = false, failRead = false, touch = false } = {}) {
   const listeners = new Map();
   const overlays = new Set();
+  let controls;
   let receive, releaseRead, releaseSave;
   let writes = 0;
   const document = {
     activeElement: { isConnected: true, focus() { document.activeElement = this; } },
     documentElement: { append(host) { overlays.add(host); } },
     createElement() {
-      const parts = Object.fromEntries([".box", ".tip", ".selector", ".hint"].map((key) => [key, { style: {} }]));
+      const parts = Object.fromEntries([".box", ".tip", ".selector", ".hint", ".actions"]
+        .map((key) => [key, { style: {}, classList: { add() {} } }]));
+      controls = Object.fromEntries([".cancel", ".ignore"].map((key) => [key, {
+        disabled: key === ".ignore",
+        addEventListener(_type, listener) { this.click = listener; }
+      }]));
       return {
         style: { setProperty() {} }, setAttribute() {},
-        attachShadow: () => ({ querySelector: (key) => parts[key] }),
+        attachShadow: () => ({ querySelector: (key) => parts[key] || controls[key] }),
         focus() { document.activeElement = this; },
         remove() { overlays.delete(this); }
       };
     }
   };
   const window = {
-    focus() {}, matchMedia: () => ({ matches: false }),
+    focus() {}, matchMedia: (query) => ({ matches: touch && query.includes("pointer: coarse") }),
     addEventListener(type, listener) {
       if (!listeners.has(type)) listeners.set(type, new Set());
       listeners.get(type).add(listener);
@@ -51,17 +57,22 @@ function picker({ holdRead = false, failRead = false } = {}) {
       }
     }
   });
-  const emit = (type, values = {}) => {
-    const event = { preventDefault() {}, stopImmediatePropagation() {}, ...values };
-    return Promise.all([...(listeners.get(type) || [])].map((listener) => listener(event)));
-  };
+  const event = (values = {}) => ({ preventDefault() {}, stopImmediatePropagation() {}, ...values });
+  const emit = (type, values) => Promise.all([...(listeners.get(type) || [])].map((listener) => listener(event(values))));
   return {
     document, overlays, listeners,
     start: () => new Promise((resolve) => receive({ type: "rosewash:start-picker" }, { id: "rosewash" }, resolve)),
     escape: () => emit("keydown", { key: "Escape" }),
-    click: () => emit("click"),
+    click: (element) => emit("click", { composedPath: () => [element] }),
     point: (element) => emit("pointermove", { composedPath: () => [element] }),
+    control: (key) => controls[key],
+    clickControl(key) {
+      const controlEvent = event({ target: [...overlays][0] });
+      for (const listener of listeners.get("click")) listener(controlEvent);
+      controls[key].click(controlEvent);
+    },
     releaseRead: () => releaseRead(), releaseSave: () => releaseSave({ ok: false, error: "Save failed" }),
+    finishSave: () => releaseSave({ ok: true }),
     writes: () => writes
   };
 }
@@ -110,4 +121,27 @@ test("picker reports storage startup failure and releases its listeners", async 
   assert.equal(response.ok, false);
   assert.equal(response.error, "Storage unavailable");
   assert.equal([...ui.listeners.values()].every((items) => items.size === 0), true);
+});
+
+test("touch selection previews without saving and offers confirmation and cancellation", async () => {
+  const ui = picker({ touch: true });
+  const element = { nodeType: 1, getBoundingClientRect: () => ({}), getRootNode: () => ({}) };
+  await ui.start();
+  await ui.point(element);
+  assert.equal(ui.control(".ignore").disabled, true);
+  await ui.click(element);
+  assert.equal(ui.control(".ignore").disabled, false);
+  assert.equal(ui.writes(), 0);
+  ui.clickControl(".cancel");
+  assert.equal(ui.overlays.size, 0);
+  assert.equal(ui.writes(), 0);
+
+  await ui.start();
+  await ui.click(element);
+  ui.clickControl(".ignore");
+  assert.equal(ui.control(".ignore").disabled, true);
+  assert.equal(ui.writes(), 1);
+  ui.finishSave();
+  await new Promise(setImmediate);
+  assert.equal(ui.overlays.size, 0);
 });

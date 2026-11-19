@@ -14,10 +14,11 @@
 <p align="center">
   <a href="https://chromewebstore.google.com/detail/rosewash/jklllohlbljogmomdfhggfojpgellcmh">Chrome Web Store</a> ·
   <a href="https://microsoftedge.microsoft.com/addons/detail/gjbmoakfjmbcnahoigepocgbngiekhjj">Edge Add-ons</a> ·
-  <a href="https://addons.mozilla.org/en-US/firefox/addon/rosewash/">Firefox Add-ons</a>
+  <a href="https://addons.mozilla.org/en-US/firefox/addon/rosewash/">Firefox Add-ons</a> ·
+  <a href="https://addons.mozilla.org/en-US/android/addon/rosewash/">Firefox for Android</a>
 </p>
 
-<p align="center"><sub>Also supports compatible browsers such as Brave, Helium, and Zen. Firefox 148+.</sub></p>
+<p align="center"><sub>Also supports compatible browsers such as Brave, Helium, and Zen. Firefox 148+. Android support starts with Rosewash 0.2.10.</sub></p>
 
 <table align="center">
   <thead><tr><th>Light</th><th>Dark</th></tr></thead>
@@ -57,16 +58,16 @@
 
 - **Theme:** separate light and dark palettes, system appearance, and optional image dimming. Toggle theme overrides independently of fonts.
 - **Fonts:** searchable English, Chinese, math, and monospace font choices in Chrome and Edge; installed font names in Firefox. Toggle fonts for the current site from the popup.
-- **Control:** toggle theme and fonts independently by site, leave selected elements untouched with Pick (Esc to cancel), or pause everywhere.
+- **Control:** toggle theme and fonts independently by site or pause everywhere. Use Pick to leave an element untouched. On desktop, press Esc to cancel. On touch screens, tap an element, then choose Ignore or Cancel.
 - **Reading:** adjustable layouts for X, Zhihu, Bilibili, and arXiv, plus automatic expansion of X reply text. Bilibili comments scroll independently beside the player. arXiv has visible subject grids, compact abstracts, and centered HTML papers with collapsible contents and author details.
 - **YouTube:** a responsive home video grid with Shorts hidden from navigation,
   shelves, and cards. Enable it from the YouTube switch in the popup or Settings,
   independently of theme overrides.
 - **Cleanup:** hide common top announcement and promotion bars with one global switch in Settings or the popup's collapsed Page cleanup section.
 
-Firefox's browser frame follows the palette. Matching Chrome and Edge frame themes are packaged separately. Reply expansion and frame themes are available in the current source; store releases may lag behind.
+On desktop Firefox, the browser frame follows the palette. Matching Chrome and Edge frame themes are packaged separately. Store releases may lag behind the current source.
 
-Open the toolbar popup to get started. **Settings** has fonts, site rules, layouts, and shortcuts.
+Open the toolbar popup to get started. On Android, open Rosewash from Firefox's Extensions menu. **Settings** has fonts, site rules, and layouts. On desktop it also shows keyboard shortcuts.
 
 ## Store releases
 
