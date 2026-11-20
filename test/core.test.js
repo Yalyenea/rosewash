@@ -1038,11 +1038,11 @@ function createMockDom(nodes) {
           walk(node);
           return collected;
         }
-        if (selector === "canvas") {
+        if (selector === "canvas" || selector === "video") {
           const collected = [];
           const walk = (current) => {
             for (const child of current.children) {
-              if (child.tagName === "CANVAS") collected.push(child);
+              if (child.tagName.toLowerCase() === selector) collected.push(child);
               walk(child);
             }
           };
@@ -1165,8 +1165,8 @@ function createMockDom(nodes) {
       if (selector === "main, article, section, header, footer, nav, aside") {
         return all.filter((node) => ["MAIN", "ARTICLE", "SECTION", "HEADER", "FOOTER", "NAV", "ASIDE"].includes(node.tagName));
       }
-      if (selector === "canvas") {
-        return all.filter((node) => node.tagName === "CANVAS" && node !== html);
+      if (selector === "canvas" || selector === "video") {
+        return all.filter((node) => node.tagName.toLowerCase() === selector);
       }
       if (selector.startsWith("[") && selector.includes("data-rosewash")) {
         return all.filter((node) => node.matches(selector));
@@ -1204,6 +1204,12 @@ function createMockDom(nodes) {
     MutationObserver: class {
       constructor(callback) { window.deliverMutations = callback; }
       observe() {}
+      disconnect() {}
+    },
+    ResizeObserver: class {
+      constructor(callback) { window.deliverResize = callback; }
+      observe() {}
+      unobserve() {}
       disconnect() {}
     },
     setTimeout(fn) {
@@ -1879,6 +1885,47 @@ test("image dimming applies only to dark tinted palettes", async () => {
   engine.clear();
   assert.equal(root.hasAttribute("data-rosewash-dim"), false);
   assert.equal(root.style.getPropertyValue("--rosewash-image-brightness"), "");
+});
+
+test("a video's rendered player preserves overlays and controls while adjacent content is themed", async () => {
+  const core = await loadCore();
+  const box = { left: 0, top: 0, width: 640, height: 360 };
+  const frame = { left: 0, top: 0, width: 0, height: 0 };
+  const gradient = "linear-gradient(transparent, rgba(0, 0, 0, 0.7))";
+  const { document, window, byId } = createMockDom({ tree: [
+    { id: "article", tag: "article", rect: box, children: [
+      { id: "player", rect: box, children: [
+        { rect: { ...box, height: 0 }, children: [{ tag: "video", rect: frame }] },
+        { id: "overlay", backgroundImage: gradient },
+        { id: "control", tag: "button", color: "rgb(255, 255, 255)" }
+      ] },
+      { id: "caption", tag: "p", backgroundColor: "rgb(255, 255, 255)" }
+    ] }
+  ] });
+  const engine = core.createEngine({ document, window });
+  const player = byId.get("player");
+  const overlay = byId.get("overlay");
+  const control = byId.get("control");
+  const marker = "data-rosewash-player";
+  overlay.style.setProperty("background-image", gradient);
+  engine.apply({ appearance: "light" });
+  assert.equal(overlay.style.getPropertyValue("background-image"), "none");
+
+  // Once the letterboxed video lays out, restore the controls already tinted.
+  Object.assign(frame, { left: 140, top: -1, width: 360, height: 362 });
+  window.deliverResize();
+  window.flushFrames();
+  assert.equal(player.hasAttribute(marker), true);
+  assert.equal(byId.get("article").hasAttribute(marker), false);
+  assert.equal(overlay.style.getPropertyValue("background-image"), gradient);
+  assert.equal(control.style.getPropertyValue("color"), "");
+  assert.ok(byId.get("caption").hasAttribute("data-rosewash-tinted"));
+
+  engine.apply({ appearance: "dark" });
+  assert.equal(player.hasAttribute(marker), true);
+  assert.equal(overlay.style.getPropertyValue("background-image"), gradient);
+  engine.clear();
+  assert.equal(player.hasAttribute(marker), false);
 });
 
 test("large scans continue across frames and keep previous tints until each slice repaints", async () => {

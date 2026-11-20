@@ -208,7 +208,7 @@
       dimImages: dimInput.checked, appearance: selectedAppearance(), presetLight: selectedLight, presetDark: selectedDark
     };
     document.querySelector("#dim-status").textContent = !dimInput.checked
-      ? "Lower image and video brightness with dark palettes"
+      ? "Lower image brightness with dark palettes"
       : core.imageDimmingActive(form, systemAppearance.matches) ? "Active with the current palette"
         : "Takes effect with a dark palette";
   }

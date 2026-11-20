@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Preserve video playback colors, overlays, and controls while applying the
+  theme to the surrounding page. Image dimming applies only to images outside
+  detected players.
+
 ## 0.2.10 - 2026-11-19
 
 - Support Firefox for Android 148 or newer with a touch-friendly popup.

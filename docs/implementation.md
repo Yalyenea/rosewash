@@ -168,7 +168,7 @@ Stored in **`chrome.storage.sync`**.
 | `youtubeLayout` | boolean | Enables the YouTube home grid and hides Shorts; independent of theme host rules |
 | `arxivLayout` | boolean | Enables the arXiv home, abstract, and HTML reading layouts |
 | `arxivColumnWidth` | 640 / 720 / 840 / 960 | arXiv content width; defaults to 840 and shrinks to the viewport |
-| `dimImages` | boolean | Dims images and videos while a tinted dark palette is active |
+| `dimImages` | boolean | Dims images outside detected players while a tinted dark palette is active |
 | `imageBrightness` | 70 / 80 / 90 | Image brightness in percent when dimming applies |
 | `disabledHosts` | string[] | Hostnames (and parents) where theme overrides are blocked |
 | `enabledHosts` | string[] | Hostnames (and parents) where theme overrides are explicitly enabled |
@@ -328,6 +328,7 @@ Attributes used:
 | `data-rosewash-had-style`, `data-rosewash-original-style` | Whole-style snapshots from earlier versions, read only during stale cleanup |
 | `data-rosewash-ignore` | Opt-out marker (also in `SKIP_SELECTOR`) |
 | `data-rosewash-ignored` | Root matched by a picker rule; `theme.css` link, container, and dimming rules skip it and its contents |
+| `data-rosewash-player` | Detected video player root protected from theme overrides and image dimming |
 | `data-rosewash-dim` | Image dimming is active; `--rosewash-image-brightness` holds the factor |
 
 ## Engine (`src/content/core.js`)
@@ -430,6 +431,15 @@ For each non-skipped element:
 Skip list includes media, canvas, SVG, iframe, form controls, editor and
 rendered formula surfaces (CodeMirror, Monaco, hljs, KaTeX, MathJax), and
 `[data-rosewash-ignore]`.
+
+### Video players
+
+The engine walks up from each rendered `video` to find the outermost container
+that contains the video, shares its center, and matches its width or height.
+This accounts for letterboxing and includes overlays and controls that are
+siblings of the video. The walk stops at page and article boundaries. Video
+insertion, removal, or resizing can change the detected root. The scan queue
+restores any inline overrides inside a newly protected player.
 
 ### Root CSS variable remapping
 
@@ -741,8 +751,9 @@ like a palette change, so newly ignored elements return to their page styles.
 `applyImageDimming` sets `data-rosewash-dim` and
 `--rosewash-image-brightness` on `html` only when `dimImages` is on and the
 resolved theme is a tinted dark palette; plain Dark leaves pages unchanged.
-`theme.css` then applies `filter: brightness(...)` to `img`, `video`, and SVG
-`image` elements. `clear()` removes both. The stylesheet does not reach inside
+`theme.css` applies `filter: brightness(...)` to `img` and SVG `image` elements
+outside detected players and picker-ignored subtrees. `clear()` removes the
+attribute and variable from `html`. The stylesheet does not reach inside
 shadow roots, and CSS background images are not dimmed.
 
 ## X compact layout

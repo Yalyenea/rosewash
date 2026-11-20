@@ -6,6 +6,7 @@
   const DIM_ATTRIBUTE = "data-rosewash-dim";
   // Marks picker-matched roots so theme.css rules can leave them alone too.
   const IGNORED_ATTRIBUTE = "data-rosewash-ignored";
+  const PLAYER_ATTRIBUTE = "data-rosewash-player";
   const STYLE_OVERRIDES_ATTRIBUTE = "data-rosewash-style-overrides";
   const HAD_STYLE_ATTRIBUTE = "data-rosewash-had-style";
   const ORIGINAL_STYLE_ATTRIBUTE = "data-rosewash-original-style";
@@ -331,6 +332,7 @@
     ".pic-box"
   ].join(",");
   const FONT_SKIP_SELECTOR = "[data-rosewash-ignore], [role='img'], svg, .katex, .MathJax, mjx-container, .CodeMirror, .cm-editor, .monaco-editor, [contenteditable]";
+  const PLAYER_BOUNDARY_SELECTOR = "html, body, main, article, aside, header, footer, nav, [role='main'], [role='article'], #root, #react-root, #app, #__next";
 
   // A canvas covering the viewport paints its own backdrop. CSS cannot reach
   // its pixels, so cover samples its tone and inverts it when it fights the
@@ -1573,6 +1575,10 @@
     let scanIndex = 0;
     // Site rules from the element picker: matched elements and their contents stay untouched.
     let ignoredSelector = "";
+    let playerRoots = new Set();
+    let playerLayoutTargets = new Set();
+    let playerResizeObserver;
+    let playerUpdatePending = false;
     let activePresetLight = null;
     let activePresetDark = null;
     let activeAppearance = null;
@@ -1647,6 +1653,7 @@
       if (shadowRoots.has(shadow)) return;
       shadowRoots.add(shadow);
       if (observer) observeShadowRoot(shadow);
+      if (shadow.querySelectorAll("video").length) requestPlayerUpdate();
     }
 
     // Find open shadow roots below a root, including nested ones.
@@ -1968,12 +1975,81 @@
       tintBorders(element, snapshot, palette);
     }
 
-    function isSiteIgnored(element) {
-      if (!ignoredSelector) return false;
+    function isProtectedElement(element) {
+      if (!ignoredSelector && !playerRoots.size) return false;
       for (let current = element; current; current = composedParent(current)) {
-        if (current.matches(ignoredSelector)) return true;
+        if (playerRoots.has(current) || (ignoredSelector && current.matches(ignoredSelector))) return true;
       }
       return false;
+    }
+
+    function playerRootFor(video) {
+      const frame = video.getBoundingClientRect();
+      if (!frame.width || !frame.height) return null;
+      // Controls and gradients are usually siblings of the picture. A player
+      // can also center the video with black bars along one axis.
+      const xTolerance = Math.max(2, frame.width * 0.01);
+      const yTolerance = Math.max(2, frame.height * 0.01);
+      let root = null;
+      for (let parent = composedParent(video); parent; parent = composedParent(parent)) {
+        if (parent.closest(PLAYER_BOUNDARY_SELECTOR) === parent) break;
+        const box = parent.getBoundingClientRect();
+        // Absolutely positioned media can sit inside a zero-height wrapper.
+        if (!box.width || !box.height) continue;
+        const insetX = (box.width - frame.width) / 2;
+        const insetY = (box.height - frame.height) / 2;
+        if (insetX < -xTolerance || insetY < -yTolerance
+          || (insetX > xTolerance && insetY > yTolerance)
+          || Math.abs(box.left + insetX - frame.left) > xTolerance
+          || Math.abs(box.top + insetY - frame.top) > yTolerance) break;
+        root = parent;
+      }
+      return root;
+    }
+
+    function requestPlayerUpdate() {
+      if (!activeTheme || PALETTES[activeTheme].tint === false) return;
+      playerUpdatePending = true;
+      requestFlush();
+    }
+
+    function updateVideoPlayers(refresh) {
+      playerUpdatePending = false;
+      const nextRoots = new Set();
+      const targets = new Set();
+      for (const scope of [document, ...connectedShadowRoots()]) {
+        for (const video of scope.querySelectorAll("video")) {
+          targets.add(video);
+          const root = playerRootFor(video);
+          if (!root) continue;
+          targets.add(root);
+          nextRoots.add(root);
+        }
+      }
+
+      for (const root of playerRoots) {
+        if (nextRoots.has(root)) continue;
+        root.removeAttribute(PLAYER_ATTRIBUTE);
+        if (refresh && root.isConnected !== false) pendingRoots.set(root, true);
+      }
+      for (const root of nextRoots) {
+        if (playerRoots.has(root)) continue;
+        root.setAttribute(PLAYER_ATTRIBUTE, "");
+        if (refresh) pendingRoots.set(root, true);
+      }
+      playerRoots = nextRoots;
+
+      // A hidden or resized video can acquire a different player boundary.
+      if (targets.size && !playerResizeObserver) {
+        playerResizeObserver = new window.ResizeObserver(requestPlayerUpdate);
+      }
+      for (const target of playerLayoutTargets) {
+        if (!targets.has(target)) playerResizeObserver.unobserve(target);
+      }
+      for (const target of targets) {
+        if (!playerLayoutTargets.has(target)) playerResizeObserver.observe(target);
+      }
+      playerLayoutTargets = targets;
     }
 
     function queryableSelectors(selectors) {
@@ -2045,7 +2121,7 @@
         ...[...connectedShadowRoots()].flatMap((root) => [...root.querySelectorAll("canvas")])
       ];
       for (const canvas of canvases) {
-        if (isSiteIgnored(canvas) || canvas.closest("[data-rosewash-ignore]") || !coversViewport(canvas)) continue;
+        if (isProtectedElement(canvas) || canvas.closest("[data-rosewash-ignore]") || !coversViewport(canvas)) continue;
         const record = originalStyles.get(canvas)?.filter;
         const inverted = Boolean(record) && matchesOverride(canvas, "filter", record);
         const tone = canvasBackdropTone(canvas);
@@ -2095,7 +2171,7 @@
     }
 
     function scanOptions(element) {
-      if (isSiteIgnored(element)) return { tint: false, font: false };
+      if (isProtectedElement(element)) return { tint: false, font: false };
       const skipElement = shouldSkipElement(element);
       return {
         tint: PALETTES[activeTheme].tint !== false && !skipElement,
@@ -2188,6 +2264,7 @@
         return;
       }
 
+      if (playerUpdatePending) updateVideoPlayers(true);
       for (const sheet of sheets) markStyleSheetTargets(sheet);
       const roots = pendingRoots;
       pendingRoots = new Map();
@@ -2286,6 +2363,9 @@
             scheduleStyleSheet(style.sheet);
             continue;
           }
+          if (!playerUpdatePending && [...(record.addedNodes || []), ...(record.removedNodes || [])].some((node) =>
+            isElementNode(node) && (node.tagName === "VIDEO" || node.querySelectorAll("video").length)
+          )) requestPlayerUpdate();
           for (const node of record.addedNodes || []) {
             if (isElementNode(node)) {
               const styles = node.tagName === "STYLE" ? [node] : node.querySelectorAll("style");
@@ -2334,6 +2414,12 @@
       }
       window.clearTimeout(backdropTimer);
       backdropTimer = 0;
+      playerResizeObserver?.disconnect();
+      playerResizeObserver = undefined;
+      playerLayoutTargets.clear();
+      for (const root of playerRoots) root.removeAttribute(PLAYER_ATTRIBUTE);
+      playerRoots.clear();
+      playerUpdatePending = false;
       pendingRoots = new Map();
       pendingSheets = new Set();
       resetScanQueue();
@@ -2342,7 +2428,7 @@
     function clearMarks() {
       textRecords = new WeakMap();
       textColorCache.clear();
-      for (const attribute of [IGNORED_ATTRIBUTE, "data-rosewash-kept"]) {
+      for (const attribute of [IGNORED_ATTRIBUTE, PLAYER_ATTRIBUTE, "data-rosewash-kept"]) {
         const selector = `[${attribute}]`;
         for (const element of [
           ...document.querySelectorAll(selector),
@@ -2495,6 +2581,7 @@
       applyImageDimming(document.documentElement, normalized, theme);
       if (scans) {
         if (!redundant) {
+          if (tintEnabled) updateVideoPlayers(false);
           enqueueSubtree(document.documentElement, themeChanged || rulesChanged);
           drainScanQueue();
         }

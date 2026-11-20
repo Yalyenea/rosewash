@@ -29,7 +29,7 @@ html[data-rosewash-theme] body {
 html[data-rosewash-theme] :is(
   #react-root, #root, #app, #__next, [data-testid="primaryColumn"], main,
   #entry, #main, .use-theme-bg, .intro-popup, .intro-popup-page
-):not([data-rosewash-ignored], [data-rosewash-ignored] *) {
+):not([data-rosewash-ignored], [data-rosewash-ignored] *, :where([data-rosewash-player], [data-rosewash-player] *)) {
   background-color: var(--rosewash-base) !important;
   color: var(--rosewash-text) !important;
 }
@@ -41,7 +41,7 @@ html[data-rosewash-theme] ::selection {
 
 /* The engine sets inline link colors after checking the final background. */
 html[data-rosewash-theme] a:not([data-rosewash-ignore], [data-rosewash-ignored], [data-rosewash-ignored] *,
-  [data-rosewash-ignore] *) {
+  [data-rosewash-ignore] *, :where([data-rosewash-player], [data-rosewash-player] *)) {
   color: var(--rosewash-link) !important;
 }
 
@@ -79,9 +79,7 @@ html[data-rosewash-theme] .bili-header .mini-header a:not([data-rosewash-ignore]
 html[data-rosewash-theme],
 html[data-rosewash-theme].dark,
 html[data-rosewash-theme] body,
-html[data-rosewash-theme] .dark,
-html[data-rosewash-theme] [data-theme="dark"],
-html[data-rosewash-theme] [data-color-scheme="dark"] {
+html[data-rosewash-theme] :is(.dark, [data-theme="dark"], [data-color-scheme="dark"]):not(:where([data-rosewash-player], [data-rosewash-player] *)) {
   --main-surface-primary: var(--rosewash-base) !important;
   --main-surface-secondary: var(--rosewash-surface) !important;
   --main-surface-background: var(--rosewash-base) !important;
@@ -146,8 +144,8 @@ html[data-rosewash-theme] .messaging-root {
 }
 
 
-/* Image dimming: set only for dark palettes when the user turns it on. */
-html[data-rosewash-dim] :is(img, video, image):not([data-rosewash-ignored], [data-rosewash-ignored] *) {
+/* Dim images in dark palettes while preserving video playback colors. */
+html[data-rosewash-dim] :is(img, image):not([data-rosewash-ignored], [data-rosewash-ignored] *, :where([data-rosewash-player], [data-rosewash-player] *)) {
   filter: brightness(var(--rosewash-image-brightness));
 }
 /* This switch is independent of the palette, including plain palettes. */

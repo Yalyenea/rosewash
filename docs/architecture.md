@@ -34,9 +34,9 @@ rules; both Settings and the popup's collapsed Page cleanup section edit it.
 
 An element picker in the top frame saves CSS selectors per site. The engine
 leaves matched elements and their contents untouched and marks the matched
-roots `data-rosewash-ignored`, so `theme.css` rules skip them too. With image dimming on,
-a tinted dark palette also lowers image and video brightness through
-`theme.css`.
+roots `data-rosewash-ignored`, so `theme.css` rules skip them too. With image
+dimming on, a tinted dark palette lowers the brightness of images outside
+detected video players through `theme.css`.
 The picker takes keyboard focus so Esc can cancel it after an embedded frame
 had focus. Exit restores the previous focus and releases event interception.
 On touch screens, tapping an element previews it. Ignore saves the selector,
@@ -80,6 +80,8 @@ painted surface becomes Rose Pine:
 - Ordinary code, keyboard labels, and sample output follow the palette. Media,
   canvas, SVG, iframes, inputs, editors, and recognized syntax-highlighting
   regions are skipped.
+- The engine matches rendered video bounds to an enclosing player. The player
+  and its controls keep their page styles while nearby content follows the palette.
 
 Page chrome is `header`, `[role=banner]`, top-level `nav`, and known app shells
 such as Zhihu's `.AppHeader` / `.LeanAppHeaderBar` / `.MobileAppHeader`, when
