@@ -5,6 +5,8 @@
 - Preserve video playback colors, overlays, and controls while applying the
   theme to the surrounding page. Image dimming applies only to images outside
   detected players.
+- Add an optional Hide ads switch for promoted posts on X in the popup and
+  Settings. It works independently of the theme and compact layout.
 
 ## 0.2.10 - 2026-11-19
 

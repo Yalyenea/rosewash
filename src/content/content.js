@@ -8,6 +8,7 @@
   const X_COMPACT_ATTRIBUTE = "data-rosewash-x-compact";
   const X_COMPACT_EVENT = "rosewash:x-compact-change";
   const X_EXPAND_REPLIES_ATTRIBUTE = "data-rosewash-x-expand-replies";
+  const X_HIDE_ADS_ATTRIBUTE = "data-rosewash-x-hide-ads";
   const X_SINGLE_WIDTH_PROPERTY = "--rosewash-x-single";
   const ZHIHU_LAYOUT_ATTRIBUTE = "data-rosewash-zhihu-layout";
   const ZHIHU_LAYOUT_EVENT = "rosewash:zhihu-layout-change";
@@ -96,6 +97,7 @@
       document.dispatchEvent(new CustomEvent(ARXIV_LAYOUT_EVENT));
     }
     zhihuRoot?.removeAttribute(YOUTUBE_LAYOUT_ATTRIBUTE);
+    zhihuRoot?.removeAttribute(X_HIDE_ADS_ATTRIBUTE);
     engine.disconnect();
     banners.disconnect();
   }
@@ -128,6 +130,11 @@
     if (document.documentElement.hasAttribute(X_EXPAND_REPLIES_ATTRIBUTE) !== expandReplies) {
       document.documentElement.toggleAttribute(X_EXPAND_REPLIES_ATTRIBUTE, expandReplies);
       document.dispatchEvent(new CustomEvent(X_COMPACT_EVENT));
+    }
+    // Ad hiding is a cleanup preference, independent of the theme host rule.
+    const xHideAds = window.top === window && host === "x.com" && settings.enabled && settings.xHideAds;
+    if (document.documentElement.hasAttribute(X_HIDE_ADS_ATTRIBUTE) !== xHideAds) {
+      document.documentElement.toggleAttribute(X_HIDE_ADS_ATTRIBUTE, xHideAds);
     }
 
     const zhihuActive = allowed && core.isZhihuHost(host) && settings.zhihuArticleLayout;

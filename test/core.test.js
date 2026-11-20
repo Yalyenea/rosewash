@@ -662,6 +662,7 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
     appearance: "dark",
     xCompactLayout: true,
     xAutoExpandReplies: true,
+    xHideAds: true,
     hideTopBanners: true,
     xSingleColumnWidth: 680,
     zhihuArticleLayout: true,
@@ -692,6 +693,7 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
     appearance: "dark",
     xCompactLayout: true,
     xAutoExpandReplies: true,
+    xHideAds: true,
     hideTopBanners: true,
     xSingleColumnWidth: 680,
     zhihuArticleLayout: true,
@@ -704,6 +706,7 @@ test("plainSettings freezes a storage-safe settings blob", async () => {
     disabledHosts: ["example.com"]
   });
   assert.equal(core.plainSettings({ xCompactLayout: "true" }).xCompactLayout, false);
+  assert.equal(core.plainSettings({ xHideAds: "true" }).xHideAds, false);
   assert.equal(core.plainSettings({ xSingleColumnWidth: 700 }).xSingleColumnWidth, 600);
   assert.equal(core.plainSettings({ zhihuArticleLayout: "true" }).zhihuArticleLayout, false);
   assert.equal(core.plainSettings({ zhihuArticleWidth: 900 }).zhihuArticleWidth, 960);
@@ -2629,6 +2632,7 @@ test("normalizes settings and blocked hosts", async () => {
     appearance: "dark",
     xCompactLayout: false,
     xAutoExpandReplies: false,
+    xHideAds: false,
     hideTopBanners: false,
     xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
@@ -2668,6 +2672,7 @@ test("normalizes settings and blocked hosts", async () => {
     appearance: "light",
     xCompactLayout: false,
     xAutoExpandReplies: false,
+    xHideAds: false,
     hideTopBanners: false,
     xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
@@ -2705,6 +2710,7 @@ test("normalizes settings and blocked hosts", async () => {
     appearance: "auto",
     xCompactLayout: false,
     xAutoExpandReplies: false,
+    xHideAds: false,
     hideTopBanners: false,
     xSingleColumnWidth: 600,
     zhihuArticleLayout: false,

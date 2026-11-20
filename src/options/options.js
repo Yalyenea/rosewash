@@ -28,6 +28,7 @@
   const systemAppearance = window.matchMedia("(prefers-color-scheme: dark)");
   const xCompactInput = document.querySelector("#x-compact-layout");
   const xAutoExpandInput = document.querySelector("#x-auto-expand-replies");
+  const xHideAdsInput = document.querySelector("#x-hide-ads");
   const hideBannersInput = document.querySelector("#hide-top-banners");
   const xSingleWidthInput = document.querySelector("#x-single-column-width");
   const xSingleWidthValue = document.querySelector("#x-single-column-width-value");
@@ -339,6 +340,7 @@
     fontPicker.render(normalized);
     xCompactInput.checked = normalized.xCompactLayout;
     xAutoExpandInput.checked = normalized.xAutoExpandReplies;
+    xHideAdsInput.checked = normalized.xHideAds;
     hideBannersInput.checked = normalized.hideTopBanners;
     xSingleWidthInput.disabled = !normalized.xCompactLayout;
     renderXSingleColumnWidth(normalized.xSingleColumnWidth);
@@ -393,6 +395,7 @@
       appearance: selectedAppearance(),
       xCompactLayout: xCompactInput.checked,
       xAutoExpandReplies: xAutoExpandInput.checked,
+      xHideAds: xHideAdsInput.checked,
       hideTopBanners: hideBannersInput.checked,
       xSingleColumnWidth: selectedXSingleColumnWidth(),
       zhihuArticleLayout: zhihuLayoutInput.checked,
@@ -455,7 +458,7 @@
   for (const input of [xSingleWidthInput, zhihuWidthInput, bilibiliWidthInput, arxivWidthInput, brightnessInput]) {
     input.addEventListener("change", saveSettings);
   }
-  for (const input of [enabledInput, defaultInput, colorsInput, customFontsInput, xCompactInput, xAutoExpandInput, hideBannersInput, zhihuLayoutInput, bilibiliLayoutInput, youtubeLayoutInput, arxivLayoutInput, dimInput, ...fontFields.map(field => field.input)]) {
+  for (const input of [enabledInput, defaultInput, colorsInput, customFontsInput, xCompactInput, xAutoExpandInput, xHideAdsInput, hideBannersInput, zhihuLayoutInput, bilibiliLayoutInput, youtubeLayoutInput, arxivLayoutInput, dimInput, ...fontFields.map(field => field.input)]) {
     input.addEventListener("change", saveSettings);
   }
   function flushSave() {

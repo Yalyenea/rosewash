@@ -128,6 +128,7 @@ Stored in **`chrome.storage.sync`**.
   "appearance": "auto",
   "xCompactLayout": false,
   "xAutoExpandReplies": false,
+  "xHideAds": false,
   "hideTopBanners": false,
   "xSingleColumnWidth": 600,
   "zhihuArticleLayout": false,
@@ -159,6 +160,7 @@ Stored in **`chrome.storage.sync`**.
 | `appearance` | `auto` \| `light` \| `dark` | `auto` follows `prefers-color-scheme` |
 | `xCompactLayout` | boolean | Enables Rosewash's compact single-column layout on X |
 | `xAutoExpandReplies` | boolean | Automatically expands truncated reply text on X post pages, independently of compact layout |
+| `xHideAds` | boolean | Hides promoted posts on X while Rosewash is enabled. Off by default and independent of theme and layout settings. |
 | `hideTopBanners` | boolean | Hides recognized top banners in the top frame; off by default and independent of site theme/font rules |
 | `xSingleColumnWidth` | 520 / 600 / 680 / 760 | Centered X timeline width |
 | `zhihuArticleLayout` | boolean | Enables the centered Zhihu reading layout on home, questions, and articles |
@@ -663,6 +665,8 @@ old snapshot. Notification responses never block the next save.
   closes the picker without saving.
 - Page cleanup starts collapsed. Its Hide top banners switch edits the same
   global setting as Options; Escape collapses the section and focuses its summary.
+- Hide ads appears in the popup on X and shares its setting with
+  Settings → Sites → X.com.
 
 **Options**
 
@@ -787,6 +791,10 @@ when Rosewash is enabled, X is not blocked, and `xCompactLayout` is true.
   Below 720px, X keeps its native mobile layout.
 - `test/x-layout.test.js` covers the rail, centering, width setting, and the
   absence of a split-thread overlay.
+- When `xHideAds` is enabled, the content runtime sets `data-rosewash-x-hide-ads`
+  on the top-level X page. `x.css` hides promoted feed rows identified by an
+  ad placement wrapper or a disclosure marker. CSS also matches newly mounted
+  rows. Pausing Rosewash removes the marker and restores the rows.
 
 ## Zhihu clean layout
 

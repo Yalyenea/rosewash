@@ -64,6 +64,7 @@
   shelves, and cards. Enable it from the YouTube switch in the popup or Settings,
   independently of theme overrides.
 - **Cleanup:** hide common top announcement and promotion bars with one global switch in Settings or the popup's collapsed Page cleanup section.
+  On X, use Hide ads in the popup or Settings to hide promoted posts.
 
 On desktop Firefox, the browser frame follows the palette. Matching Chrome and Edge frame themes are packaged separately. Store releases may lag behind the current source.
 

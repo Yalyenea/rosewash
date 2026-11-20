@@ -216,6 +216,26 @@ test("options saves the independent reply expansion switch", async () => {
   assert.equal(ui.raw().xAutoExpandReplies, false);
 });
 
+test("X ad hiding is saved through either interface and the popup only offers it on X", async () => {
+  const options = await settingsUI("options");
+  const toggle = options.element("#x-hide-ads");
+  assert.equal(toggle.checked, false);
+  toggle.checked = true;
+  await options.change("#x-hide-ads");
+  await options.done();
+  assert.equal(options.raw().xHideAds, true);
+  assert.equal(options.raw().xCompactLayout, false);
+
+  const popup = await settingsUI("popup", options.raw(), "chrome", [], "https://x.com/home");
+  assert.equal(popup.element("#x-hide-ads-row").hidden, false);
+  assert.equal(popup.element("#x-hide-ads").checked, true);
+  popup.element("#x-hide-ads").checked = false;
+  await popup.change("#x-hide-ads");
+  await popup.done();
+  assert.equal(popup.raw().xHideAds, false);
+  assert.equal((await settingsUI("popup")).element("#x-hide-ads-row").hidden, true);
+});
+
 test("YouTube grid layout persists through options and the popup", async () => {
   const options = await settingsUI("options");
   assert.equal(options.element("#youtube-layout").checked, false);

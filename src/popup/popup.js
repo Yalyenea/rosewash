@@ -11,6 +11,7 @@
   const appearanceButtons = Array.from(document.querySelectorAll("[data-appearance]"));
   const systemAppearance = window.matchMedia("(prefers-color-scheme: dark)");
   const xLayoutInput = document.querySelector("#x-compact-layout");
+  const xHideAdsInput = document.querySelector("#x-hide-ads");
   const zhihuLayoutInput = document.querySelector("#zhihu-article-layout");
   const bilibiliLayoutInput = document.querySelector("#bilibili-layout");
   const youtubeLayoutInput = document.querySelector("#youtube-layout");
@@ -47,12 +48,14 @@
     lightSelect.value = settings.presetLight;
     darkSelect.value = settings.presetDark;
     xLayoutInput.checked = settings.xCompactLayout;
+    xHideAdsInput.checked = settings.xHideAds;
     zhihuLayoutInput.checked = settings.zhihuArticleLayout;
     bilibiliLayoutInput.checked = settings.bilibiliLayout;
     youtubeLayoutInput.checked = settings.youtubeLayout;
     arxivLayoutInput.checked = settings.arxivLayout;
     hideBannersInput.checked = settings.hideTopBanners;
     document.querySelector("#x-layout-row").hidden = activeHost !== "x.com";
+    document.querySelector("#x-hide-ads-row").hidden = activeHost !== "x.com";
     document.querySelector("#zhihu-layout-row").hidden = !core.isZhihuHost(activeHost);
     document.querySelector("#bilibili-layout-row").hidden = !core.isBilibiliHost(activeHost);
     document.querySelector("#youtube-layout-row").hidden = !core.isYouTubeHost(activeHost);
@@ -121,7 +124,7 @@
   }
 
   for (const [input, key] of [
-    [enabledInput, "enabled"], [xLayoutInput, "xCompactLayout"],
+    [enabledInput, "enabled"], [xLayoutInput, "xCompactLayout"], [xHideAdsInput, "xHideAds"],
     [zhihuLayoutInput, "zhihuArticleLayout"], [bilibiliLayoutInput, "bilibiliLayout"],
     [youtubeLayoutInput, "youtubeLayout"],
     [arxivLayoutInput, "arxivLayout"], [hideBannersInput, "hideTopBanners"]

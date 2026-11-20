@@ -269,6 +269,7 @@
     appearance: "auto",
     xCompactLayout: false,
     xAutoExpandReplies: false,
+    xHideAds: false,
     hideTopBanners: false,
     xSingleColumnWidth: 600,
     zhihuArticleLayout: false,
@@ -1021,6 +1022,7 @@
       appearance,
       xCompactLayout: source.xCompactLayout === true,
       xAutoExpandReplies: source.xAutoExpandReplies === true,
+      xHideAds: source.xHideAds === true,
       hideTopBanners: source.hideTopBanners === true,
       xSingleColumnWidth: X_SINGLE_COLUMN_WIDTHS.includes(source.xSingleColumnWidth)
         ? source.xSingleColumnWidth
@@ -1238,6 +1240,7 @@
       appearance: normalized.appearance,
       xCompactLayout: normalized.xCompactLayout,
       xAutoExpandReplies: normalized.xAutoExpandReplies,
+      xHideAds: normalized.xHideAds,
       hideTopBanners: normalized.hideTopBanners,
       xSingleColumnWidth: normalized.xSingleColumnWidth,
       zhihuArticleLayout: normalized.zhihuArticleLayout,

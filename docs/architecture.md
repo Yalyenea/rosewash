@@ -31,6 +31,8 @@ The top frame also hosts an optional banner cleanup controller in
 viewport hit tests, hides qualifying boxes reversibly, and restores them when
 disabled. One global setting controls it independently of theme and font site
 rules; both Settings and the popup's collapsed Page cleanup section edit it.
+X has a separate Hide ads switch that hides promoted feed rows while Rosewash
+is enabled, independently of the theme and compact layout.
 
 An element picker in the top frame saves CSS selectors per site. The engine
 leaves matched elements and their contents untouched and marks the matched

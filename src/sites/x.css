@@ -1,3 +1,12 @@
+/* Match promoted posts by their placement wrapper or ad disclosure. Target
+   feed rows so newly mounted ads are hidden without rewriting the timeline. */
+html[data-rosewash-x-hide-ads]
+  [data-testid="cellInnerDiv"]:has([data-testid="placementTracking"] > article[data-testid="tweet"]),
+html[data-rosewash-x-hide-ads]
+  [id^="urt:"] > ul > li:has(article :is([data-ad-disclosure], [class~="group-has-[[data-ad-disclosure]]/post:hidden"])) {
+  display: none !important;
+}
+
 /* Optional X layout. The content runtime owns the root marker so disabling
    Rosewash, blocking x.com, or turning the preset off restores native layout. */
 @media (min-width: 720px) {

@@ -44,7 +44,7 @@ test("startup waits for site policy and storage changes update site layouts", as
   let messageReceived;
   let pendingRead;
   const sent = [];
-  let raw = { defaultEnabled: false, xCompactLayout: true, xAutoExpandReplies: true, hideTopBanners: true };
+  let raw = { defaultEnabled: false, xCompactLayout: true, xAutoExpandReplies: true, xHideAds: true, hideTopBanners: true };
   const initialRead = new Promise((resolve) => { releaseStorage = resolve; });
   let loaded = false;
   context.chrome = {
@@ -71,6 +71,7 @@ test("startup waits for site policy and storage changes update site layouts", as
   assert.equal(bannerStates.at(-1), true);
   assert.equal(attributes.has("data-rosewash-x-compact"), false);
   assert.equal(attributes.has("data-rosewash-x-expand-replies"), false);
+  assert.equal(attributes.has("data-rosewash-x-hide-ads"), true);
   raw = { ...raw, enabledHosts: ["x.com"], xSingleColumnWidth: 680 };
   storageChanged({ enabledHosts: { newValue: ["x.com"] } }, "sync");
   await new Promise(setImmediate);
@@ -90,13 +91,25 @@ test("startup waits for site policy and storage changes update site layouts", as
   await new Promise(setImmediate);
   assert.equal(attributes.has("data-rosewash-x-compact"), false);
   assert.equal(attributes.has("data-rosewash-x-expand-replies"), false);
+  assert.equal(attributes.has("data-rosewash-x-hide-ads"), true);
   assert.equal(properties.has("--rosewash-x-single"), false);
   assert.equal(bannerStates.at(-1), true); // Global cleanup is independent of site theme rules.
 
-  raw = { ...raw, hideTopBanners: false };
+  for (const change of [
+    { xHideAds: false },
+    { xHideAds: true, enabled: false }
+  ]) {
+    raw = { ...raw, ...change };
+    storageChanged(Object.fromEntries(Object.entries(change).map(([key, newValue]) => [key, { newValue }])), "sync");
+    await new Promise(setImmediate);
+    assert.equal(attributes.has("data-rosewash-x-hide-ads"), false);
+  }
+
+  raw = { ...raw, hideTopBanners: false, enabled: true };
   storageChanged({ hideTopBanners: { newValue: false } }, "sync");
   await new Promise(setImmediate);
   assert.equal(bannerStates.at(-1), false);
+  assert.equal(attributes.has("data-rosewash-x-hide-ads"), true);
 
   // A notification reads current storage, even if a delayed sender includes an old snapshot.
   let releaseOldRead;
@@ -127,6 +140,7 @@ test("startup waits for site policy and storage changes update site layouts", as
   storageChanged({ arxivLayout: { newValue: true } }, "sync");
   await new Promise(setImmediate);
   assert.equal(attributes.has("data-rosewash-arxiv-layout"), true);
+  assert.equal(attributes.has("data-rosewash-x-hide-ads"), false);
   assert.equal(properties.get("--rosewash-arxiv-column"), "720px");
   for (const change of [
     { arxivLayout: false },
