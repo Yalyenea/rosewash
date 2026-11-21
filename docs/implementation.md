@@ -390,13 +390,13 @@ For each non-skipped element:
    `.AppHeader` / `.LeanAppHeaderBar` / `.MobileAppHeader` outside
    `main`/`article`): force `palette.base` + clear generated backgrounds with
    `!important`; text is resolved against the final painted background.
-2. **Chromatic fills** (`chromaticSurfaceFor`): match the source hue to one
-   of eight roles, then select that theme's role color. Website blue maps to
-   the current variant's primary accent. Strong fills use the emphasis color;
-   pale or translucent fills mix it into the palette surface (14% light,
-   20% dark). Tone is bounded in OKLCH and chroma reduced only as needed to
-   fit sRGB. Cool grays such as X's `#536471` remain neutral; pale semantic
-   colors use a lower chroma threshold so alerts retain their color role.
+2. **Chromatic fills** (`mapChromaticSurface`): ordinary strong fills retain
+   their source hue and move halfway toward the theme's primary accent in
+   OKLCH lightness and chroma. Chroma is reduced as needed to fit sRGB.
+   Strong fills on buttons and links use one of eight accent roles. Pale or
+   translucent fills use the corresponding soft color (14% light, 20% dark).
+   Cool grays such as X's `#536471` remain neutral. Pale semantic colors use
+   a lower chroma threshold so alerts retain their color role.
 3. **Surfaces**: any other opaque background (or CSS gradient) maps via
    `surfaceColorFor` to `base` / `surface` / `overlay`. If that color still
    shares paper with an opaque ancestor (`colorsSharePaper`, about 12 levels
@@ -404,10 +404,11 @@ For each non-skipped element:
    `html`/`body` still count as the default canvas. `url()` backgrounds are
    left alone. Colors already matching one of the active palette's three
    surface tokens keep that role, so repeated scans cannot turn a page shell
-   or elevated region into a different layer.
+   or elevated region into a different layer. Empty dark neutral circles in
+   figures and elements with `role="img"` use the palette foreground.
 4. **Text**: primary neutral text uses a readable pairing of `palette.text`
    and `palette.base`; mid-tone neutral text uses `palette.muted` on ordinary
-   surfaces. Neutral labels on emphasis fills use their paired foreground.
+   surfaces. Neutral labels on strong fills use their paired foreground.
    Anchors use `palette.link`; other colored text uses its theme role through
    `chromaticTextFor`. Text is adjusted against its final nearest painted
    background to reach at least 4.5:1 contrast, checking rounded sRGB output.
@@ -454,8 +455,11 @@ Pseudo-elements cannot take per-element inline tints.
   `#main`, `.use-theme-bg`, `.intro-popup`).
 - **Engine** (`SURFACE_VAR_*` / `TEXT_VAR_*` / `FORCED_SURFACE_VARS` in
   `core.js`): rewrite matching root custom properties to palette colors with
-  `!important`. Known ChatGPT / Substack surface names are forced even for
-  unparseable values. Records retain original and applied values and priorities.
+  `!important`. The exact names `--ink` and `--title-ink` match the text rule.
+  Suffixed names such as `--ink-purple` can supply colors to figures and
+  retain their original values. Known ChatGPT / Substack surface names are
+  forced even for unparseable values. Records retain original and applied values
+  and priorities.
   Restoration writes the original declaration only if the current value and
   priority still match the applied override. Later website writes survive;
   re-applying captures them as the new original before tinting again.
@@ -469,8 +473,9 @@ skip style reads; inherited custom fonts and unchanged theme tokens avoid
 redundant writes. A batch restores the elements
 it is about to refresh, reads all of their computed styles, then writes, so
 styles recalculate once per batch. Elements waiting in the queue keep their
-previous tint; refreshes and theme changes do not flash page colors. A
-document refresh, theme change, or clear resets the queue.
+previous tint. When a queued element still has its applied fill, the engine
+uses the recorded original color for the transform. A document refresh, theme
+change, or clear resets the queue.
 
 ### Backdrop canvases
 

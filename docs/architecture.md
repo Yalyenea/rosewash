@@ -62,9 +62,10 @@ painted surface becomes Rose Pine:
 - Existing palette surface colors retain their role across repeated scans, so
   SPA roots and lazy-loaded regions do not develop `base` / `surface` seams.
 - Transparent `html`/`body` roots are treated as the default document canvas.
-- Colored fills map through eight theme roles. Website blue uses the current
-  variant's primary accent. Buttons, badges, and highlights use emphasis
-  colors; pale alerts use softer palette backgrounds.
+- Strong colored fills retain their hue as lightness and chroma move toward
+  the primary accent. Buttons and links use the theme's accent roles. Pale
+  alerts use softer palette backgrounds, and dark neutral dots in figures
+  use the theme's foreground color.
 - Neutral text uses the theme's primary or secondary text color. Cool gray
   text stays neutral, and anchors use `palette.link`. Colored text maps to
   its theme role. Foregrounds are paired with the final painted background
@@ -104,8 +105,10 @@ per-element inline tints, so:
 2. **Engine** remaps matching root custom properties (`main-surface*`,
    `composer-surface*`, `bg-primary`, `--ground`, sidebar canvas tokens, …)
    to `palette.base` / `surface` / `overlay`, and text tokens such as
-   `--ink` to `palette.text`, with `!important`. Known ChatGPT token names
-   are forced even when the current value cannot be parsed.
+   `--ink` and `--title-ink` to `palette.text`, with `!important`. The exact
+   name match leaves shared colors such as `--ink-purple` available to
+   graphics. Known ChatGPT token names are forced even when the current value
+   cannot be parsed.
 
 Inverted icon/button tokens and brand accents are left alone. Root variable
 records retain the original value and priority plus the applied override.

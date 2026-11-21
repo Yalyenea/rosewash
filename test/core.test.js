@@ -263,7 +263,7 @@ test("treats nearby fills as one paper and ignores unpainted borders", async () 
   assert.equal(byId.get("nested").style.getPropertyValue("background-color"), dawn.base);
   assert.equal(byId.get("nested-white").style.getPropertyValue("background-color"), dawn.base);
   assert.equal(byId.get("card").style.getPropertyValue("background-color"), dawn.surface);
-  // A colored chip uses the theme's corresponding accent role.
+  // An ordinary colored chip uses the theme's fill transform.
   assert.equal(byId.get("chip").style.getPropertyValue("background-color"), core.chromaticSurfaceFor(brown, dawn, false));
   assert.equal(byId.get("seam").style.getPropertyValue("border-top-color"), "");
   assert.equal(byId.get("rule").style.getPropertyValue("border-left-color"), dawn.muted);
@@ -735,7 +735,7 @@ test("chromatic fills and text map to the theme's semantic color roles", async (
   const core = await loadCore();
   const color = (value) => core.parseColor(value);
   const { dawn, moon } = core.PALETTES;
-  // Neutral and warm paper stay paper; strong fills become theme accents.
+  // Neutral and warm paper stay paper; strong action fills become theme accents.
   assert.equal(core.chromaticSurfaceFor(color("#f6f8fa"), dawn, false), null);
   assert.equal(core.chromaticSurfaceFor(color("#fdf6e3"), dawn, false), null);
   const button = color(core.chromaticSurfaceFor(color("#1f883d"), moon, true));
@@ -773,7 +773,7 @@ test("approved role colors cover every tinted variant with readable pairings", a
       assert.equal(new Set(mapped.filter((_, index) => index !== 5).map((entry) => entry.solid)).size, 7, `${preset.id} ${appearance}`);
       for (const [index, entry] of mapped.entries()) {
         const label = `${preset.id} ${appearance} role ${index}`;
-        assert.equal(core.chromaticSurfaceFor(parse(colors[index]), palette), entry.solid, label);
+        assert.equal(core.chromaticSurfaceFor(parse(colors[index]), palette, true), entry.solid, label);
         for (const [foreground, background] of [[entry.onSolid, entry.solid], [entry.onSoft, entry.soft], [entry.ink, palette.base]]) {
           assert.ok(core.contrastRatio(parse(foreground), parse(background)) >= 4.5, label);
         }
@@ -792,8 +792,54 @@ test("approved role colors cover every tinted variant with readable pairings", a
   assert.equal(core.chromaticSurfaceFor(parse("rgba(29,155,240,.2)"), dark), "#53453e");
   assert.equal(core.chromaticSurfaceFor(parse("#ffebe9"), dark), "#524340");
   assert.equal(core.chromaticTextFor(parse("#1d9bf0"), light), "#aa5f40");
-  assert.equal(core.chromaticSurfaceFor(parse("#1d9bf0"), core.PALETTES["everforest-light"]), "#8da101");
-  assert.equal(core.chromaticSurfaceFor(parse("#1d9bf0"), core.PALETTES["linear-light"]), "#5e6ad2");
+  assert.equal(core.chromaticSurfaceFor(parse("#1d9bf0"), core.PALETTES["everforest-light"], true), "#8da101");
+  assert.equal(core.chromaticSurfaceFor(parse("#1d9bf0"), core.PALETTES["linear-light"], true), "#5e6ad2");
+});
+
+test("figure dots retain separate colors and match the legend through theme changes and rescans", async () => {
+  const core = await loadCore();
+  const tokens = {
+    "--ink-purple": "#b771cf",
+    "--ink-mid": "#7890e6",
+    "--ink-blue": "#38affd",
+    "--ink-black": "#000"
+  };
+  const dots = (prefix) => Object.values(tokens).map((backgroundColor, index) => ({
+    id: prefix + index,
+    tag: "i",
+    backgroundColor,
+    borderRadius: "50%"
+  }));
+  const { document, window, byId } = createMockDom({
+    rootCssVars: tokens,
+    trackInlineBackground: true,
+    tree: [{ tag: "figure", children: [
+      { attrs: { role: "img" }, children: dots("dot") },
+      { tag: "ul", children: dots("legend") }
+    ] }]
+  });
+  const engine = core.createEngine({ document, window });
+  const fills = (prefix) => dots(prefix).map(({ id }) => byId.get(id).style.getPropertyValue("background-color"));
+
+  for (const appearance of ["light", "dark"]) {
+    engine.apply({ appearance });
+    const palette = core.PALETTES[`rose-pine-${appearance}`];
+    for (const name of Object.keys(tokens)) {
+      assert.equal(document.documentElement.style.getPropertyValue(name), "");
+    }
+    const initial = fills("dot");
+    assert.equal(new Set(initial).size, 4);
+    assert.equal(initial[3], palette.text);
+    assert.deepEqual(fills("legend"), initial);
+
+    window.deliverMutations([{ type: "childList", target: document.body, addedNodes: [byId.get("dot1")] }]);
+    window.flushFrames();
+    assert.deepEqual(fills("dot"), initial);
+    engine.refresh();
+    window.flushFrames();
+    assert.deepEqual(fills("dot"), initial);
+    assert.deepEqual(fills("legend"), initial);
+  }
 });
 
 test("accent backgrounds pair neutral labels and map painted semantic borders", async () => {
@@ -942,6 +988,7 @@ function createMockDom(nodes) {
       borderRightStyle: spec.borderRightStyle || "none",
       borderBottomStyle: spec.borderBottomStyle || "none",
       borderLeftStyle: spec.borderLeftStyle || "none",
+      borderRadius: spec.borderRadius || "0px",
       colorScheme: spec.colorScheme || "normal",
       fontFamily: spec.fontFamily || "serif",
       length: computedNames.length,

@@ -7,6 +7,8 @@
   detected players.
 - Add an optional Hide ads switch for promoted posts on X in the popup and
   Settings. It works independently of the theme and compact layout.
+- Preserve differences between chart colors when applying a theme, including
+  matching colors in the chart and its legend.
 
 ## 0.2.10 - 2026-11-19
 

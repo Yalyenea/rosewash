@@ -594,8 +594,7 @@
     "#e53935", "#ff7a00", "#ffd600", "#1f883d", "#00bcd4", "#0066ff", "#7c3aed", "#ec4899"
   ].map((color) => oklchParts(parseColor(color)).hue));
 
-  function accentRoleFor(color) {
-    const { lightness, chroma, hue } = oklchParts(color);
+  function accentRoleFor({ lightness, chroma, hue }) {
     const degrees = (hue * 180 / Math.PI + 360) % 360;
     const cream = degrees >= 65 && degrees <= 105;
     // Cool UI grays such as X's #536471 have a blue hue but little chroma.
@@ -620,11 +619,11 @@
     return readableTextFor(contrastRatio(text, background) >= contrastRatio(base, background) ? text : base, background);
   }
 
-  function neutralTextFor(color, palette, background) {
+  function neutralTextFor(color, palette, background, strongFill) {
     const lightness = oklchParts(color).lightness;
     const secondary = hexColor(color) !== palette.text.toLowerCase()
       && lightness >= 0.4 && lightness < 0.82
-      && !paletteColorModel(palette).some(({ solid }) => solid === hexColor(background));
+      && !strongFill;
     return secondary ? readableTextFor(parseColor(palette.muted), background) : pairedTextFor(palette, background);
   }
 
@@ -632,7 +631,7 @@
     if (!paletteColorModels.has(palette)) {
       const preset = Object.values(PRESETS).find((entry) => entry.light === palette || entry.dark === palette);
       const dark = preset.dark === palette;
-      paletteColorModels.set(palette, preset.accents.map((seed, role) => {
+      const accents = preset.accents.map((seed, role) => {
         // Website blue commonly marks primary actions and selected states.
         // Use this appearance's theme accent so every theme has its identity.
         if (role === 5) seed = palette.link;
@@ -648,7 +647,11 @@
           onSolid: pairedTextFor(palette, parseColor(solid)),
           onSoft: readableTextFor(parseColor(palette.text), parseColor(soft))
         });
-      }));
+      });
+      paletteColorModels.set(palette, {
+        accents,
+        fillTarget: oklchParts(parseColor(accents[5].solid))
+      });
     }
     return paletteColorModels.get(palette);
   }
@@ -657,8 +660,8 @@
   // approved theme colors identical across previews and actual pages.
   function accentColorsFor(color, palette) {
     if (!isOpaqueColor(color) || palette.tint === false) return null;
-    const role = accentRoleFor(color);
-    return role < 0 ? null : paletteColorModel(palette)[role];
+    const role = accentRoleFor(oklchParts(color));
+    return role < 0 ? null : paletteColorModel(palette).accents[role];
   }
 
   function relativeLuminance(color) {
@@ -693,18 +696,29 @@
     return result;
   }
 
-  // Strong fills use the role's emphasis color; pale/translucent fills use
-  // its soft paper. Theme tokens and neutral paper retain their own roles.
-  function chromaticSurfaceFor(color, palette) {
+  function mapChromaticSurface(color, palette, useAccent) {
     if (!isOpaqueColor(color)) return null;
     const token = paletteSurfaceTokenFor(color, palette);
-    if (token) return token;
-    const mapped = accentColorsFor(color, palette);
-    if (!mapped) return null;
+    if (token) return { fill: token, strong: false };
+    if (palette.tint === false) return null;
     const source = oklchParts(color);
+    const role = accentRoleFor(source);
+    if (role < 0) return null;
+    const { accents, fillTarget } = paletteColorModel(palette);
     const strong = color.alpha >= 0.9 && source.chroma >= 0.08
       && (source.lightness < 0.82 || source.chroma >= 0.16);
-    return strong ? mapped.solid : mapped.soft;
+    if (!strong || useAccent) {
+      return { fill: strong ? accents[role].solid : accents[role].soft, strong };
+    }
+    // Keep the source hue so nearby colors can still identify different data.
+    // Share the primary accent's tone and chroma targets across all hues.
+    const lightness = (source.lightness + fillTarget.lightness) / 2;
+    const chroma = (source.chroma + fillTarget.chroma) / 2;
+    return { fill: hexColor(oklchColor(lightness, chroma, source.hue)), strong };
+  }
+
+  function chromaticSurfaceFor(color, palette, useAccent = false) {
+    return mapChromaticSurface(color, palette, useAccent)?.fill ?? null;
   }
 
   function chromaticTextFor(color, palette, background = parseColor(palette.base)) {
@@ -1342,7 +1356,8 @@
   const SURFACE_VAR_EXCLUDE = /text|icon|label|inverted|border|outline|ring|divider|btn-text|msg-text|on-primary|utility-contrast|shadow-color|submit-btn-text|ink|print_on/;
   const SURFACE_VAR_INCLUDE = /main-surface|composer-surface|sidebar-surface|component-sidebar-bg|bg-primary|bg-secondary|bg-elevated|bg-secondary-surface|surface-primary|surface-secondary|surface-tertiary|page-bg|canvas|background-primary|background-secondary|background_contrast|cover_bg|fp-recirc-block-bg|ground|web_bg|theme_bg|color_theme_bg|color-bg|^--bg[123]?(?:_float)?$|^--graph_bg_(?:thin|regular|thick)$|^--background$|^--background-color$/;
   const TEXT_VAR_EXCLUDE = /inverted|on-primary|btn|button|link|brand|accent|success|warning|error|danger|shadow|utility-contrast/;
-  const TEXT_VAR_INCLUDE = /(?:^|-)(ink|title-ink|text-primary|text-secondary|text-color|text[1-4]|foreground|body-color|color-text|print_on_web|fg-primary|fg-secondary|cover_print_primary)(?:-|$)/;
+  // Suffixed ink tokens can be shared brand colors and paint graphics or fills.
+  const TEXT_VAR_INCLUDE = /^--(?:ink|title-ink)$|(?:^|-)(?:text-primary|text-secondary|text-color|text[1-4]|foreground|body-color|color-text|print_on_web|fg-primary|fg-secondary|cover_print_primary)(?:-|$)/;
 
   // Always force these when present or when any surface token is active.
   // ChatGPT dark may expose unparseable values (display-p3) or re-declare
@@ -1728,8 +1743,7 @@
       }
     }
 
-    function tintBorders(element, snapshot, palette) {
-      const fill = parseColor(snapshot.backgroundColor);
+    function tintBorders(element, snapshot, palette, fill) {
       const borderSides = [
         ["border-top-color", snapshot.borderTopColor, snapshot.borderTopWidth, snapshot.borderTopStyle],
         ["border-right-color", snapshot.borderRightColor, snapshot.borderRightWidth, snapshot.borderRightStyle],
@@ -1765,15 +1779,15 @@
         }
         // A theme's own muted stroke keeps its token identity on rescan.
         const native = color?.alpha === 1 && hexColor(color) === palette.muted.toLowerCase();
-        const accent = native ? null : chromaticTextFor(color, palette, textBackgroundFor(element, palette));
+        const accent = native ? null : chromaticTextFor(color, palette, parseColor(textSurfaceFor(element, palette).fill));
         if (accent || isCoverBorderColor(color)) {
           setStyle(element, property, accent || palette.muted);
         }
       }
     }
 
-    function rememberSurface(element, original, fill) {
-      surfaceRecords.set(element, { original, fill });
+    function rememberSurface(element, original, fill, strong = false) {
+      surfaceRecords.set(element, { original, fill, strong });
     }
 
     function matchingPaperFill(element, color) {
@@ -1806,18 +1820,19 @@
       return surfaceColorFor(background, palette, options);
     }
 
-    function textBackgroundFor(element, palette) {
+    function textSurfaceFor(element, palette) {
       for (let current = element; current; current = composedParent(current)) {
         const record = surfaceRecords.get(current);
-        if (record) return parseColor(record.fill);
+        if (record) return record;
       }
-      return parseColor(palette.base);
+      return { fill: palette.base, strong: false };
     }
 
     function tintText(element, snapshot, palette) {
       const color = parseColor(snapshot.color);
       if (!isOpaqueColor(color)) return;
-      const background = textBackgroundFor(element, palette);
+      const surface = textSurfaceFor(element, palette);
+      const background = parseColor(surface.fill);
       // Palette colors may already be inherited from a scanned parent. Keep
       // their identity before considering colored syntax or semantic text.
       const hex = hexColor(color);
@@ -1831,14 +1846,14 @@
         break;
       }
       const token = [palette.text, palette.link].find((value) => value.toLowerCase() === hex);
-      const key = [hex, hexColor(background), element.tagName === "A", inherited?.fill, activeTheme].join(":");
+      const key = [hex, surface.fill, surface.strong, element.tagName === "A", inherited?.fill, activeTheme].join(":");
       let fill = textColorCache.get(key);
       if (!fill) {
         const original = parseColor(inherited?.original || hex);
-        const neutral = token === palette.text || accentRoleFor(original) < 0;
+        const neutral = token === palette.text || accentRoleFor(oklchParts(original)) < 0;
         const target = element.tagName === "A" ? palette.link
           : token === palette.link ? token
-          : neutral ? neutralTextFor(original, palette, background)
+          : neutral ? neutralTextFor(original, palette, background, surface.strong)
           : inherited?.fill || chromaticTextFor(color, palette, background);
         fill = readableTextFor(parseColor(target), background);
         // Bound cached color combinations on long-lived single-page apps.
@@ -1895,7 +1910,8 @@
         borderTopStyle: computedStyle.borderTopStyle,
         borderRightStyle: computedStyle.borderRightStyle,
         borderBottomStyle: computedStyle.borderBottomStyle,
-        borderLeftStyle: computedStyle.borderLeftStyle
+        borderLeftStyle: computedStyle.borderLeftStyle,
+        borderRadius: computedStyle.borderRadius
       };
     }
 
@@ -1925,7 +1941,14 @@
       }
       const palette = PALETTES[theme];
       if (palette.tint === false || shouldSkipElement(element)) return;
-      const background = parseColor(snapshot.backgroundColor);
+      let background = parseColor(snapshot.backgroundColor);
+      const previousSurface = surfaceRecords.get(element);
+      const override = originalStyles.get(element)?.["background-color"];
+      // A still-owned fill may be read again when queued subtrees overlap.
+      if (previousSurface && override && matchesOverride(element, "background-color", override)
+        && background?.alpha === 1 && hexColor(background) === previousSurface.fill) {
+        background = previousSurface.original;
+      }
       const hasBackgroundImage = snapshot.backgroundImage && snapshot.backgroundImage !== "none";
       const generatedBackground = isGeneratedBackgroundImage(snapshot.backgroundImage);
       const gradientText = generatedBackground
@@ -1956,26 +1979,33 @@
       const coverSurface = !gradientText && !pageChromeTinted
         && (!hasBackgroundImage || generatedBackground)
         && (isCoverSurfaceBackground(background, { pageElement }) || generatedBackground);
-      const chromatic = coverSurface && !pageElement && !generatedBackground
-        ? chromaticSurfaceFor(background, palette)
-        : null;
       if (coverSurface) {
         if (generatedBackground) {
           setStyle(element, "background-image", "none");
         }
-        const fill = chromatic || resolveSurfaceFill(element, background, palette, {
+        const useAccent = element.tagName === "BUTTON" || element.tagName === "A"
+          || element.getAttribute("role") === "button";
+        const chromatic = !pageElement && !generatedBackground
+          ? mapChromaticSurface(background, palette, useAccent)
+          : null;
+        // Small neutral dots in figures are marks. Give them the same
+        // foreground contrast as the surrounding labels in either appearance.
+        const neutralMark = !chromatic && !hasBackgroundImage && background?.alpha >= 0.9
+          && snapshot.borderRadius === "50%" && !element.firstChild && luminance(background) < 90
+          && Boolean(element.closest("figure, [role='img']"));
+        const fill = chromatic?.fill ?? (neutralMark ? palette.text : resolveSurfaceFill(element, background, palette, {
           pageElement,
           theme,
           tagName: element.tagName
-        });
+        }));
         setStyle(element, "background-color", fill);
-        rememberSurface(element, background, fill);
+        rememberSurface(element, background, fill, chromatic?.strong);
       }
 
       // Background records are now final, including colored buttons in page
       // chrome. Resolve text against that paper, even when its color inherits.
       tintText(element, gradientText ? { ...snapshot, color: palette.text } : snapshot, palette);
-      tintBorders(element, snapshot, palette);
+      tintBorders(element, snapshot, palette, background);
     }
 
     function isProtectedElement(element) {
